@@ -239,7 +239,8 @@ export function AdminOrdersView() {
     const target = order || selectedOrder
     if (!target) return
     setSelectedOrder(target)
-    const items = (target.items as Array<Record<string, unknown>>).map((item) => ({
+    const rawItems = target.items as Array<Record<string, unknown>> | undefined
+    const items = (rawItems || []).map((item) => ({
       id: item.id as string,
       productId: item.productId as string,
       quantity: item.quantity as number,
@@ -553,7 +554,7 @@ export function AdminOrdersView() {
                         <Button
                           variant="outline"
                           className="flex-1"
-                          onClick={openEdit}
+                          onClick={() => openEdit()}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Modificar Pedido

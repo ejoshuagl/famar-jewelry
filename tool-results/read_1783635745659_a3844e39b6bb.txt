@@ -1,0 +1,722 @@
+     1→'use client'
+     2→
+     3→import { useState } from 'react'
+     4→import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+     5→import { useAuthStore } from '@/stores/auth-store'
+     6→import { formatPrice } from '@/lib/utils'
+     7→import { Button } from '@/components/ui/button'
+     8→import { Badge } from '@/components/ui/badge'
+     9→import { Card, CardContent } from '@/components/ui/card'
+    10→import { Input } from '@/components/ui/input'
+    11→import { Textarea } from '@/components/ui/textarea'
+    12→import { Label } from '@/components/ui/label'
+    13→import {
+    14→  Table,
+    15→  TableBody,
+    16→  TableCell,
+    17→  TableHead,
+    18→  TableHeader,
+    19→  TableRow,
+    20→} from '@/components/ui/table'
+    21→import {
+    22→  Select,
+    23→  SelectContent,
+    24→  SelectItem,
+    25→  SelectTrigger,
+    26→  SelectValue,
+    27→} from '@/components/ui/select'
+    28→import {
+    29→  Dialog,
+    30→  DialogContent,
+    31→  DialogHeader,
+    32→  DialogTitle,
+    33→  DialogDescription,
+    34→} from '@/components/ui/dialog'
+    35→import {
+    36→  AlertDialog,
+    37→  AlertDialogAction,
+    38→  AlertDialogCancel,
+    39→  AlertDialogContent,
+    40→  AlertDialogDescription,
+    41→  AlertDialogFooter,
+    42→  AlertDialogHeader,
+    43→  AlertDialogTitle,
+    44→} from '@/components/ui/alert-dialog'
+    45→import {
+    46→  Search,
+    47→  Check,
+    48→  X,
+    49→  Eye,
+    50→  Loader2,
+    51→  Trash2,
+    52→  Pencil,
+    53→  Minus,
+    54→  Plus,
+    55→  Save,
+    56→} from 'lucide-react'
+    57→import { toast } from 'sonner'
+    58→import { Separator } from '@/components/ui/separator'
+    59→
+    60→interface EditableOrderItem {
+    61→  id: string
+    62→  productId: string
+    63→  quantity: number
+    64→  price: number
+    65→  name: string
+    66→  code: string
+    67→}
+    68→
+    69→export function AdminOrdersView() {
+    70→  const { adminName } = useAuthStore()
+    71→  const queryClient = useQueryClient()
+    72→  const [statusFilter, setStatusFilter] = useState('all')
+    73→  const [search, setSearch] = useState('')
+    74→  const [page, setPage] = useState(1)
+    75→  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+    76→  const [editDialogOpen, setEditDialogOpen] = useState(false)
+    77→  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+    78→  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
+    79→
+    80→  // Edit state
+    81→  const [editItems, setEditItems] = useState<EditableOrderItem[]>([])
+    82→  const [editObs, setEditObs] = useState('')
+    83→  const [editName, setEditName] = useState('')
+    84→  const [editCity, setEditCity] = useState('')
+    85→  const [editPhone, setEditPhone] = useState('')
+    86→
+    87→  const { data, isLoading } = useQuery({
+    88→    queryKey: ['admin-orders', statusFilter, search, page],
+    89→    queryFn: async () => {
+    90→      const params = new URLSearchParams({
+    91→        limit: '20',
+    92→        page: page.toString(),
+    93→      })
+    94→      if (statusFilter !== 'all') params.set('status', statusFilter)
+    95→      if (search) params.set('search', search)
+    96→      const res = await fetch(`/api/orders?${params}`, {
+    97→        headers: { 'x-admin-name': adminName || '' },
+    98→      })
+    99→      if (!res.ok) throw new Error('Unauthorized')
+   100→      return res.json()
+   101→    },
+   102→  })
+   103→
+   104→  const confirmMutation = useMutation({
+   105→    mutationFn: async (orderId: string) => {
+   106→      const res = await fetch(`/api/orders/${orderId}`, {
+   107→        method: 'PUT',
+   108→        headers: {
+   109→          'Content-Type': 'application/json',
+   110→          'x-admin-name': adminName || '',
+   111→        },
+   112→        body: JSON.stringify({ status: 'confirmed' }),
+   113→      })
+   114→      if (!res.ok) {
+   115→        const d = await res.json()
+   116→        throw new Error(d.error || 'Error confirming order')
+   117→      }
+   118→      return res.json()
+   119→    },
+   120→    onSuccess: () => {
+   121→      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+   122→      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+   123→      toast.success('Pedido confirmado. Stock actualizado.')
+   124→      setDetailDialogOpen(false)
+   125→    },
+   126→    onError: (err) => toast.error(err.message || 'Error al confirmar el pedido'),
+   127→  })
+   128→
+   129→  const cancelMutation = useMutation({
+   130→    mutationFn: async (orderId: string) => {
+   131→      const res = await fetch(`/api/orders/${orderId}`, {
+   132→        method: 'PUT',
+   133→        headers: {
+   134→          'Content-Type': 'application/json',
+   135→          'x-admin-name': adminName || '',
+   136→        },
+   137→        body: JSON.stringify({ status: 'cancelled' }),
+   138→      })
+   139→      if (!res.ok) {
+   140→        const d = await res.json()
+   141→        throw new Error(d.error || 'Error cancelling order')
+   142→      }
+   143→      return res.json()
+   144→    },
+   145→    onSuccess: () => {
+   146→      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+   147→      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+   148→      toast.success('Pedido cancelado')
+   149→      setDetailDialogOpen(false)
+   150→    },
+   151→    onError: (err) => toast.error(err.message || 'Error al cancelar el pedido'),
+   152→  })
+   153→
+   154→  const deleteMutation = useMutation({
+   155→    mutationFn: async (orderId: string) => {
+   156→      const res = await fetch(`/api/orders/${orderId}`, {
+   157→        method: 'DELETE',
+   158→        headers: { 'x-admin-name': adminName || '' },
+   159→      })
+   160→      if (!res.ok) {
+   161→        const d = await res.json()
+   162→        throw new Error(d.error || 'Error deleting order')
+   163→      }
+   164→      return res.json()
+   165→    },
+   166→    onSuccess: () => {
+   167→      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+   168→      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+   169→      toast.success('Pedido eliminado permanentemente')
+   170→      setDetailDialogOpen(false)
+   171→      setDeleteDialogOpen(false)
+   172→      setSelectedOrder(null)
+   173→    },
+   174→    onError: (err) => toast.error(err.message || 'Error al eliminar el pedido'),
+   175→  })
+   176→
+   177→  const saveEditMutation = useMutation({
+   178→    mutationFn: async () => {
+   179→      if (!selectedOrder) return
+   180→      const total = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
+   181→      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
+   182→        method: 'PUT',
+   183→        headers: {
+   184→          'Content-Type': 'application/json',
+   185→          'x-admin-name': adminName || '',
+   186→        },
+   187→        body: JSON.stringify({
+   188→          items: editItems,
+   189→          total,
+   190→          observations: editObs,
+   191→          customerName: editName,
+   192→          customerCity: editCity,
+   193→          customerPhone: editPhone,
+   194→        }),
+   195→      })
+   196→      if (!res.ok) {
+   197→        const d = await res.json()
+   198→        throw new Error(d.error || 'Error saving order')
+   199→      }
+   200→      return res.json()
+   201→    },
+   202→    onSuccess: () => {
+   203→      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+   204→      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+   205→      toast.success('Pedido modificado exitosamente')
+   206→      setEditDialogOpen(false)
+   207→      setDetailDialogOpen(false)
+   208→    },
+   209→    onError: (err) => toast.error(err.message || 'Error al guardar cambios'),
+   210→  })
+   211→
+   212→  const orders = data?.orders || []
+   213→  const totalPages = data?.totalPages || 1
+   214→
+   215→  const getStatusBadge = (status: string) => {
+   216→    const styles: Record<string, string> = {
+   217→      pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
+   218→      confirmed: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+   219→      cancelled: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
+   220→    }
+   221→    const labels: Record<string, string> = {
+   222→      pending: 'Pendiente',
+   223→      confirmed: 'Confirmado',
+   224→      cancelled: 'Cancelado',
+   225→    }
+   226→    return (
+   227→      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${styles[status] || ''}`}>
+   228→        {labels[status] || status}
+   229→      </span>
+   230→    )
+   231→  }
+   232→
+   233→  const openDetail = (order: Record<string, unknown>) => {
+   234→    setSelectedOrder(order)
+   235→    setDetailDialogOpen(true)
+   236→  }
+   237→
+   238→  const openEdit = (order?: Record<string, unknown>) => {
+   239→    const target = order || selectedOrder
+   240→    if (!target) return
+   241→    setSelectedOrder(target)
+   242→    const items = (target.items as Array<Record<string, unknown>>).map((item) => ({
+   243→      id: item.id as string,
+   244→      productId: item.productId as string,
+   245→      quantity: item.quantity as number,
+   246→      price: item.price as number,
+   247→      name: item.name as string,
+   248→      code: item.code as string,
+   249→    }))
+   250→    setEditItems(items)
+   251→    setEditObs((target.observations as string) || '')
+   252→    setEditName(target.customerName as string)
+   253→    setEditCity(target.customerCity as string)
+   254→    setEditPhone(target.customerPhone as string)
+   255→    setDetailDialogOpen(false)
+   256→    setEditDialogOpen(true)
+   257→  }
+   258→
+   259→  const handleItemQtyChange = (itemId: string, delta: number) => {
+   260→    setEditItems((prev) =>
+   261→      prev.map((item) =>
+   262→        item.id === itemId
+   263→          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+   264→          : item
+   265→      )
+   266→    )
+   267→  }
+   268→
+   269→  const handleRemoveItem = (itemId: string) => {
+   270→    setEditItems((prev) => prev.filter((item) => item.id !== itemId))
+   271→  }
+   272→
+   273→  const editTotal = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
+   274→
+   275→  return (
+   276→    <div className="space-y-4">
+   277→        <h1 className="text-xl font-bold">Pedidos</h1>
+   278→
+   279→        <div className="flex flex-col sm:flex-row gap-3">
+   280→          <div className="relative flex-1 max-w-sm">
+   281→            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   282→            <Input
+   283→              placeholder="Buscar por nombre, teléfono o #pedido..."
+   284→              value={search}
+   285→              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+   286→              className="pl-9"
+   287→            />
+   288→          </div>
+   289→          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+   290→            <SelectTrigger className="w-full sm:w-40">
+   291→              <SelectValue placeholder="Estado" />
+   292→            </SelectTrigger>
+   293→            <SelectContent>
+   294→              <SelectItem value="all">Todos</SelectItem>
+   295→              <SelectItem value="pending">Pendientes</SelectItem>
+   296→              <SelectItem value="confirmed">Confirmados</SelectItem>
+   297→              <SelectItem value="cancelled">Cancelados</SelectItem>
+   298→            </SelectContent>
+   299→          </Select>
+   300→        </div>
+   301→
+   302→        {/* Desktop Table */}
+   303→        <Card className="hidden lg:block">
+   304→          <CardContent className="p-0">
+   305→            <Table>
+   306→              <TableHeader>
+   307→                <TableRow>
+   308→                  <TableHead>Pedido</TableHead>
+   309→                  <TableHead>Cliente</TableHead>
+   310→                  <TableHead>Ciudad</TableHead>
+   311→                  <TableHead>Teléfono</TableHead>
+   312→                  <TableHead>Total</TableHead>
+   313→                  <TableHead>Estado</TableHead>
+   314→                  <TableHead>Fecha</TableHead>
+   315→                  <TableHead className="text-right">Acciones</TableHead>
+   316→                </TableRow>
+   317→              </TableHeader>
+   318→              <TableBody>
+   319→                {isLoading ? (
+   320→                  Array.from({ length: 5 }).map((_, i) => (
+   321→                    <TableRow key={i}>
+   322→                      {Array.from({ length: 8 }).map((_, j) => (
+   323→                        <TableCell key={j}><div className="h-4 w-full bg-muted rounded animate-pulse" /></TableCell>
+   324→                      ))}
+   325→                    </TableRow>
+   326→                  ))
+   327→                ) : orders.length === 0 ? (
+   328→                  <TableRow>
+   329→                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+   330→                      No se encontraron pedidos
+   331→                    </TableCell>
+   332→                  </TableRow>
+   333→                ) : (
+   334→                  orders.map((order: Record<string, unknown>) => (
+   335→                    <TableRow key={order.id}>
+   336→                      <TableCell className="font-medium text-sm">#{order.orderNumber}</TableCell>
+   337→                      <TableCell className="text-sm">{order.customerName}</TableCell>
+   338→                      <TableCell className="text-sm">{order.customerCity}</TableCell>
+   339→                      <TableCell className="text-sm">{order.customerPhone}</TableCell>
+   340→                      <TableCell className="text-sm font-medium">{formatPrice(order.total as number)}</TableCell>
+   341→                      <TableCell>{getStatusBadge(order.status as string)}</TableCell>
+   342→                      <TableCell className="text-xs text-muted-foreground">
+   343→                        {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
+   344→                      </TableCell>
+   345→                      <TableCell className="text-right">
+   346→                        <div className="flex justify-end gap-1">
+   347→                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(order)}>
+   348→                            <Eye className="h-3.5 w-3.5" />
+   349→                          </Button>
+   350→                          {(order.status as string) === 'pending' && (
+   351→                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(order)}>
+   352→                              <Pencil className="h-3.5 w-3.5" />
+   353→                            </Button>
+   354→                          )}
+   355→                        </div>
+   356→                      </TableCell>
+   357→                    </TableRow>
+   358→                  ))
+   359→                )}
+   360→              </TableBody>
+   361→            </Table>
+   362→          </CardContent>
+   363→        </Card>
+   364→
+   365→        {/* Mobile Cards */}
+   366→        <div className="lg:hidden space-y-2">
+   367→          {isLoading ? (
+   368→            Array.from({ length: 5 }).map((_, i) => (
+   369→              <Card key={i} className="p-3">
+   370→                <div className="flex justify-between mb-2">
+   371→                  <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+   372→                  <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+   373→                </div>
+   374→                <div className="h-3 w-3/4 bg-muted rounded animate-pulse mb-1" />
+   375→                <div className="flex justify-between mt-3">
+   376→                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+   377→                  <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+   378→                </div>
+   379→              </Card>
+   380→            ))
+   381→          ) : orders.length === 0 ? (
+   382→            <div className="text-center py-8 text-muted-foreground">
+   383→              No se encontraron pedidos
+   384→            </div>
+   385→          ) : (
+   386→            orders.map((order: Record<string, unknown>) => (
+   387→              <Card key={order.id} className="p-3">
+   388→                <div className="flex items-start justify-between gap-2">
+   389→                  <div className="min-w-0 flex-1">
+   390→                    <p className="font-medium text-sm">#{order.orderNumber}</p>
+   391→                    <p className="text-sm text-muted-foreground truncate">{order.customerName}</p>
+   392→                    <p className="text-xs text-muted-foreground">{order.customerCity}</p>
+   393→                  </div>
+   394→                  {getStatusBadge(order.status as string)}
+   395→                </div>
+   396→                <div className="flex items-center justify-between mt-3">
+   397→                  <div>
+   398→                    <p className="text-base font-bold">{formatPrice(order.total as number)}</p>
+   399→                    <p className="text-xs text-muted-foreground">
+   400→                      {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
+   401→                    </p>
+   402→                  </div>
+   403→                  <div className="flex gap-1">
+   404→                    {(order.status as string) === 'pending' && (
+   405→                      <Button variant="outline" size="sm" onClick={() => openEdit(order)}>
+   406→                        <Pencil className="h-3.5 w-3.5 mr-1" />
+   407→                        Editar
+   408→                      </Button>
+   409→                    )}
+   410→                    <Button variant="outline" size="sm" onClick={() => openDetail(order)}>
+   411→                      <Eye className="h-3.5 w-3.5 mr-1" />
+   412→                      Ver
+   413→                    </Button>
+   414→                  </div>
+   415→                </div>
+   416→              </Card>
+   417→            ))
+   418→          )}
+   419→        </div>
+   420→
+   421→        {totalPages > 1 && (
+   422→          <div className="flex justify-center gap-1">
+   423→            {Array.from({ length: totalPages }).map((_, i) => (
+   424→              <Button
+   425→                key={i}
+   426→                variant={page === i + 1 ? 'default' : 'outline'}
+   427→                size="sm"
+   428→                className="h-8 w-8 p-0"
+   429→                onClick={() => setPage(i + 1)}
+   430→              >
+   431→                {i + 1}
+   432→              </Button>
+   433→            ))}
+   434→          </div>
+   435→        )}
+   436→
+   437→        {/* ========== Order Detail Dialog ========== */}
+   438→        <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
+   439→          <DialogContent className="max-w-lg max-h-[85vh]">
+   440→            <DialogHeader>
+   441→              <DialogTitle>Pedido #{selectedOrder?.orderNumber}</DialogTitle>
+   442→              <DialogDescription>
+   443→                Detalles del pedido del cliente
+   444→              </DialogDescription>
+   445→            </DialogHeader>
+   446→            <div className="max-h-[65vh] overflow-y-auto space-y-4">
+   447→            {selectedOrder && (
+   448→              <>
+   449→                <div className="grid grid-cols-2 gap-3 text-sm">
+   450→                  <div>
+   451→                    <span className="text-muted-foreground">Cliente:</span>
+   452→                    <p className="font-medium">{selectedOrder.customerName}</p>
+   453→                  </div>
+   454→                  <div>
+   455→                    <span className="text-muted-foreground">Ciudad:</span>
+   456→                    <p className="font-medium">{selectedOrder.customerCity}</p>
+   457→                  </div>
+   458→                  <div>
+   459→                    <span className="text-muted-foreground">Teléfono:</span>
+   460→                    <p className="font-medium">{selectedOrder.customerPhone}</p>
+   461→                  </div>
+   462→                  <div>
+   463→                    <span className="text-muted-foreground">Fecha:</span>
+   464→                    <p className="font-medium">{new Date(selectedOrder.createdAt as string).toLocaleString('es-EC')}</p>
+   465→                  </div>
+   466→                  <div>
+   467→                    <span className="text-muted-foreground">Estado:</span>
+   468→                    <div className="mt-1">{getStatusBadge(selectedOrder.status as string)}</div>
+   469→                  </div>
+   470→                </div>
+   471→
+   472→                <div>
+   473→                  <h4 className="text-sm font-semibold mb-2">Productos</h4>
+   474→                  <div className="border rounded-lg overflow-hidden">
+   475→                    <div className="overflow-x-auto">
+   476→                      <table className="w-full text-sm">
+   477→                        <thead>
+   478→                          <tr className="bg-muted">
+   479→                            <th className="text-left px-3 py-2 whitespace-nowrap">Producto</th>
+   480→                            <th className="text-center px-3 py-2 whitespace-nowrap">Cant</th>
+   481→                            <th className="text-right px-3 py-2 whitespace-nowrap">Precio</th>
+   482→                            <th className="text-right px-3 py-2 whitespace-nowrap">Subtotal</th>
+   483→                          </tr>
+   484→                        </thead>
+   485→                        <tbody>
+   486→                          {(selectedOrder.items as Array<Record<string, unknown>>).map((item) => (
+   487→                            <tr key={item.id} className="border-t">
+   488→                              <td className="px-3 py-2">
+   489→                                <p className="font-medium truncate max-w-[150px]">{item.name}</p>
+   490→                                <p className="text-xs text-muted-foreground">{item.code}</p>
+   491→                              </td>
+   492→                              <td className="text-center px-3 py-2">{item.quantity}</td>
+   493→                              <td className="text-right px-3 py-2 whitespace-nowrap">{formatPrice(item.price as number)}</td>
+   494→                              <td className="text-right px-3 py-2 font-medium whitespace-nowrap">
+   495→                                {formatPrice((item.price as number) * (item.quantity as number))}
+   496→                              </td>
+   497→                            </tr>
+   498→                          ))}
+   499→                        </tbody>
+   500→                        <tfoot>
+   501→                          <tr className="border-t bg-muted/50">
+   502→                            <td colSpan={3} className="text-right px-3 py-2 font-bold">Total</td>
+   503→                            <td className="text-right px-3 py-2 font-bold text-primary whitespace-nowrap">
+   504→                              {formatPrice(selectedOrder.total as number)}
+   505→                            </td>
+   506→                          </tr>
+   507→                        </tfoot>
+   508→                      </table>
+   509→                    </div>
+   510→                  </div>
+   511→                </div>
+   512→
+   513→                {selectedOrder.observations && (
+   514→                  <div>
+   515→                    <h4 className="text-sm font-semibold mb-1">Observaciones</h4>
+   516→                    <p className="text-sm text-muted-foreground">{selectedOrder.observations}</p>
+   517→                  </div>
+   518→                )}
+   519→
+   520→                {/* Action buttons */}
+   521→                <div className="space-y-3 pt-2">
+   522→                  {(selectedOrder.status as string) === 'pending' && (
+   523→                    <>
+   524→                      <div className="flex gap-3">
+   525→                        <Button
+   526→                          className="flex-1 bg-green-600 text-white hover:bg-green-700"
+   527→                          onClick={() => confirmMutation.mutate(selectedOrder.id as string)}
+   528→                          disabled={confirmMutation.isPending}
+   529→                        >
+   530→                          {confirmMutation.isPending ? (
+   531→                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+   532→                          ) : (
+   533→                            <Check className="h-4 w-4 mr-2" />
+   534→                          )}
+   535→                          Confirmar
+   536→                        </Button>
+   537→                        <Button
+   538→                          variant="destructive"
+   539→                          className="flex-1"
+   540→                          onClick={() => cancelMutation.mutate(selectedOrder.id as string)}
+   541→                          disabled={cancelMutation.isPending}
+   542→                        >
+   543→                          {cancelMutation.isPending ? (
+   544→                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+   545→                          ) : (
+   546→                            <X className="h-4 w-4 mr-2" />
+   547→                          )}
+   548→                          Cancelar
+   549→                        </Button>
+   550→                      </div>
+   551→                      <Separator />
+   552→                      <div className="flex gap-3">
+   553→                        <Button
+   554→                          variant="outline"
+   555→                          className="flex-1"
+   556→                          onClick={openEdit}
+   557→                        >
+   558→                          <Pencil className="h-4 w-4 mr-2" />
+   559→                          Modificar Pedido
+   560→                        </Button>
+   561→                        <Button
+   562→                          variant="outline"
+   563→                          className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+   564→                          onClick={() => setDeleteDialogOpen(true)}
+   565→                        >
+   566→                          <Trash2 className="h-4 w-4 mr-2" />
+   567→                          Eliminar
+   568→                        </Button>
+   569→                      </div>
+   570→                    </>
+   571→                  )}
+   572→                  {(selectedOrder.status as string) !== 'pending' && (
+   573→                    <Button
+   574→                      variant="outline"
+   575→                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+   576→                      onClick={() => setDeleteDialogOpen(true)}
+   577→                    >
+   578→                      <Trash2 className="h-4 w-4 mr-2" />
+   579→                      Eliminar Pedido
+   580→                    </Button>
+   581→                  )}
+   582→                </div>
+   583→              </>
+   584→            )}
+   585→            </div>
+   586→          </DialogContent>
+   587→        </Dialog>
+   588→
+   589→        {/* ========== Edit Order Dialog ========== */}
+   590→        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+   591→          <DialogContent className="max-w-lg max-h-[85vh]">
+   592→            <DialogHeader>
+   593→              <DialogTitle>Modificar Pedido #{selectedOrder?.orderNumber}</DialogTitle>
+   594→              <DialogDescription>
+   595→                Cambia cantidades, elimina productos o edita los datos del cliente.
+   596→              </DialogDescription>
+   597→            </DialogHeader>
+   598→            <div className="max-h-[65vh] overflow-y-auto space-y-4">
+   599→              {/* Customer info */}
+   600→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+   601→                <div className="sm:col-span-2">
+   602→                  <Label htmlFor="edit-name">Cliente</Label>
+   603→                  <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+   604→                </div>
+   605→                <div>
+   606→                  <Label htmlFor="edit-city">Ciudad</Label>
+   607→                  <Input id="edit-city" value={editCity} onChange={(e) => setEditCity(e.target.value)} />
+   608→                </div>
+   609→                <div>
+   610→                  <Label htmlFor="edit-phone">Teléfono</Label>
+   611→                  <Input id="edit-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+   612→                </div>
+   613→              </div>
+   614→
+   615→              <Separator />
+   616→
+   617→              {/* Editable items */}
+   618→              <div>
+   619→                <h4 className="text-sm font-semibold mb-3">Productos</h4>
+   620→                {editItems.length === 0 ? (
+   621→                  <p className="text-sm text-muted-foreground text-center py-4">No hay productos en el pedido</p>
+   622→                ) : (
+   623→                  <div className="space-y-2">
+   624→                    {editItems.map((item) => (
+   625→                      <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
+   626→                        <div className="flex-1 min-w-0">
+   627→                          <p className="text-sm font-medium truncate">{item.name}</p>
+   628→                          <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(item.price)} c/u</p>
+   629→                        </div>
+   630→                        <div className="flex items-center border rounded-md">
+   631→                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, -1)}>
+   632→                            <Minus className="h-3 w-3" />
+   633→                          </Button>
+   634→                          <span className="w-7 text-center text-sm font-medium">{item.quantity}</span>
+   635→                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, 1)}>
+   636→                            <Plus className="h-3 w-3" />
+   637→                          </Button>
+   638→                        </div>
+   639→                        <span className="text-sm font-bold w-16 text-right shrink-0">
+   640→                          {formatPrice(item.price * item.quantity)}
+   641→                        </span>
+   642→                        <Button
+   643→                          variant="ghost"
+   644→                          size="icon"
+   645→                          className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+   646→                          onClick={() => handleRemoveItem(item.id)}
+   647→                        >
+   648→                          <Trash2 className="h-3.5 w-3.5" />
+   649→                        </Button>
+   650→                      </div>
+   651→                    ))}
+   652→                  </div>
+   653→                )}
+   654→              </div>
+   655→
+   656→              <Separator />
+   657→
+   658→              {/* Observations */}
+   659→              <div>
+   660→                <Label htmlFor="edit-obs">Observaciones</Label>
+   661→                <Textarea id="edit-obs" value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} />
+   662→              </div>
+   663→
+   664→              {/* Total */}
+   665→              <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
+   666→                <span className="font-semibold">Nuevo Total</span>
+   667→                <span className="text-xl font-bold text-primary">{formatPrice(editTotal)}</span>
+   668→              </div>
+   669→
+   670→              {/* Save / Cancel */}
+   671→              <div className="flex gap-3">
+   672→                <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>
+   673→                  Cancelar
+   674→                </Button>
+   675→                <Button
+   676→                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+   677→                  onClick={() => saveEditMutation.mutate()}
+   678→                  disabled={saveEditMutation.isPending || editItems.length === 0}
+   679→                >
+   680→                  {saveEditMutation.isPending ? (
+   681→                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>
+   682→                  ) : (
+   683→                    <><Save className="h-4 w-4 mr-2" />Guardar Cambios</>
+   684→                  )}
+   685→                </Button>
+   686→              </div>
+   687→            </div>
+   688→          </DialogContent>
+   689→        </Dialog>
+   690→
+   691→        {/* ========== Delete Order Confirmation ========== */}
+   692→        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+   693→          <AlertDialogContent>
+   694→            <AlertDialogHeader>
+   695→              <AlertDialogTitle>¿Eliminar pedido #{selectedOrder?.orderNumber}?</AlertDialogTitle>
+   696→              <AlertDialogDescription>
+   697→                Esta acción eliminará el pedido permanentemente.
+   698→                {selectedOrder?.status === 'confirmed' && (
+   699→                  <span className="block mt-1 font-medium text-amber-600 dark:text-amber-400">
+   700→                    El stock de los productos será restaurado automáticamente.
+   701→                  </span>
+   702→                )}
+   703→              </AlertDialogDescription>
+   704→            </AlertDialogHeader>
+   705→            <AlertDialogFooter>
+   706→              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+   707→              <AlertDialogAction
+   708→                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   709→                onClick={() => {
+   710→                  if (selectedOrder) deleteMutation.mutate(selectedOrder.id as string)
+   711→                }}
+   712→                disabled={deleteMutation.isPending}
+   713→              >
+   714→                {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+   715→                Eliminar Permanentemente
+   716→              </AlertDialogAction>
+   717→            </AlertDialogFooter>
+   718→          </AlertDialogContent>
+   719→        </AlertDialog>
+   720→    </div>
+   721→  )
+   722→}
