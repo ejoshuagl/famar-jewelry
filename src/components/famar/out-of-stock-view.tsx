@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SkeletonGrid } from './skeleton-grid'
 import { EmptyState } from './empty-state'
-import { formatPrice, convertDriveUrl } from '@/lib/utils'
+import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { Bell } from 'lucide-react'
 import type { ProductData } from './product-card'
 
@@ -62,48 +62,55 @@ Me gustaría que lo incluyan en la próxima importación.
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
+                className="h-full"
               >
-                <Card className="overflow-hidden">
-                  <div className="relative">
+                <Card className="h-full flex flex-col overflow-hidden">
+                  <div className="relative aspect-square shrink-0">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
                         alt={product.name}
-                        className="aspect-square w-full object-cover opacity-60"
+                        className="w-full h-full object-cover opacity-60"
                         loading="lazy"
+                        onError={(e) => {
+                          ;(e.target as HTMLImageElement).style.display = 'none'
+                          ;(e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden')
+                        }}
                       />
-                    ) : (
-                      <div className="aspect-square w-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                        <span className="text-5xl font-bold text-primary/30">
-                          {product.name.charAt(0)}
-                        </span>
-                      </div>
-                    )}
+                    ) : null}
+                    <div className={cn(
+                      !imageUrl && 'aspect-square',
+                      'w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5',
+                      imageUrl && 'hidden absolute inset-0'
+                    )}>
+                      <span className="text-5xl font-bold text-primary/30">
+                        {product.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                       <Badge variant="secondary" className="text-sm">
                         Agotado
                       </Badge>
                     </div>
                   </div>
-                  <CardContent className="p-3 space-y-2">
-                    <h3 className="font-medium text-sm line-clamp-2">{product.name}</h3>
-                    <p className="text-xs text-muted-foreground">{product.code}</p>
-                    <p className="text-sm font-bold text-primary">{formatPrice(product.price)}</p>
-                    {product.material && (
-                      <p className="text-xs text-muted-foreground">Material: {product.material}</p>
-                    )}
-                    {product.dimensions && (
-                      <p className="text-xs text-muted-foreground">Dimensiones: {product.dimensions}</p>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs border-primary/30 text-primary hover:bg-primary/10"
-                      onClick={() => handleRequestImport(product)}
-                    >
-                      <Bell className="h-3 w-3 mr-1" />
-                      Solicitar importación
-                    </Button>
+                  <CardContent className="p-3 flex flex-col flex-1 min-h-0">
+                    <h3 className="font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
+                      {product.name}
+                    </h3>
+                    <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+                      <span className="text-base font-bold text-primary leading-none">
+                        {formatPrice(product.price)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-3 text-xs shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => handleRequestImport(product)}
+                      >
+                        <Bell className="h-3 w-3 mr-1" />
+                        Solicitar
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>

@@ -108,17 +108,19 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.3 }}
       whileHover={{ y: -4 }}
+      className="h-full"
     >
       <Card
-        className="group overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
+        className="group h-full flex flex-col overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
         onClick={handleViewDetail}
       >
-        <div className="relative">
+        {/* Image - fixed aspect ratio, largest possible */}
+        <div className="relative aspect-square shrink-0">
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={product.name}
-              className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
               onError={(e) => {
                 ;(e.target as HTMLImageElement).style.display = 'none'
@@ -126,7 +128,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               }}
             />
           ) : null}
-          <div className={cn(!imageUrl && 'aspect-square', 'w-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 dark:from-primary/30 dark:via-primary/15 dark:to-primary/5', imageUrl && 'hidden absolute inset-0')}>
+          <div className={cn(!imageUrl && 'aspect-square', 'w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 dark:from-primary/30 dark:via-primary/15 dark:to-primary/5', imageUrl && 'hidden absolute inset-0')}>
             <span className="text-5xl font-bold text-primary/40">
               {product.name.charAt(0).toUpperCase()}
             </span>
@@ -170,31 +172,30 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           )}
         </div>
 
-        <CardContent className="p-3 space-y-2">
-          {product.category && (
-            <p className="text-[11px] text-primary font-medium uppercase tracking-wider">
-              {product.category.name}
-            </p>
-          )}
-          <h3 className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">
+        {/* Content - compact, fixed structure */}
+        <CardContent className="p-3 flex flex-col flex-1 min-h-0">
+          <h3 className="font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
             {product.name}
           </h3>
-          <p className="text-xs text-muted-foreground">{product.code}</p>
-          <div className="flex items-center justify-between">
-            <span className="text-lg font-bold text-primary">
+          <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+            <span className="text-base font-bold text-primary leading-none">
               {formatPrice(product.price)}
             </span>
-          </div>
-          {!isOutOfStock && (
             <Button
               size="sm"
-              className="w-full h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+              className={cn(
+                'h-7 px-3 text-xs shrink-0',
+                isOutOfStock
+                  ? 'bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              )}
               onClick={handleAddToCart}
+              disabled={isOutOfStock}
             >
               <ShoppingCart className="h-3 w-3 mr-1" />
               Agregar
             </Button>
-          )}
+          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -203,14 +204,14 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
 export function ProductCardSkeleton() {
   return (
-    <Card className="overflow-hidden">
-      <Skeleton className="aspect-square w-full" />
-      <CardContent className="p-3 space-y-2">
-        <Skeleton className="h-3 w-16" />
+    <Card className="h-full flex flex-col overflow-hidden">
+      <Skeleton className="aspect-square w-full shrink-0" />
+      <CardContent className="p-3 flex flex-col flex-1">
         <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/3" />
-        <Skeleton className="h-6 w-24" />
-        <Skeleton className="h-8 w-full rounded-lg" />
+        <div className="mt-auto pt-2 flex items-end justify-between">
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-7 w-20 rounded-md" />
+        </div>
       </CardContent>
     </Card>
   )
