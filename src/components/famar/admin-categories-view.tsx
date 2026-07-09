@@ -46,6 +46,8 @@ export function AdminCategoriesView() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingName, setDeletingName] = useState('')
+  const [deletingProductCount, setDeletingProductCount] = useState(0)
   const [name, setName] = useState('')
 
   const { data: categories, isLoading } = useQuery({
@@ -105,9 +107,14 @@ export function AdminCategoriesView() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-categories-all'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
       toast.success('Categoría eliminada')
       setDeleteDialogOpen(false)
       setDeletingId(null)
+      setDeletingName('')
+      setDeletingProductCount(0)
     },
     onError: (err) => toast.error(err.message || 'Error al eliminar la categoría'),
   })
@@ -176,13 +183,14 @@ export function AdminCategoriesView() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-destructive"
-                          disabled={(cat._count?.products || 0) > 0}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => {
                             setDeletingId(cat.id)
+                            setDeletingName(cat.name)
+                            setDeletingProductCount(cat._count?.products || 0)
                             setDeleteDialogOpen(true)
                           }}
-                          title={(cat._count?.products || 0) > 0 ? 'No se puede eliminar con productos' : 'Eliminar'}
+                          title="Eliminar"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -232,10 +240,11 @@ export function AdminCategoriesView() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive"
-                    disabled={(cat._count?.products || 0) > 0}
+                    className="h-8 w-8 text-destructive hover:text-destructive"
                     onClick={() => {
                       setDeletingId(cat.id)
+                      setDeletingName(cat.name)
+                      setDeletingProductCount(cat._count?.products || 0)
                       setDeleteDialogOpen(true)
                     }}
                   >
@@ -288,9 +297,14 @@ export function AdminCategoriesView() {
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Eliminar categoría?</AlertDialogTitle>
+              <AlertDialogTitle>¿Eliminar "{deletingName}"?</AlertDialogTitle>
               <AlertDialogDescription>
                 Esta acción no se puede deshacer.
+                {deletingProductCount > 0 && (
+                  <span className="block mt-2 font-medium text-destructive">
+                    ⚠️ Se eliminarán {deletingProductCount} producto{deletingProductCount > 1 ? 's' : ''} de esta categoría junto con sus pedidos asociados.
+                  </span>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

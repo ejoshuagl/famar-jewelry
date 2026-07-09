@@ -12,15 +12,30 @@ export async function DELETE(
     }
 
     const { id } = await params
-    const productsCount = await db.product.count({ where: { categoryId: id } })
-    if (productsCount > 0) {
-      return NextResponse.json(
-        { error: 'Cannot delete category with products' },
-        { status: 400 }
-      )
+
+    const category = await db.category.findUnique({ where: { id } })
+    if (!category) {
+      return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
+
+    // Delete order items for products in this category, then the products, then the category
+    const productsInCategory = await db.product.findMany({
+      where: { categoryId: id },
+      select: { id: true },
+    })
+
+    if (productsInCategory.length > 0) {
+      const productIds = productsInCategory.map((p) => p.id)
+      await db.orderItem.deleteMany({ where: { productId: { in: productIds } } })
+      await db.product.deleteMany({ where: { id: { in: productIds } } })
+    }
+
     await db.category.delete({ where: { id } })
-    return NextResponse.json({ success: true })
+
+    return NextResponse.json({
+      success: true,
+      deletedProducts: productsInCategory.length,
+    })
   } catch (error) {
     console.error('DELETE /api/categories/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
