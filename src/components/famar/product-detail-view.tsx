@@ -7,7 +7,7 @@ import { useFavoritesStore } from '@/stores/favorites-store'
 import { formatPrice } from '@/lib/utils'
 import { ProductGallery } from './product-gallery'
 import { ProductCard, type ProductData } from './product-card'
-import { ShareButtons } from './share-buttons'
+import { ShareButtons, getProductUrl } from './share-buttons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -338,6 +338,7 @@ export function ProductDetailView() {
             productName={product.name}
             productCode={product.code}
             productPrice={product.price}
+            productUrl={getProductUrl(product.code)}
           />
         </motion.div>
       </div>

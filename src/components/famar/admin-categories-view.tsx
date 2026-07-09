@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
-import { AdminLayout } from './admin-layout'
+// AdminLayout is applied in page.tsx, not here
 import { slugify } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -120,8 +120,7 @@ export function AdminCategoriesView() {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-4">
+    <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Categorías</h1>
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateDialogOpen(true)}>
@@ -256,7 +255,6 @@ export function AdminCategoriesView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    </AdminLayout>
+    </div>
   )
 }

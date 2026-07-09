@@ -96,7 +96,7 @@ ${productList}
 📝 *Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
-      window.open(`https://wa.me/593000000000?text=${encodedMessage}`, '_blank')
+      window.open(`https://wa.me/593988215076?text=${encodedMessage}`, '_blank')
 
       toast.success('¡Pedido creado exitosamente!')
       clearCart()

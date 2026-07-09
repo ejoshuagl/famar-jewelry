@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
-import { AdminLayout } from './admin-layout'
+// AdminLayout is applied in page.tsx, not here
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -261,8 +261,7 @@ export function AdminProductsView() {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-4">
+    <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Productos</h1>
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
@@ -526,7 +525,6 @@ export function AdminProductsView() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    </AdminLayout>
+    </div>
   )
 }

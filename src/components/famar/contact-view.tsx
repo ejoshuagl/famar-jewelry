@@ -38,13 +38,13 @@ export function ContactView() {
                   La forma más rápida de comunicarte con nosotros
                 </p>
                 <a
-                  href="https://wa.me/593000000000?text=%C2%A1Hola!%20Me%20interesa%20conocer%20m%C3%A1s%20sobre%20sus%20productos."
+                  href="https://wa.me/593988215076?text=%C2%A1Hola!%20Me%20interesa%20conocer%20m%C3%A1s%20sobre%20sus%20productos."
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   <Button className="bg-[#25D366] text-white hover:bg-[#25D366]/90">
                     <MessageCircle className="mr-2 h-4 w-4" />
-                    +593 000 000 000
+                    +593 988 215 076
                   </Button>
                 </a>
               </div>
@@ -59,8 +59,8 @@ export function ContactView() {
               <div>
                 <h3 className="font-semibold mb-1">Teléfono</h3>
                 <p className="text-sm text-muted-foreground mb-2">Llámanos directamente</p>
-                <a href="tel:+593000000000" className="text-primary hover:underline text-sm">
-                  +593 000 000 000
+                <a href="tel:+593988215076" className="text-primary hover:underline text-sm">
+                  +593 988 215 076
                 </a>
               </div>
             </CardContent>
@@ -117,7 +117,7 @@ export function ContactView() {
                 Nuestro equipo está listo para asesorarte en la elección perfecta
               </p>
               <a
-                href="https://wa.me/593000000000?text=%C2%A1Hola!%20Necesito%20asesor%C3%ADa%20sobre%20un%20producto."
+                href="https://wa.me/593988215076?text=%C2%A1Hola!%20Necesito%20asesor%C3%ADa%20sobre%20un%20producto."
                 target="_blank"
                 rel="noopener noreferrer"
               >

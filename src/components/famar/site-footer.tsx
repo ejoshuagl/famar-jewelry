@@ -51,8 +51,8 @@ export function SiteFooter() {
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-primary" />
-                <a href="tel:+593000000000" className="hover:text-foreground transition-colors">
-                  +593 000 000 000
+                <a href="tel:+593988215076" className="hover:text-foreground transition-colors">
+                  +593 988 215 076
                 </a>
               </div>
               <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export function SiteFooter() {
                   <Facebook className="h-4 w-4" />
                 </a>
                 <a
-                  href="https://wa.me/593000000000"
+                  href="https://wa.me/593988215076"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 rounded-full bg-muted hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-950 transition-colors"

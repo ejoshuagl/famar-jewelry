@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
-import { AdminLayout } from './admin-layout'
+// AdminLayout is applied in page.tsx, not here
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -136,8 +136,7 @@ export function AdminOrdersView() {
   }
 
   return (
-    <AdminLayout>
-      <div className="space-y-4">
+    <div className="space-y-4">
         <h1 className="text-xl font-bold">Pedidos</h1>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -346,7 +345,6 @@ export function AdminOrdersView() {
             )}
           </DialogContent>
         </Dialog>
-      </div>
-    </AdminLayout>
+    </div>
   )
 }

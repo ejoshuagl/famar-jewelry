@@ -5,7 +5,7 @@ import { MessageCircle } from 'lucide-react'
 
 export function WhatsAppButton() {
   const message = encodeURIComponent('¡Hola! Me interesa conocer más sobre sus productos.')
-  const url = `https://wa.me/593000000000?text=${message}`
+  const url = `https://wa.me/593988215076?text=${message}`
 
   return (
     <motion.a

@@ -30,7 +30,7 @@ Me interesa el producto:
 Me gustaría que lo incluyan en la próxima importación.
 ¡Gracias! 🙏`
     const encoded = encodeURIComponent(message)
-    window.open(`https://wa.me/593000000000?text=${encoded}`, '_blank')
+    window.open(`https://wa.me/593988215076?text=${encoded}`, '_blank')
   }
 
   return (

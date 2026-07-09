@@ -13,11 +13,12 @@ import {
   Tags,
   LogOut,
   Menu,
-  X,
+  ArrowLeft,
   ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useEffect } from 'react'
+
+const WHATSAPP_NUMBER = '593988215076'
 
 const sidebarItems: { label: string; view: AppView; icon: React.ReactNode }[] = [
   { label: 'Dashboard', view: 'admin-dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
@@ -74,7 +75,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           onClick={() => navigate('home')}
           className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left"
         >
-          <X className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           Volver a la tienda
         </button>
       </div>
@@ -89,60 +90,51 @@ interface AdminLayoutProps {
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { navigate } = useAppStore()
   const { adminName, isAuthenticated } = useAuthStore()
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('admin-login')
-    }
-  }, [isAuthenticated, navigate])
-
-  if (!isAuthenticated) return null
+  if (!isAuthenticated) {
+    navigate('admin-login')
+    return null
+  }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:block w-64 border-r bg-card shrink-0">
-        <div className="sticky top-16 h-[calc(100vh-4rem)]">
-          <ScrollArea className="h-full">
-            <SidebarNav />
-          </ScrollArea>
-        </div>
+    <div className="flex min-h-[calc(100vh-4rem)]">
+      {/* Desktop sidebar — always one instance, visibility via CSS only */}
+      <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
+        <ScrollArea className="flex-1">
+          <SidebarNav />
+        </ScrollArea>
       </aside>
 
-      {/* Mobile sidebar overlay */}
-      {mobileSidebarOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/50 md:hidden"
-          onClick={() => setMobileSidebarOpen(false)}
-        >
-          <aside
-            className="absolute left-0 top-0 h-full w-64 bg-card border-r"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <SidebarNav onNavigate={() => setMobileSidebarOpen(false)} />
+      {/* Mobile sidebar — rendered only when open, never simultaneously with desktop */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          {/* backdrop */}
+          <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
+          {/* drawer */}
+          <aside className="relative z-10 flex h-full w-64 flex-col bg-card border-r">
+            <SidebarNav onNavigate={() => setMobileOpen(false)} />
           </aside>
         </div>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 min-w-0">
-        <div className="p-4 md:p-6">
-          {/* Mobile header */}
-          <div className="flex items-center justify-between mb-4 md:hidden">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMobileSidebarOpen(true)}
-            >
-              <Menu className="h-4 w-4 mr-2" />
-              Menú
-            </Button>
-            <span className="text-sm text-muted-foreground">{adminName}</span>
-          </div>
-          {children}
+      {/* Content area */}
+      <div className="flex-1 min-w-0 p-4 lg:p-6">
+        {/* Mobile top bar (only visible on smaller screens) */}
+        <div className="flex items-center justify-between mb-4 lg:hidden">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMobileOpen(true)}
+          >
+            <Menu className="h-4 w-4 mr-2" />
+            Menú
+          </Button>
+          <span className="text-sm text-muted-foreground">{adminName}</span>
         </div>
-      </main>
+
+        {children}
+      </div>
     </div>
   )
 }

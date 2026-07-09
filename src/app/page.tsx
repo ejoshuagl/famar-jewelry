@@ -1,5 +1,7 @@
 'use client'
 
+import { Suspense, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { SiteHeader } from '@/components/famar/site-header'
@@ -19,10 +21,30 @@ import { AdminDashboardView } from '@/components/famar/admin-dashboard-view'
 import { AdminProductsView } from '@/components/famar/admin-products-view'
 import { AdminOrdersView } from '@/components/famar/admin-orders-view'
 import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
+import { Skeleton } from '@/components/ui/skeleton'
 
-export default function Home() {
+function AppContent() {
   const { currentView } = useAppStore()
   const { isAuthenticated } = useAuthStore()
+  const searchParams = useSearchParams()
+  const { selectProduct, navigate } = useAppStore()
+
+  // Handle shared product URL: ?p=FAM-AR001
+  useEffect(() => {
+    const productCode = searchParams.get('p')
+    if (productCode) {
+      fetch(`/api/products?search=${encodeURIComponent(productCode)}&limit=1`)
+        .then((res) => res.json())
+        .then((data) => {
+          const product = data.products?.[0]
+          if (product) {
+            selectProduct(product.id)
+            navigate('product-detail')
+          }
+        })
+        .catch(() => {})
+    }
+  }, [searchParams, selectProduct, navigate])
 
   // Redirect to login if trying to access admin without auth
   const isAdminView =
@@ -102,5 +124,39 @@ export default function Home() {
       {!isAdmin && <WhatsAppButton />}
       <ScrollToTop />
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="h-16 border-b">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Skeleton className="h-8 w-24" />
+          <div className="flex gap-4">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+      </div>
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <Skeleton className="h-64 w-full rounded-lg mb-8" />
+        <Skeleton className="h-8 w-48 mb-6" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square rounded-lg" />
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AppContent />
+    </Suspense>
   )
 }

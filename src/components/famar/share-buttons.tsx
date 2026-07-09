@@ -2,6 +2,14 @@
 
 import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { slugify } from '@/lib/utils'
+
+const BASE_URL = 'https://famar.space-z.ai'
+
+export function getProductUrl(code: string): string {
+  const slug = slugify(code)
+  return `${BASE_URL}/${slug}?p=${code}`
+}
 
 interface ShareButtonsProps {
   productName: string
@@ -20,13 +28,13 @@ export function ShareButtons({
   variant = 'default',
   size = 'sm',
 }: ShareButtonsProps) {
-  const url = productUrl || (typeof window !== 'undefined' ? window.location.href : '')
+  const url = productUrl || getProductUrl(productCode)
   const text = `✨ *${productName}*\n💲 *Precio:* $${productPrice.toFixed(2)}\n📌 *Código:* ${productCode}\n🔗 Ver en FAMAR: ${url}`
   const encodedText = encodeURIComponent(text)
   const encodedUrl = encodeURIComponent(url)
 
   const shareWhatsApp = () => {
-    window.open(`https://wa.me/?text=${encodedText}`, '_blank')
+    window.open(`https://wa.me/593988215076?text=${encodedText}`, '_blank')
   }
 
   const shareFacebook = () => {
