@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -28,16 +30,41 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Search,
   Check,
   X,
   Eye,
   Loader2,
-  Package,
+  Trash2,
+  Pencil,
+  Minus,
+  Plus,
+  Save,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { Separator } from '@/components/ui/separator'
+
+interface EditableOrderItem {
+  id: string
+  productId: string
+  quantity: number
+  price: number
+  name: string
+  code: string
+}
 
 export function AdminOrdersView() {
   const { adminName } = useAuthStore()
@@ -46,7 +73,16 @@ export function AdminOrdersView() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
+
+  // Edit state
+  const [editItems, setEditItems] = useState<EditableOrderItem[]>([])
+  const [editObs, setEditObs] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [editPhone, setEditPhone] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-orders', statusFilter, search, page],
@@ -75,15 +111,19 @@ export function AdminOrdersView() {
         },
         body: JSON.stringify({ status: 'confirmed' }),
       })
-      if (!res.ok) throw new Error('Error confirming order')
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Error confirming order')
+      }
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
       toast.success('Pedido confirmado. Stock actualizado.')
       setDetailDialogOpen(false)
     },
-    onError: () => toast.error('Error al confirmar el pedido'),
+    onError: (err) => toast.error(err.message || 'Error al confirmar el pedido'),
   })
 
   const cancelMutation = useMutation({
@@ -96,15 +136,77 @@ export function AdminOrdersView() {
         },
         body: JSON.stringify({ status: 'cancelled' }),
       })
-      if (!res.ok) throw new Error('Error cancelling order')
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Error cancelling order')
+      }
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
       toast.success('Pedido cancelado')
       setDetailDialogOpen(false)
     },
-    onError: () => toast.error('Error al cancelar el pedido'),
+    onError: (err) => toast.error(err.message || 'Error al cancelar el pedido'),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: async (orderId: string) => {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-name': adminName || '' },
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Error deleting order')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      toast.success('Pedido eliminado permanentemente')
+      setDetailDialogOpen(false)
+      setDeleteDialogOpen(false)
+      setSelectedOrder(null)
+    },
+    onError: (err) => toast.error(err.message || 'Error al eliminar el pedido'),
+  })
+
+  const saveEditMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedOrder) return
+      const total = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
+      const res = await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-name': adminName || '',
+        },
+        body: JSON.stringify({
+          items: editItems,
+          total,
+          observations: editObs,
+          customerName: editName,
+          customerCity: editCity,
+          customerPhone: editPhone,
+        }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error || 'Error saving order')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+      toast.success('Pedido modificado exitosamente')
+      setEditDialogOpen(false)
+      setDetailDialogOpen(false)
+    },
+    onError: (err) => toast.error(err.message || 'Error al guardar cambios'),
   })
 
   const orders = data?.orders || []
@@ -132,6 +234,43 @@ export function AdminOrdersView() {
     setSelectedOrder(order)
     setDetailDialogOpen(true)
   }
+
+  const openEdit = (order?: Record<string, unknown>) => {
+    const target = order || selectedOrder
+    if (!target) return
+    setSelectedOrder(target)
+    const items = (target.items as Array<Record<string, unknown>>).map((item) => ({
+      id: item.id as string,
+      productId: item.productId as string,
+      quantity: item.quantity as number,
+      price: item.price as number,
+      name: item.name as string,
+      code: item.code as string,
+    }))
+    setEditItems(items)
+    setEditObs((target.observations as string) || '')
+    setEditName(target.customerName as string)
+    setEditCity(target.customerCity as string)
+    setEditPhone(target.customerPhone as string)
+    setDetailDialogOpen(false)
+    setEditDialogOpen(true)
+  }
+
+  const handleItemQtyChange = (itemId: string, delta: number) => {
+    setEditItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
+      )
+    )
+  }
+
+  const handleRemoveItem = (itemId: string) => {
+    setEditItems((prev) => prev.filter((item) => item.id !== itemId))
+  }
+
+  const editTotal = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
 
   return (
     <div className="space-y-4">
@@ -204,9 +343,16 @@ export function AdminOrdersView() {
                         {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(order)}>
-                          <Eye className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(order)}>
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          {(order.status as string) === 'pending' && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(order)}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -254,10 +400,18 @@ export function AdminOrdersView() {
                       {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => openDetail(order)}>
-                    <Eye className="h-3.5 w-3.5 mr-1" />
-                    Ver
-                  </Button>
+                  <div className="flex gap-1">
+                    {(order.status as string) === 'pending' && (
+                      <Button variant="outline" size="sm" onClick={() => openEdit(order)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" />
+                        Editar
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => openDetail(order)}>
+                      <Eye className="h-3.5 w-3.5 mr-1" />
+                      Ver
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ))
@@ -280,11 +434,14 @@ export function AdminOrdersView() {
           </div>
         )}
 
-        {/* Order Detail Dialog */}
+        {/* ========== Order Detail Dialog ========== */}
         <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
           <DialogContent className="max-w-lg max-h-[85vh]">
             <DialogHeader>
               <DialogTitle>Pedido #{selectedOrder?.orderNumber}</DialogTitle>
+              <DialogDescription>
+                Detalles del pedido del cliente
+              </DialogDescription>
             </DialogHeader>
             <div className="max-h-[65vh] overflow-y-auto space-y-4">
             {selectedOrder && (
@@ -360,40 +517,206 @@ export function AdminOrdersView() {
                   </div>
                 )}
 
-                {(selectedOrder.status as string) === 'pending' && (
-                  <div className="flex gap-3 pt-2">
+                {/* Action buttons */}
+                <div className="space-y-3 pt-2">
+                  {(selectedOrder.status as string) === 'pending' && (
+                    <>
+                      <div className="flex gap-3">
+                        <Button
+                          className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                          onClick={() => confirmMutation.mutate(selectedOrder.id as string)}
+                          disabled={confirmMutation.isPending}
+                        >
+                          {confirmMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4 mr-2" />
+                          )}
+                          Confirmar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          className="flex-1"
+                          onClick={() => cancelMutation.mutate(selectedOrder.id as string)}
+                          disabled={cancelMutation.isPending}
+                        >
+                          {cancelMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <X className="h-4 w-4 mr-2" />
+                          )}
+                          Cancelar
+                        </Button>
+                      </div>
+                      <Separator />
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={openEdit}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Modificar Pedido
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDeleteDialogOpen(true)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Eliminar
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                  {(selectedOrder.status as string) !== 'pending' && (
                     <Button
-                      className="flex-1 bg-green-600 text-white hover:bg-green-700"
-                      onClick={() => confirmMutation.mutate(selectedOrder.id as string)}
-                      disabled={confirmMutation.isPending}
+                      variant="outline"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setDeleteDialogOpen(true)}
                     >
-                      {confirmMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Check className="h-4 w-4 mr-2" />
-                      )}
-                      Confirmar
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar Pedido
                     </Button>
-                    <Button
-                      variant="destructive"
-                      className="flex-1"
-                      onClick={() => cancelMutation.mutate(selectedOrder.id as string)}
-                      disabled={cancelMutation.isPending}
-                    >
-                      {cancelMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <X className="h-4 w-4 mr-2" />
-                      )}
-                      Cancelar
-                    </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             )}
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* ========== Edit Order Dialog ========== */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-lg max-h-[85vh]">
+            <DialogHeader>
+              <DialogTitle>Modificar Pedido #{selectedOrder?.orderNumber}</DialogTitle>
+              <DialogDescription>
+                Cambia cantidades, elimina productos o edita los datos del cliente.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[65vh] overflow-y-auto space-y-4">
+              {/* Customer info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <Label htmlFor="edit-name">Cliente</Label>
+                  <Input id="edit-name" value={editName} onChange={(e) => setEditName(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="edit-city">Ciudad</Label>
+                  <Input id="edit-city" value={editCity} onChange={(e) => setEditCity(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="edit-phone">Teléfono</Label>
+                  <Input id="edit-phone" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Editable items */}
+              <div>
+                <h4 className="text-sm font-semibold mb-3">Productos</h4>
+                {editItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No hay productos en el pedido</p>
+                ) : (
+                  <div className="space-y-2">
+                    {editItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(item.price)} c/u</p>
+                        </div>
+                        <div className="flex items-center border rounded-md">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, -1)}>
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="w-7 text-center text-sm font-medium">{item.quantity}</span>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, 1)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <span className="text-sm font-bold w-16 text-right shrink-0">
+                          {formatPrice(item.price * item.quantity)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+                          onClick={() => handleRemoveItem(item.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Observations */}
+              <div>
+                <Label htmlFor="edit-obs">Observaciones</Label>
+                <Textarea id="edit-obs" value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} />
+              </div>
+
+              {/* Total */}
+              <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
+                <span className="font-semibold">Nuevo Total</span>
+                <span className="text-xl font-bold text-primary">{formatPrice(editTotal)}</span>
+              </div>
+
+              {/* Save / Cancel */}
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => saveEditMutation.mutate()}
+                  disabled={saveEditMutation.isPending || editItems.length === 0}
+                >
+                  {saveEditMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>
+                  ) : (
+                    <><Save className="h-4 w-4 mr-2" />Guardar Cambios</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========== Delete Order Confirmation ========== */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Eliminar pedido #{selectedOrder?.orderNumber}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción eliminará el pedido permanentemente.
+                {selectedOrder?.status === 'confirmed' && (
+                  <span className="block mt-1 font-medium text-amber-600 dark:text-amber-400">
+                    El stock de los productos será restaurado automáticamente.
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (selectedOrder) deleteMutation.mutate(selectedOrder.id as string)
+                }}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Eliminar Permanentemente
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   )
 }
