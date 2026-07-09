@@ -50,13 +50,6 @@ export function HomeView() {
     },
   })
 
-  const { data: categories } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const res = await fetch('/api/categories')
-      return res.json()
-    },
-  })
 
   const { data: reviews } = useQuery({
     queryKey: ['reviews'],
@@ -201,45 +194,6 @@ export function HomeView() {
             ) : null}
           </motion.div>
         </div>
-      </section>
-
-      {/* Categories */}
-      <section className="container mx-auto px-4 py-16">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-50px' }}
-          className="space-y-6"
-        >
-          <motion.div variants={fadeInUp} custom={0}>
-            <h2 className="text-2xl font-bold mb-6">Categorías</h2>
-          </motion.div>
-          {categories && categories.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {categories.map((cat: { id: string; name: string; slug: string; _count?: { products: number } }, i: number) => (
-                <motion.div key={cat.id} variants={fadeInUp} custom={i}>
-                  <Card
-                    className="cursor-pointer hover:shadow-lg transition-all group border hover:border-primary/30"
-                    onClick={() => {
-                      setCategory(cat.slug)
-                      navigate('catalog')
-                    }}
-                  >
-                    <CardContent className="p-4 text-center space-y-2">
-                      <div className="h-12 w-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Gem className="h-5 w-5 text-primary" />
-                      </div>
-                      <h3 className="font-medium text-sm">{cat.name}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {cat._count?.products || 0} productos
-                      </p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
-          ) : null}
-        </motion.div>
       </section>
 
       {/* Best Selling */}

@@ -3,7 +3,6 @@
 import { useAppStore, AppView } from '@/stores/app-store'
 import { useCartStore } from '@/stores/cart-store'
 import { useFavoritesStore } from '@/stores/favorites-store'
-import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
@@ -11,22 +10,8 @@ import {
   Menu,
   ShoppingCart,
   Heart,
-  Sun,
-  Moon,
-  ShieldCheck,
-  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useSyncExternalStore } from 'react'
-
-const emptySubscribe = () => () => {}
-function useMounted() {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  )
-}
 
 const navItems: { label: string; view: AppView }[] = [
   { label: 'Inicio', view: 'home' },
@@ -39,8 +24,6 @@ export function SiteHeader() {
   const { currentView, navigate, sidebarOpen, setSidebarOpen } = useAppStore()
   const itemCount = useCartStore((s) => s.getItemCount())
   const favCount = useFavoritesStore((s) => s.ids.length)
-  const { theme, setTheme } = useTheme()
-  const mounted = useMounted()
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -72,31 +55,10 @@ export function SiteHeader() {
               )}
             </button>
           ))}
-          <button
-            onClick={() => navigate('admin-login')}
-            className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ShieldCheck className="h-4 w-4" />
-          </button>
         </nav>
 
         {/* Right actions */}
         <div className="flex items-center gap-1">
-          {mounted && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="h-9 w-9"
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
-          )}
-
           <Button
             variant="ghost"
             size="icon"
@@ -162,13 +124,6 @@ export function SiteHeader() {
                       {favCount}
                     </Badge>
                   )}
-                </button>
-                <button
-                  onClick={() => navigate('admin-login')}
-                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors text-left text-foreground hover:bg-muted"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Admin
                 </button>
               </div>
             </SheetContent>

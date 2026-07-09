@@ -2,7 +2,7 @@
 
 import { Separator } from '@/components/ui/separator'
 import { useAppStore } from '@/stores/app-store'
-import { Instagram, Facebook, Mail, Phone, MapPin } from 'lucide-react'
+import { Instagram, Facebook, Mail, Phone, MapPin, ShieldCheck } from 'lucide-react'
 
 export function SiteFooter() {
   const navigate = useAppStore((s) => s.navigate)
@@ -101,7 +101,13 @@ export function SiteFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} FAMAR. Todos los derechos reservados.</p>
-          <p>Joyería y Accesorios de Moda - Ecuador</p>
+          <button
+            onClick={() => navigate('admin-login')}
+            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+          >
+            <ShieldCheck className="h-3 w-3" />
+            Admin
+          </button>
         </div>
       </div>
     </footer>

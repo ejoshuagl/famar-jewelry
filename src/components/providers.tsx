@@ -35,8 +35,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="light"
+        defaultTheme="dark"
         enableSystem={false}
+        storageKey="famar-theme"
       >
         {children}
         <Toaster richColors position="top-right" />
