@@ -11,7 +11,7 @@ import { useFavoritesStore } from '@/stores/favorites-store'
 import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ShareButtons } from './share-buttons'
+
 
 export interface ProductData {
   id: string
@@ -185,25 +185,16 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               {formatPrice(product.price)}
             </span>
           </div>
-          <div className="flex gap-1.5">
-            {!isOutOfStock && (
-              <Button
-                size="sm"
-                className="flex-1 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={handleAddToCart}
-              >
-                <ShoppingCart className="h-3 w-3 mr-1" />
-                Agregar
-              </Button>
-            )}
-            <ShareButtons
-              productName={product.name}
-              productCode={product.code}
-              productPrice={product.price}
-              variant="icon"
-              size="icon"
-            />
-          </div>
+          {!isOutOfStock && (
+            <Button
+              size="sm"
+              className="w-full h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleAddToCart}
+            >
+              <ShoppingCart className="h-3 w-3 mr-1" />
+              Agregar
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
