@@ -53,6 +53,8 @@ import {
   Minus,
   Plus,
   Save,
+  PackagePlus,
+  AlertCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
@@ -83,6 +85,12 @@ export function AdminOrdersView() {
   const [editName, setEditName] = useState('')
   const [editCity, setEditCity] = useState('')
   const [editPhone, setEditPhone] = useState('')
+
+  // Add product by code state
+  const [codeSearch, setCodeSearch] = useState('')
+  const [foundProduct, setFoundProduct] = useState<Record<string, unknown> | null>(null)
+  const [searchingCode, setSearchingCode] = useState(false)
+  const [codeError, setCodeError] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-orders', statusFilter, search, page],
@@ -253,6 +261,9 @@ export function AdminOrdersView() {
     setEditName(target.customerName as string)
     setEditCity(target.customerCity as string)
     setEditPhone(target.customerPhone as string)
+    setCodeSearch('')
+    setFoundProduct(null)
+    setCodeError('')
     setDetailDialogOpen(false)
     setEditDialogOpen(true)
   }
@@ -269,6 +280,62 @@ export function AdminOrdersView() {
 
   const handleRemoveItem = (itemId: string) => {
     setEditItems((prev) => prev.filter((item) => item.id !== itemId))
+  }
+
+  const searchProductByCode = async () => {
+    const trimmed = codeSearch.trim().toUpperCase()
+    if (!trimmed) {
+      setCodeError('Ingresa un código de producto')
+      setFoundProduct(null)
+      return
+    }
+    setCodeError('')
+    setFoundProduct(null)
+    setSearchingCode(true)
+    try {
+      const res = await fetch(`/api/products?code=${encodeURIComponent(trimmed)}`)
+      const data = await res.json()
+      if (data.product) {
+        setFoundProduct(data.product)
+      } else {
+        setCodeError(`No se encontró producto con código "${trimmed}"`)
+      }
+    } catch {
+      setCodeError('Error al buscar producto')
+    } finally {
+      setSearchingCode(false)
+    }
+  }
+
+  const addFoundProduct = () => {
+    if (!foundProduct) return
+    const product = foundProduct
+    // Check if product is already in the order
+    const existing = editItems.find((item) => item.productId === product.id)
+    if (existing) {
+      // Increase quantity
+      setEditItems((prev) =>
+        prev.map((item) =>
+          item.productId === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      )
+      toast.success(`Cantidad de "${product.name}" aumentada a ${existing.quantity + 1}`)
+    } else {
+      const newItem: EditableOrderItem = {
+        id: `new-${Date.now()}`,
+        productId: product.id as string,
+        quantity: 1,
+        price: product.price as number,
+        name: product.name as string,
+        code: product.code as string,
+      }
+      setEditItems((prev) => [...prev, newItem])
+      toast.success(`"${product.name}" agregado al pedido`)
+    }
+    setCodeSearch('')
+    setFoundProduct(null)
   }
 
   const editTotal = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
@@ -650,6 +717,68 @@ export function AdminOrdersView() {
                         </Button>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Add product by code */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <PackagePlus className="h-4 w-4" />
+                  Agregar producto por código
+                </h4>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Ej: FAM-AN001"
+                    value={codeSearch}
+                    onChange={(e) => { setCodeSearch(e.target.value); setCodeError(''); setFoundProduct(null) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchProductByCode() } }}
+                    className="flex-1 uppercase font-mono text-sm"
+                    disabled={searchingCode}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={searchProductByCode}
+                    disabled={searchingCode || !codeSearch.trim()}
+                    className="shrink-0"
+                  >
+                    {searchingCode ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+
+                {/* Error message */}
+                {codeError && (
+                  <div className="flex items-start gap-2 mt-2 p-2 rounded-md bg-destructive/10 text-destructive text-sm">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>{codeError}</span>
+                  </div>
+                )}
+
+                {/* Found product */}
+                {foundProduct && (
+                  <div className="mt-2 p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{foundProduct.name as string}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {foundProduct.code as string} · Stock: {foundProduct.stock as number} · {formatPrice(foundProduct.price as number)}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={addFoundProduct}
+                        className="shrink-0"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Agregar
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

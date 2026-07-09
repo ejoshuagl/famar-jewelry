@@ -4,7 +4,21 @@ import { db } from '@/lib/db'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
+
+    // Exact code lookup (admin use)
+    if (code) {
+      const product = await db.product.findUnique({
+        where: { code: code.toUpperCase() },
+        include: { category: { select: { name: true, slug: true } } },
+      })
+      if (!product) {
+        return NextResponse.json({ product: null })
+      }
+      return NextResponse.json({ product })
+    }
+
     const category = searchParams.get('category') || ''
     const status = searchParams.get('status') || ''
     const featured = searchParams.get('featured') === 'true'
