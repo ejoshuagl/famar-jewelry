@@ -52,12 +52,15 @@ export async function GET(request: NextRequest) {
       where.isOnSale = true
     }
 
-    let orderBy: Record<string, string> = { createdAt: 'desc' }
-    if (sort === 'price-asc') orderBy = { price: 'asc' }
-    else if (sort === 'price-desc') orderBy = { price: 'desc' }
-    else if (sort === 'newest') orderBy = { createdAt: 'desc' }
-    else if (sort === 'best-selling') orderBy = { salesCount: 'desc' }
-    else if (sort === 'name') orderBy = { name: 'asc' }
+    // Always prioritize in-stock products first, then apply selected sort
+    const baseOrderBy: Record<string, string> = sort === 'price-asc' ? { price: 'asc' }
+      : sort === 'price-desc' ? { price: 'desc' }
+      : sort === 'newest' ? { createdAt: 'desc' }
+      : sort === 'best-selling' ? { salesCount: 'desc' }
+      : sort === 'name' ? { name: 'asc' }
+      : { createdAt: 'desc' }
+
+    const orderBy = [{ status: 'asc' }, baseOrderBy]
 
     const total = await db.product.count({ where })
     const products = await db.product.findMany({
