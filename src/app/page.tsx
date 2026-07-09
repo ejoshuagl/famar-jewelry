@@ -61,7 +61,6 @@ function AppContent() {
           <AdminLoginView />
         </main>
         <SiteFooter />
-        <WhatsAppButton />
         <ScrollToTop />
       </div>
     )

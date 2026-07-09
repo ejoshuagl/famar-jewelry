@@ -1,25 +1,37 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { motion } from 'framer-motion'
-import { MessageCircle } from 'lucide-react'
+import { ShoppingCart } from 'lucide-react'
+import { useCartStore } from '@/stores/cart-store'
+import { useAppStore } from '@/stores/app-store'
+import { Badge } from '@/components/ui/badge'
 
 export function WhatsAppButton() {
-  const message = encodeURIComponent('¡Hola! Me interesa conocer más sobre sus productos.')
-  const url = `https://wa.me/593988215076?text=${message}`
+  const itemCount = useCartStore((s) => s.getItemCount())
+  const navigate = useAppStore((s) => s.navigate)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
 
   return (
-    <motion.a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-lg hover:shadow-xl transition-shadow"
+    <motion.button
+      onClick={() => navigate('cart')}
+      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow"
       animate={{ scale: [1, 1.05, 1] }}
       transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      aria-label="Contactar por WhatsApp"
+      aria-label="Ir al carrito de compras"
     >
-      <MessageCircle className="h-7 w-7" />
-    </motion.a>
+      <ShoppingCart className="h-7 w-7" />
+      {mounted && itemCount > 0 && (
+        <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[11px] font-bold border-2 border-background bg-destructive text-destructive-foreground">
+          {itemCount > 99 ? '99+' : itemCount}
+        </Badge>
+      )}
+    </motion.button>
   )
 }
