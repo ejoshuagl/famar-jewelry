@@ -22,13 +22,13 @@ export function OutOfStockView() {
   })
 
   const handleRequestImport = (product: ProductData) => {
-    const message = `🔔 *SOLICITUD DE IMPORTACIÓN - FAMAR*
-────────────────
+    const message = `*SOLICITUD DE IMPORTACION - FAMAR*
+-------------------
 Me interesa el producto:
-📌 *${product.name}* (Código: ${product.code})
-💲 *Precio:* ${formatPrice(product.price)}
-Me gustaría que lo incluyan en la próxima importación.
-¡Gracias! 🙏`
+*${product.name}* (Codigo: ${product.code})
+*Precio:* ${formatPrice(product.price)}
+Me gustaria que lo incluyan en la proxima importacion.
+Gracias!`
     const encoded = encodeURIComponent(message)
     window.open(`https://wa.me/593988215076?text=${encoded}`, '_blank')
   }

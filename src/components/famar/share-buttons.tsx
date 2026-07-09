@@ -29,7 +29,10 @@ export function ShareButtons({
   size = 'sm',
 }: ShareButtonsProps) {
   const url = productUrl || getProductUrl(productCode)
-  const text = `✨ *${productName}*\n💲 *Precio:* $${productPrice.toFixed(2)}\n📌 *Código:* ${productCode}\n🔗 Ver en FAMAR: ${url}`
+  const text = `*${productName}*
+*Precio:* $${productPrice.toFixed(2)}
+*Codigo:* ${productCode}
+Ver en FAMAR: ${url}`
   const encodedText = encodeURIComponent(text)
   const encodedUrl = encodeURIComponent(url)
 

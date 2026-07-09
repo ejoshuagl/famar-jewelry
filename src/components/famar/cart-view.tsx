@@ -112,18 +112,19 @@ export function CartView() {
         .map((item) => `  • ${item.quantity}x ${item.name} (${item.code}) - ${formatPrice(item.price * item.quantity)}`)
         .join('\n')
 
-      const message = `🛍️ *NUEVO PEDIDO - FAMAR*
-────────────────
-👤 *Cliente:* ${form.name}
-📍 *Ciudad:* ${form.city}
-📱 *Teléfono:* ${form.phone}
-📅 *Fecha:* ${date}
-📋 *Pedido:* #${order.orderNumber}
-────────────────
+      const message = `*NUEVO PEDIDO - FAMAR*
+-------------------
+
+*Cliente:* ${form.name}
+*Ciudad:* ${form.city}
+*Telefono:* ${form.phone}
+*Fecha:* ${date}
+*Pedido:* #${order.orderNumber}
+-------------------
 ${productList}
-────────────────
-💰 *TOTAL:* ${formatPrice(total)}
-📝 *Observaciones:* ${form.observations || 'Ninguna'}`
+-------------------
+*TOTAL:* ${formatPrice(total)}
+*Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
       window.open(`https://wa.me/593988215076?text=${encodedMessage}`, '_blank')
