@@ -9,9 +9,11 @@ import { SkeletonGrid } from './skeleton-grid'
 import { EmptyState } from './empty-state'
 import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { Bell } from 'lucide-react'
+import { useAppStore } from '@/stores/app-store'
 import type { ProductData } from './product-card'
 
 export function OutOfStockView() {
+  const { navigate, selectProduct } = useAppStore()
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'out-of-stock'],
     queryFn: async () => {
@@ -64,7 +66,13 @@ Gracias!`
                 transition={{ delay: i * 0.05 }}
                 className="h-full"
               >
-                <Card className="h-full flex flex-col overflow-hidden">
+                <Card
+                  className="h-full flex flex-col overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
+                  onClick={() => {
+                    selectProduct(product.id)
+                    navigate('product-detail')
+                  }}
+                >
                   <div className="relative aspect-square shrink-0">
                     {imageUrl ? (
                       <img
@@ -105,7 +113,10 @@ Gracias!`
                         size="sm"
                         variant="outline"
                         className="h-7 px-3 text-xs shrink-0 border-primary/30 text-primary hover:bg-primary/10"
-                        onClick={() => handleRequestImport(product)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRequestImport(product)
+                        }}
                       >
                         <Bell className="h-3 w-3 mr-1" />
                         Solicitar

@@ -3,7 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Heart, ShoppingCart, Eye } from 'lucide-react'
+import { Heart, ShoppingCart, Eye, Bell } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAppStore } from '@/stores/app-store'
 import { useCartStore, type CartItem } from '@/stores/cart-store'
@@ -89,6 +89,13 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       maxStock: product.stock,
     })
     toast.success(`${product.name} agregado al carrito`)
+  }
+
+  const handleRequestImport = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(product.price)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
+    const encoded = encodeURIComponent(message)
+    window.open(`https://wa.me/593988215076?text=${encoded}`, '_blank')
   }
 
   const handleViewDetail = () => {
@@ -181,20 +188,26 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             <span className="text-base font-bold text-primary leading-none">
               {formatPrice(product.price)}
             </span>
-            <Button
-              size="sm"
-              className={cn(
-                'h-7 px-3 text-xs shrink-0',
-                isOutOfStock
-                  ? 'bg-muted text-muted-foreground hover:bg-muted cursor-not-allowed'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
-              )}
-              onClick={handleAddToCart}
-              disabled={isOutOfStock}
-            >
-              <ShoppingCart className="h-3 w-3 mr-1" />
-              Agregar
-            </Button>
+            {isOutOfStock ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-3 text-xs shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={handleRequestImport}
+              >
+                <Bell className="h-3 w-3 mr-1" />
+                Solicitar
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                className="h-7 px-3 text-xs shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={handleAddToCart}
+              >
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                Agregar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
