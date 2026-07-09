@@ -50,6 +50,7 @@ import {
   Trash2,
   Loader2,
   Package,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -483,7 +484,36 @@ export function AdminProductsView() {
                 </div>
                 <div>
                   <Label>Código *</Label>
-                  <Input value={form.code} onChange={(e) => updateForm('code', e.target.value)} />
+                  <div className="flex gap-2">
+                    <Input
+                      value={form.code}
+                      onChange={(e) => updateForm('code', e.target.value)}
+                      readOnly={!!editingId}
+                      className={editingId ? 'bg-muted' : ''}
+                      placeholder="Se genera al seleccionar categoría"
+                    />
+                    {!editingId && form.categoryId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/products/next-code?categoryId=${form.categoryId}`)
+                            const data = await res.json()
+                            if (data.code) {
+                              updateForm('code', data.code)
+                            }
+                          } catch {
+                            toast.error('Error al generar código')
+                          }
+                        }}
+                      >
+                        <Sparkles className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Descripción</Label>
@@ -491,7 +521,18 @@ export function AdminProductsView() {
                 </div>
                 <div>
                   <Label>Categoría *</Label>
-                  <Select value={form.categoryId} onValueChange={(v) => updateForm('categoryId', v)}>
+                  <Select value={form.categoryId} onValueChange={(v) => {
+                    updateForm('categoryId', v)
+                    // Auto-generate code when creating new product and category changes
+                    if (!editingId) {
+                      fetch(`/api/products/next-code?categoryId=${v}`)
+                        .then((res) => res.json())
+                        .then((data) => {
+                          if (data.code) updateForm('code', data.code)
+                        })
+                        .catch(() => {})
+                    }
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
