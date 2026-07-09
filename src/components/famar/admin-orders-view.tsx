@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
-// AdminLayout is applied in page.tsx, not here
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -30,7 +29,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Search,
   Check,
@@ -150,7 +148,7 @@ export function AdminOrdersView() {
             />
           </div>
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
@@ -162,62 +160,109 @@ export function AdminOrdersView() {
           </Select>
         </div>
 
-        <Card>
+        {/* Desktop Table */}
+        <Card className="hidden lg:block">
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[60vh]">
-              <Table>
-                <TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pedido</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Ciudad</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 8 }).map((_, j) => (
+                        <TableCell key={j}><div className="h-4 w-full bg-muted rounded animate-pulse" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : orders.length === 0 ? (
                   <TableRow>
-                    <TableHead>Pedido</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead className="hidden sm:table-cell">Ciudad</TableHead>
-                    <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="hidden lg:table-cell">Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No se encontraron pedidos
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: 8 }).map((_, j) => (
-                          <TableCell key={j}><div className="h-4 w-full bg-muted rounded animate-pulse" /></TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : orders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No se encontraron pedidos
+                ) : (
+                  orders.map((order: Record<string, unknown>) => (
+                    <TableRow key={order.id}>
+                      <TableCell className="font-medium text-sm">#{order.orderNumber}</TableCell>
+                      <TableCell className="text-sm">{order.customerName}</TableCell>
+                      <TableCell className="text-sm">{order.customerCity}</TableCell>
+                      <TableCell className="text-sm">{order.customerPhone}</TableCell>
+                      <TableCell className="text-sm font-medium">{formatPrice(order.total as number)}</TableCell>
+                      <TableCell>{getStatusBadge(order.status as string)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(order)}>
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    orders.map((order: Record<string, unknown>) => (
-                      <TableRow key={order.id}>
-                        <TableCell className="font-medium text-sm">#{order.orderNumber}</TableCell>
-                        <TableCell className="text-sm">{order.customerName}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm">{order.customerCity}</TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">{order.customerPhone}</TableCell>
-                        <TableCell className="text-sm font-medium">{formatPrice(order.total as number)}</TableCell>
-                        <TableCell>{getStatusBadge(order.status as string)}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                          {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openDetail(order)}>
-                            <Eye className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
+
+        {/* Mobile Cards */}
+        <div className="lg:hidden space-y-2">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Card key={i} className="p-3">
+                <div className="flex justify-between mb-2">
+                  <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                  <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+                </div>
+                <div className="h-3 w-3/4 bg-muted rounded animate-pulse mb-1" />
+                <div className="flex justify-between mt-3">
+                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                  <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                </div>
+              </Card>
+            ))
+          ) : orders.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron pedidos
+            </div>
+          ) : (
+            orders.map((order: Record<string, unknown>) => (
+              <Card key={order.id} className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm">#{order.orderNumber}</p>
+                    <p className="text-sm text-muted-foreground truncate">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground">{order.customerCity}</p>
+                  </div>
+                  {getStatusBadge(order.status as string)}
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <div>
+                    <p className="text-base font-bold">{formatPrice(order.total as number)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
+                    </p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => openDetail(order)}>
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    Ver
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
 
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
@@ -237,12 +282,13 @@ export function AdminOrdersView() {
 
         {/* Order Detail Dialog */}
         <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[85vh]">
             <DialogHeader>
               <DialogTitle>Pedido #{selectedOrder?.orderNumber}</DialogTitle>
             </DialogHeader>
+            <div className="max-h-[65vh] overflow-y-auto space-y-4">
             {selectedOrder && (
-              <div className="space-y-4">
+              <>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-muted-foreground">Cliente:</span>
@@ -269,39 +315,41 @@ export function AdminOrdersView() {
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Productos</h4>
                   <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-muted">
-                          <th className="text-left px-3 py-2">Producto</th>
-                          <th className="text-center px-3 py-2">Cant</th>
-                          <th className="text-right px-3 py-2">Precio</th>
-                          <th className="text-right px-3 py-2">Subtotal</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(selectedOrder.items as Array<Record<string, unknown>>).map((item) => (
-                          <tr key={item.id} className="border-t">
-                            <td className="px-3 py-2">
-                              <p className="font-medium truncate max-w-[150px]">{item.name}</p>
-                              <p className="text-xs text-muted-foreground">{item.code}</p>
-                            </td>
-                            <td className="text-center px-3 py-2">{item.quantity}</td>
-                            <td className="text-right px-3 py-2">{formatPrice(item.price as number)}</td>
-                            <td className="text-right px-3 py-2 font-medium">
-                              {formatPrice((item.price as number) * (item.quantity as number))}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-muted">
+                            <th className="text-left px-3 py-2 whitespace-nowrap">Producto</th>
+                            <th className="text-center px-3 py-2 whitespace-nowrap">Cant</th>
+                            <th className="text-right px-3 py-2 whitespace-nowrap">Precio</th>
+                            <th className="text-right px-3 py-2 whitespace-nowrap">Subtotal</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(selectedOrder.items as Array<Record<string, unknown>>).map((item) => (
+                            <tr key={item.id} className="border-t">
+                              <td className="px-3 py-2">
+                                <p className="font-medium truncate max-w-[150px]">{item.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.code}</p>
+                              </td>
+                              <td className="text-center px-3 py-2">{item.quantity}</td>
+                              <td className="text-right px-3 py-2 whitespace-nowrap">{formatPrice(item.price as number)}</td>
+                              <td className="text-right px-3 py-2 font-medium whitespace-nowrap">
+                                {formatPrice((item.price as number) * (item.quantity as number))}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t bg-muted/50">
+                            <td colSpan={3} className="text-right px-3 py-2 font-bold">Total</td>
+                            <td className="text-right px-3 py-2 font-bold text-primary whitespace-nowrap">
+                              {formatPrice(selectedOrder.total as number)}
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t bg-muted/50">
-                          <td colSpan={3} className="text-right px-3 py-2 font-bold">Total</td>
-                          <td className="text-right px-3 py-2 font-bold text-primary">
-                            {formatPrice(selectedOrder.total as number)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                        </tfoot>
+                      </table>
+                    </div>
                   </div>
                 </div>
 
@@ -341,8 +389,9 @@ export function AdminOrdersView() {
                     </Button>
                   </div>
                 )}
-              </div>
+              </>
             )}
+            </div>
           </DialogContent>
         </Dialog>
     </div>

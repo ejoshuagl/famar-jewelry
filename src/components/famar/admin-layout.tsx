@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore, type AppView } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
@@ -92,13 +92,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { adminName, isAuthenticated } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('admin-login')
+    }
+  }, [isAuthenticated, navigate])
+
   if (!isAuthenticated) {
-    navigate('admin-login')
     return null
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex min-h-screen">
       {/* Desktop sidebar — always one instance, visibility via CSS only */}
       <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
         <ScrollArea className="flex-1">

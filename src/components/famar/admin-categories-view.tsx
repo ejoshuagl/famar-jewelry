@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
-// AdminLayout is applied in page.tsx, not here
 import { slugify } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,7 +60,6 @@ export function AdminCategoriesView() {
     mutationFn: async () => {
       if (!name.trim()) throw new Error('Name required')
       const slug = slugify(name)
-      // Get max order
       const currentCats = categories || []
       const maxOrder = currentCats.reduce((max: number, cat: { order: number }) => Math.max(max, cat.order || 0), 0)
 
@@ -123,13 +121,14 @@ export function AdminCategoriesView() {
     <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Categorías</h1>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => setCreateDialogOpen(true)}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Categoría
           </Button>
         </div>
 
-        <Card>
+        {/* Desktop Table */}
+        <Card className="hidden md:block">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -195,6 +194,58 @@ export function AdminCategoriesView() {
             </Table>
           </CardContent>
         </Card>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-2">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Card key={i} className="p-3">
+                <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
+                <div className="flex justify-between mt-3">
+                  <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+                  <div className="h-8 w-8 bg-muted rounded animate-pulse" />
+                </div>
+              </Card>
+            ))
+          ) : !categories || categories.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No hay categorías
+            </div>
+          ) : (
+            categories.map((cat: { id: string; name: string; slug: string; order: number; active: boolean; _count?: { products: number } }) => (
+              <Card key={cat.id} className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm">{cat.name}</p>
+                    <p className="text-xs text-muted-foreground">{cat.slug} · {cat._count?.products || 0} productos</p>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                    cat.active
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  }`}>
+                    {cat.active ? 'Activa' : 'Inactiva'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-end mt-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    disabled={(cat._count?.products || 0) > 0}
+                    onClick={() => {
+                      setDeletingId(cat.id)
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
 
         {/* Create Dialog */}
         <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>

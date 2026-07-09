@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
-// AdminLayout is applied in page.tsx, not here
 import { formatPrice } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +52,6 @@ import {
   Package,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { ScrollArea } from '@/components/ui/scroll-area'
 
 interface ProductForm {
   name: string
@@ -80,6 +78,56 @@ const emptyForm: ProductForm = {
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
   galleryUrls: '', tags: '', isFeatured: false, isNew: false, isOnSale: false,
+}
+
+function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus }: {
+  product: Record<string, unknown>
+  onEdit: (p: Record<string, unknown>) => void
+  onDelete: (id: string) => void
+  onToggleStatus: (p: { id: string; status: string }) => void
+}) {
+  const cat = product.category as { name: string } | null
+  return (
+    <Card className="p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-sm truncate">{product.name}</p>
+          <p className="text-xs text-muted-foreground">{product.code}</p>
+        </div>
+        <Badge
+          variant={product.status === 'available' ? 'default' : 'secondary'}
+          className="text-[10px] px-1.5 py-0 shrink-0 cursor-pointer"
+          onClick={() => onToggleStatus(product as { id: string; status: string })}
+        >
+          {product.status === 'available' ? 'Disponible' : 'Agotado'}
+        </Badge>
+      </div>
+      <div className="flex items-center gap-2 mt-2">
+        {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
+        {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
+        {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
+      </div>
+      <div className="flex items-center justify-between mt-3">
+        <div className="text-sm">
+          <span className="font-bold">{formatPrice(product.price as number)}</span>
+          <span className="text-muted-foreground ml-2">Stock: {product.stock}</span>
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)}>
+            <Edit className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive"
+            onClick={() => onDelete(product.id as string)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    </Card>
+  )
 }
 
 export function AdminProductsView() {
@@ -264,7 +312,7 @@ export function AdminProductsView() {
     <div className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Productos</h1>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={openCreate}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Producto
           </Button>
@@ -280,98 +328,130 @@ export function AdminProductsView() {
           />
         </div>
 
-        <Card>
+        {/* Desktop Table */}
+        <Card className="hidden md:block">
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[60vh]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">#</TableHead>
-                    <TableHead>Producto</TableHead>
-                    <TableHead className="hidden sm:table-cell">Código</TableHead>
-                    <TableHead className="hidden md:table-cell">Categoría</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell><div className="h-4 w-32 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell className="hidden sm:table-cell"><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell className="hidden md:table-cell"><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
-                        <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
-                      </TableRow>
-                    ))
-                  ) : products.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No se encontraron productos
-                      </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">#</TableHead>
+                  <TableHead>Producto</TableHead>
+                  <TableHead>Código</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Precio</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-32 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
                     </TableRow>
-                  ) : (
-                    products.map((product: Record<string, unknown>, idx: number) => {
-                      const cat = product.category as { name: string } | null
-                      return (
-                        <TableRow key={product.id}>
-                          <TableCell className="text-sm text-muted-foreground">{(page - 1) * 20 + idx + 1}</TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
-                              <div className="flex gap-1 mt-1">
-                                {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
-                                {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
-                                {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
-                              </div>
+                  ))
+                ) : products.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No se encontraron productos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  products.map((product: Record<string, unknown>, idx: number) => {
+                    const cat = product.category as { name: string } | null
+                    return (
+                      <TableRow key={product.id}>
+                        <TableCell className="text-sm text-muted-foreground">{(page - 1) * 20 + idx + 1}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
+                            <div className="flex gap-1 mt-1">
+                              {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
+                              {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
+                              {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
                             </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell text-sm">{product.code}</TableCell>
-                          <TableCell className="hidden md:table-cell text-sm">{cat?.name || '-'}</TableCell>
-                          <TableCell className="text-sm font-medium">{formatPrice(product.price as number)}</TableCell>
-                          <TableCell className="text-sm">{product.stock}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={product.status === 'available' ? 'default' : 'secondary'}
-                              className="text-xs cursor-pointer"
-                              onClick={() => toggleStatusMutation.mutate(product as { id: string; status: string })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{product.code}</TableCell>
+                        <TableCell className="text-sm">{cat?.name || '-'}</TableCell>
+                        <TableCell className="text-sm font-medium">{formatPrice(product.price as number)}</TableCell>
+                        <TableCell className="text-sm">{product.stock}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={product.status === 'available' ? 'default' : 'secondary'}
+                            className="text-xs cursor-pointer"
+                            onClick={() => toggleStatusMutation.mutate(product as { id: string; status: string })}
+                          >
+                            {product.status === 'available' ? 'Disponible' : 'Agotado'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
+                              <Edit className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => {
+                                setDeletingId(product.id as string)
+                                setDeleteDialogOpen(true)
+                              }}
                             >
-                              {product.status === 'available' ? 'Disponible' : 'Agotado'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
-                                <Edit className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => {
-                                  setDeletingId(product.id as string)
-                                  setDeleteDialogOpen(true)
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-2">
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <Card key={i} className="p-3">
+                <div className="h-4 w-3/4 bg-muted rounded animate-pulse mb-2" />
+                <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
+                <div className="flex justify-between mt-3">
+                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                  <div className="h-8 w-16 bg-muted rounded animate-pulse" />
+                </div>
+              </Card>
+            ))
+          ) : products.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No se encontraron productos
+            </div>
+          ) : (
+            products.map((product: Record<string, unknown>) => (
+              <ProductMobileCard
+                key={product.id}
+                product={product}
+                onEdit={openEdit}
+                onDelete={(id) => {
+                  setDeletingId(id)
+                  setDeleteDialogOpen(true)
+                }}
+                onToggleStatus={(p) => toggleStatusMutation.mutate(p)}
+              />
+            ))
+          )}
+        </div>
 
         {totalPages > 1 && (
           <div className="flex justify-center gap-1">
@@ -395,7 +475,7 @@ export function AdminProductsView() {
             <DialogHeader>
               <DialogTitle>{editingId ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
             </DialogHeader>
-            <ScrollArea className="max-h-[70vh] pr-4">
+            <div className="max-h-[65vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Nombre *</Label>
@@ -485,7 +565,7 @@ export function AdminProductsView() {
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
             <div className="flex justify-end gap-3 mt-4">
               <Button variant="outline" onClick={closeDialog}>Cancelar</Button>
               <Button

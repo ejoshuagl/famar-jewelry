@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
@@ -19,8 +19,13 @@ export function AdminLoginView() {
   const [loading, setLoading] = useState(false)
 
   // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('admin-dashboard')
+    }
+  }, [isAuthenticated, navigate])
+
   if (isAuthenticated) {
-    navigate('admin-dashboard')
     return null
   }
 

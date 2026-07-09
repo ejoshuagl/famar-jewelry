@@ -65,4 +65,26 @@ Work Log:
 Stage Summary:
 - All core user flows verified end-to-end via Agent Browser
 - AdminLayout fix applied for proper sidebar navigation
-- Application is fully functional and production-ready
+- Application is fully functional and production-ready---
+Task ID: 7
+Agent: Main Agent
+Task: Fix 6 bugs: double admin panel, mobile back button, admin mobile responsiveness, cart delete UX, React setState-during-render warnings
+
+Work Log:
+- Fixed double admin panel in page.tsx: conditionally hide SiteHeader when isAdminView (line 121)
+- Fixed React setState-during-render in AdminLoginView: moved navigate() call from render to useEffect
+- Fixed React setState-during-render in AdminLayout: moved navigate() call from render to useEffect
+- Implemented browser history (pushState/popState) in app-store.ts for mobile back button support
+- Rewrote admin-products-view.tsx: added mobile card layout (hidden md:block table + md:hidden cards)
+- Rewrote admin-orders-view.tsx: added mobile card layout (hidden lg:block table + lg:hidden cards)
+- Rewrote admin-categories-view.tsx: added mobile card layout (hidden md:block table + md:hidden cards)
+- Updated admin-layout.tsx: changed min-h to min-h-screen since SiteHeader is hidden for admin
+- Enhanced cart-view.tsx: replaced direct delete with AlertDialog confirmation dialog, made delete button more prominent with outline variant and "Eliminar" text label
+
+Stage Summary:
+- Mobile back button now works correctly: home → product → back → home (tested via Agent Browser)
+- Admin panel fully responsive on mobile with card-based layouts for products, orders, categories
+- Cart delete now shows confirmation dialog before removing items
+- No more React setState-during-render warnings
+- Double admin panel issue resolved
+- All changes pass ESLint with zero errors

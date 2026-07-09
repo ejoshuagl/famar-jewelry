@@ -12,19 +12,33 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { EmptyState } from './empty-state'
-import { ShoppingBag, Minus, Plus, Trash2, X, Loader2 } from 'lucide-react'
+import { ShoppingBag, Minus, Plus, Trash2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export function CartView() {
   const { navigate } = useAppStore()
   const { items, removeItem, updateQuantity, clearCart, getTotal } = useCartStore()
   const [orderDialogOpen, setOrderDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
+  const [deletingProductName, setDeletingProductName] = useState('')
   const [form, setForm] = useState({ name: '', city: '', phone: '', observations: '' })
   const [submitting, setSubmitting] = useState(false)
   const queryClient = useQueryClient()
@@ -40,6 +54,22 @@ export function CartView() {
   const openOrderDialog = () => {
     if (items.length === 0) return
     setOrderDialogOpen(true)
+  }
+
+  const confirmDeleteItem = (productId: string, productName: string) => {
+    setDeletingProductId(productId)
+    setDeletingProductName(productName)
+    setDeleteDialogOpen(true)
+  }
+
+  const executeDeleteItem = () => {
+    if (deletingProductId) {
+      removeItem(deletingProductId)
+      toast.success('Producto eliminado del carrito')
+    }
+    setDeleteDialogOpen(false)
+    setDeletingProductId(null)
+    setDeletingProductName('')
   }
 
   const handleSubmitOrder = async () => {
@@ -210,12 +240,13 @@ ${productList}
                             {formatPrice(item.price * item.quantity)}
                           </span>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => removeItem(item.productId)}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive gap-1"
+                            onClick={() => confirmDeleteItem(item.productId, item.name)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Eliminar</span>
                           </Button>
                         </div>
                       </div>
@@ -272,6 +303,9 @@ ${productList}
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Completar Pedido</DialogTitle>
+            <DialogDescription>
+              Ingresa tus datos para enviar el pedido por WhatsApp
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -337,6 +371,27 @@ ${productList}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Item Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar producto del carrito?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará <strong>{deletingProductName}</strong> de tu carrito de compras.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={executeDeleteItem}
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

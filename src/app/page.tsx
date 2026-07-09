@@ -118,7 +118,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <SiteHeader />
+      {!isAdmin && <SiteHeader />}
       <main className="flex-1">{renderView()}</main>
       {!isAdmin && <SiteFooter />}
       {!isAdmin && <WhatsAppButton />}
