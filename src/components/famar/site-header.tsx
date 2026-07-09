@@ -1,5 +1,6 @@
 'use client'
 
+import { useSyncExternalStore } from 'react'
 import { useAppStore, AppView } from '@/stores/app-store'
 import { useCartStore } from '@/stores/cart-store'
 import { useFavoritesStore } from '@/stores/favorites-store'
@@ -24,6 +25,11 @@ export function SiteHeader() {
   const { currentView, navigate, sidebarOpen, setSidebarOpen } = useAppStore()
   const itemCount = useCartStore((s) => s.getItemCount())
   const favCount = useFavoritesStore((s) => s.ids.length)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -66,7 +72,7 @@ export function SiteHeader() {
             onClick={() => navigate('favorites')}
           >
             <Heart className="h-4 w-4" />
-            {favCount > 0 && (
+            {mounted && favCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
                 {favCount}
               </Badge>
@@ -80,7 +86,7 @@ export function SiteHeader() {
             onClick={() => navigate('cart')}
           >
             <ShoppingCart className="h-4 w-4" />
-            {itemCount > 0 && (
+            {mounted && itemCount > 0 && (
               <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
                 {itemCount}
               </Badge>
@@ -119,7 +125,7 @@ export function SiteHeader() {
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors text-left text-foreground hover:bg-muted"
                 >
                   Favoritos
-                  {favCount > 0 && (
+                  {mounted && favCount > 0 && (
                     <Badge variant="secondary" className="ml-auto text-xs">
                       {favCount}
                     </Badge>
