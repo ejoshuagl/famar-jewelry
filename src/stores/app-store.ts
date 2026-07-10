@@ -17,11 +17,12 @@ export type AppView =
 interface AppStore {
   currentView: AppView
   selectedProductId: string | null
+  selectedProductCode: string | null
   selectedCategory: string | null
   searchQuery: string
   sidebarOpen: boolean
   navigate: (view: AppView, pushHistory?: boolean) => void
-  selectProduct: (id: string | null) => void
+  selectProduct: (id: string | null, code?: string | null) => void
   setCategory: (slug: string | null) => void
   setSearch: (q: string) => void
   setSidebarOpen: (open: boolean) => void
@@ -35,6 +36,7 @@ let skipPopState = false
 export const useAppStore = create<AppStore>((set, get) => ({
   currentView: 'home',
   selectedProductId: null,
+  selectedProductCode: null,
   selectedCategory: null,
   searchQuery: '',
   sidebarOpen: false,
@@ -61,16 +63,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
       historyIndex = historyStack.length - 1
     }
 
+    // Build URL: include ?p=CODE when viewing a product
+    const code = get().selectedProductCode
+    const search = view === 'product-detail' && code ? `?p=${code}` : ''
+    const hash = `#/${view}`
+
     // Push browser history entry
     const state = { view, index: historyIndex }
-    window.history.pushState(state, '', `#/${view}`)
+    window.history.pushState(state, '', `${search}${hash}`)
 
     // Reset the skipPopState flag after a tick so the pushState event doesn't trigger popState handler
     requestAnimationFrame(() => {
       skipPopState = false
     })
   },
-  selectProduct: (id) => set({ selectedProductId: id }),
+  selectProduct: (id, code = null) => set({ selectedProductId: id, selectedProductCode: code }),
   setCategory: (slug) => set({ selectedCategory: slug }),
   setSearch: (q) => set({ searchQuery: q }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),

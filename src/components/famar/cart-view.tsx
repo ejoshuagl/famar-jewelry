@@ -182,7 +182,7 @@ ${productList}
                     <div
                       className="h-20 w-20 shrink-0 rounded-lg overflow-hidden bg-muted cursor-pointer"
                       onClick={() => {
-                        useAppStore.getState().selectProduct(item.productId)
+                        useAppStore.getState().selectProduct(item.productId, item.code)
                         navigate('product-detail')
                       }}
                     >
@@ -201,7 +201,7 @@ ${productList}
                       <h3
                         className="font-medium text-sm truncate cursor-pointer hover:text-primary"
                         onClick={() => {
-                          useAppStore.getState().selectProduct(item.productId)
+                          useAppStore.getState().selectProduct(item.productId, item.code)
                           navigate('product-detail')
                         }}
                       >
