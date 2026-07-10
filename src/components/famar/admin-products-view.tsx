@@ -528,9 +528,11 @@ export function AdminProductsView() {
                       fetch(`/api/products/next-code?categoryId=${v}`)
                         .then((res) => res.json())
                         .then((data) => {
-                          if (data.code) updateForm('code', data.code)
+                          if (data.code) {
+                            updateForm('code', data.code)
+                          }
                         })
-                        .catch(() => {})
+                        .catch((err) => console.error('Error generating code:', err))
                     }
                   }}>
                     <SelectTrigger>
