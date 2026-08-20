@@ -53,6 +53,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ImageUploader } from './image-uploader'
 
 interface ProductForm {
   name: string
@@ -581,14 +582,21 @@ export function AdminProductsView() {
                   <Label>Color</Label>
                   <Input value={form.color} onChange={(e) => updateForm('color', e.target.value)} />
                 </div>
-                <div className="sm:col-span-2">
-                  <Label>URL Imagen Principal</Label>
-                  <Input value={form.mainImage} onChange={(e) => updateForm('mainImage', e.target.value)} placeholder="https://..." />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label>URLs Galería (una por línea)</Label>
-                  <Textarea value={form.galleryUrls} onChange={(e) => updateForm('galleryUrls', e.target.value)} rows={3} placeholder="https://..." />
-                </div>
+                <ImageUploader
+                  label="Imagen principal"
+                  hint="Selecciona la foto desde tu computadora. No hace falta pegar una URL."
+                  adminName={adminName}
+                  value={form.mainImage}
+                  onChange={(url) => updateForm('mainImage', url as string)}
+                />
+                <ImageUploader
+                  label="Galería"
+                  hint="Puedes elegir varias fotos extra."
+                  adminName={adminName}
+                  multiple
+                  values={form.galleryUrls.split('\n').map((u) => u.trim()).filter(Boolean)}
+                  onChange={(urls) => updateForm('galleryUrls', (urls as string[]).join('\n'))}
+                />
                 <div>
                   <Label>Tags (separados por coma)</Label>
                   <Input value={form.tags} onChange={(e) => updateForm('tags', e.target.value)} placeholder="Nuevo, Oferta" />

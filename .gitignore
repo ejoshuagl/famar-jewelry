@@ -69,3 +69,7 @@ db/*.sqlite
 prisma/dev.db
 prisma/dev.db-journal
 
+# Product photo uploads (runtime files)
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
+
