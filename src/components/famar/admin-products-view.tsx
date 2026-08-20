@@ -584,15 +584,13 @@ export function AdminProductsView() {
                 </div>
                 <ImageUploader
                   label="Imagen principal"
-                  hint="Selecciona la foto desde tu computadora. No hace falta pegar una URL."
-                  adminName={adminName}
+                  hint="Elige la foto aquí. Se previsualiza y se guarda en Supabase al crear o actualizar el producto."
                   value={form.mainImage}
                   onChange={(url) => updateForm('mainImage', url as string)}
                 />
                 <ImageUploader
                   label="Galería"
-                  hint="Puedes elegir varias fotos extra."
-                  adminName={adminName}
+                  hint="Fotos extra. También se guardan al guardar el producto."
                   multiple
                   values={form.galleryUrls.split('\n').map((u) => u.trim()).filter(Boolean)}
                   onChange={(urls) => updateForm('galleryUrls', (urls as string[]).join('\n'))}
