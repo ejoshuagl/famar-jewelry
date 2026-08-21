@@ -7,6 +7,9 @@ import { slugify } from '@/lib/utils'
 const BASE_URL = 'https://famar.space-z.ai'
 
 export function getProductUrl(code: string): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/?p=${code}`
+  }
   return `${BASE_URL}/?p=${code}`
 }
 
