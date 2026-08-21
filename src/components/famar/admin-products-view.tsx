@@ -88,16 +88,14 @@ const emptyForm: ProductForm = {
   visible: true,
 }
 
-function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus, onToggleVisible, checked, onToggleCheck }: {
+function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, checked, onToggleCheck }: {
   product: Record<string, unknown>
   onEdit: (p: Record<string, unknown>) => void
   onDelete: (id: string) => void
-  onToggleStatus: (p: { id: string; status: string }) => void
   onToggleVisible: (p: { id: string; visible: boolean }) => void
   checked: boolean
   onToggleCheck: (id: string) => void
 }) {
-  const cat = product.category as { name: string } | null
   return (
     <Card className="p-3">
       <div className="flex items-start justify-between gap-2">
@@ -114,8 +112,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus, onToggle
         </div>
         <Badge
           variant={product.status === 'available' ? 'default' : 'secondary'}
-          className="text-[10px] px-1.5 py-0 shrink-0 cursor-pointer"
-          onClick={() => onToggleStatus(product as { id: string; status: string })}
+          className="text-[10px] px-1.5 py-0 shrink-0"
         >
           {product.status === 'available' ? 'Disponible' : 'Agotado'}
         </Badge>
@@ -262,25 +259,6 @@ export function AdminProductsView() {
     },
     onError: () => {
       toast.error('Error al eliminar el producto')
-    },
-  })
-
-  const toggleStatusMutation = useMutation({
-    mutationFn: async (product: { id: string; status: string }) => {
-      const newStatus = product.status === 'available' ? 'out_of_stock' : 'available'
-      const res = await fetch(`/api/products/${product.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-name': adminName || '',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      if (!res.ok) throw new Error('Error toggling status')
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
     },
   })
 
@@ -552,8 +530,8 @@ export function AdminProductsView() {
                         <TableCell>
                           <Badge
                             variant={product.status === 'available' ? 'default' : 'secondary'}
-                            className="text-xs cursor-pointer"
-                            onClick={() => toggleStatusMutation.mutate(product as { id: string; status: string })}
+                            className="text-xs"
+                            title="El estado se calcula según el stock"
                           >
                             {product.status === 'available' ? 'Disponible' : 'Agotado'}
                           </Badge>
@@ -625,7 +603,6 @@ export function AdminProductsView() {
                   setDeletingId(id)
                   setDeleteDialogOpen(true)
                 }}
-                onToggleStatus={(p) => toggleStatusMutation.mutate(p)}
                 onToggleVisible={(p) => toggleVisibleMutation.mutate(p)}
                 checked={selected.has(product.id as string)}
                 onToggleCheck={toggleSelected}
@@ -729,21 +706,14 @@ export function AdminProductsView() {
                   <Label>Precio *</Label>
                   <Input type="number" step="0.01" value={form.price} onChange={(e) => updateForm('price', e.target.value)} />
                 </div>
-                <div>
-                  <Label>Stock</Label>
-                  <Input type="number" value={form.stock} onChange={(e) => updateForm('stock', e.target.value)} />
-                </div>
-                <div>
-                  <Label>Estado</Label>
-                  <Select value={form.status} onValueChange={(v) => updateForm('status', v)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">Disponible</SelectItem>
-                      <SelectItem value="out_of_stock">Agotado</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <Label>Stock</Label>
+                    <Input type="number" value={form.stock} onChange={(e) => updateForm('stock', e.target.value)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground pb-2">
+                    Estado automático: stock 0 = Agotado
+                  </p>
                 </div>
                 <div>
                   <Label>Material</Label>

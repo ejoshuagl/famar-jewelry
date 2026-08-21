@@ -102,19 +102,21 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       name, code, description, categoryId, material, weight, dimensions,
-      color, price, stock, status, mainImage, images, isFeatured,
-      isNew, isOnSale, tags, visible,
-    } = body
+        color, price, stock, mainImage, images, isFeatured,
+        isNew, isOnSale, tags, visible,
+      } = body
 
     if (!name || !code || !categoryId || price == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
+    const stockCount = parseInt(stock) || 0
+
     const product = await db.product.create({
       data: {
         name, code, description, categoryId, material, weight, dimensions,
-        color, price: parseFloat(price), stock: parseInt(stock) || 0,
-        status: status || 'available', mainImage,
+        color, price: parseFloat(price), stock: stockCount,
+        status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
         visible: visible === undefined ? true : !!visible,

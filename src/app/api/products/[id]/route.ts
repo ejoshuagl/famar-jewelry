@@ -51,8 +51,11 @@ export async function PUT(
         ...(dimensions !== undefined && { dimensions }),
         ...(color !== undefined && { color }),
         ...(price !== undefined && { price: parseFloat(price) }),
-        ...(stock !== undefined && { stock: parseInt(stock) }),
-        ...(status !== undefined && { status }),
+        ...(stock !== undefined && {
+          stock: parseInt(stock),
+          // El estado se deriva del stock, no se cambia a mano
+          status: parseInt(stock) <= 0 ? 'out_of_stock' : 'available',
+        }),
         ...(mainImage !== undefined && { mainImage }),
         ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
         ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),

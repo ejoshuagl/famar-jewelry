@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { ids, addTags, removeTags, setVisible, setStatus } = body
+    const { ids, addTags, removeTags, setVisible } = body
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'No products selected' }, { status: 400 })
     }
@@ -39,9 +39,6 @@ export async function POST(request: NextRequest) {
       }
       if (setVisible !== undefined) {
         data.visible = !!setVisible
-      }
-      if (setStatus !== undefined) {
-        data.status = setStatus
       }
       if (Object.keys(data).length > 0) {
         await db.product.update({ where: { id: product.id }, data })
