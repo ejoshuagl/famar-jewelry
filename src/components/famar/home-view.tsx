@@ -98,8 +98,9 @@ export function HomeView() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-primary/20" />
-        <div className="absolute inset-0 bg-[url('/hero-bg.png')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-[url('/hero-bg.png')] bg-cover bg-center max-md:hidden" />
+        <div className="absolute inset-0 bg-[url('/hero-bg-mobile.jpg')] bg-cover bg-center md:hidden" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/60" />
         <div className="relative z-10 text-center px-4 max-w-3xl mx-auto">
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
