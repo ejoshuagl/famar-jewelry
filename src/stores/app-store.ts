@@ -85,8 +85,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
 // Initialize browser history on first load
 if (typeof window !== 'undefined') {
-  // Set initial history state
-  window.history.replaceState({ view: 'home', index: 0 }, '', '#/home')
+  const validViews: AppView[] = [
+    'home', 'catalog', 'product-detail', 'cart', 'out-of-stock', 'contact',
+    'favorites', 'admin-login', 'admin-dashboard', 'admin-products',
+    'admin-orders', 'admin-categories',
+  ]
+
+  // Restore the view from the URL hash so a reload keeps the user where they were
+  const restoreViewFromHash = (): AppView | null => {
+    const match = window.location.hash.match(/^#\/([a-z-]+)/)
+    if (!match) return null
+    return validViews.includes(match[1] as AppView) ? (match[1] as AppView) : null
+  }
+
+  const initialView = restoreViewFromHash()
+  if (initialView) {
+    useAppStore.setState({ currentView: initialView })
+    historyStack = [initialView]
+    window.history.replaceState({ view: initialView, index: 0 }, '', window.location.hash)
+  } else {
+    window.history.replaceState({ view: 'home', index: 0 }, '', '#/home')
+  }
 
   // Handle browser back/forward buttons
   window.addEventListener('popstate', (event) => {
@@ -103,11 +122,13 @@ if (typeof window !== 'undefined') {
         skipPopState = false
       })
     } else {
-      // Fallback: go to home
+      // Fallback: use the URL hash if valid, otherwise go to home
+      const fromHash = restoreViewFromHash()
+      const view = fromHash ?? 'home'
       historyIndex = 0
-      historyStack = ['home']
+      historyStack = [view]
       skipPopState = true
-      useAppStore.setState({ currentView: 'home', sidebarOpen: false })
+      useAppStore.setState({ currentView: view, sidebarOpen: false })
       window.scrollTo({ top: 0, behavior: 'smooth' })
       requestAnimationFrame(() => {
         skipPopState = false
