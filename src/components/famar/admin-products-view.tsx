@@ -712,7 +712,19 @@ export function AdminProductsView() {
                 </div>
                 <div>
                   <Label>Material</Label>
-                  <Input value={form.material} onChange={(e) => updateForm('material', e.target.value)} />
+                  <Select value={form.material} onValueChange={(v) => updateForm('material', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['Acero Inoxidable', 'Plata', 'Oro', 'Chapado en Oro', 'Aleación'].map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                      {form.material && !['Acero Inoxidable', 'Plata', 'Oro', 'Chapado en Oro', 'Aleación'].includes(form.material.trim()) && (
+                        <SelectItem value={form.material}>{form.material}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Peso</Label>
