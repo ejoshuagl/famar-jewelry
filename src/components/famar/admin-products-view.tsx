@@ -183,7 +183,7 @@ export function AdminProductsView() {
         all: 'true',
       })
       if (search) params.set('search', search)
-      const res = await fetch(`/api/products?${params}`)
+      const res = await fetch(`/api/products?${params}`, { cache: 'no-store' })
       return res.json()
     },
   })
