@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { ids, addTags, removeTags, setVisible } = body
+    const { ids, addTags, removeTags, setVisible, setFeatured, setIsNew, setIsOnSale } = body
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'No products selected' }, { status: 400 })
     }
@@ -39,6 +39,15 @@ export async function POST(request: NextRequest) {
       }
       if (setVisible !== undefined) {
         data.visible = !!setVisible
+      }
+      if (setFeatured !== undefined) {
+        data.isFeatured = !!setFeatured
+      }
+      if (setIsNew !== undefined) {
+        data.isNew = !!setIsNew
+      }
+      if (setIsOnSale !== undefined) {
+        data.isOnSale = !!setIsOnSale
       }
       if (Object.keys(data).length > 0) {
         await db.product.update({ where: { id: product.id }, data })

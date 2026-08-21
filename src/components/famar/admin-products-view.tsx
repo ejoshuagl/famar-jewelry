@@ -170,6 +170,7 @@ export function AdminProductsView() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkTags, setBulkTags] = useState('')
+  const [bulkBadge, setBulkBadge] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-products', search, page],
@@ -285,7 +286,9 @@ export function AdminProductsView() {
       addTags?: string[]
       removeTags?: string[]
       setVisible?: boolean
-      setStatus?: string
+      setFeatured?: boolean
+      setIsNew?: boolean
+      setIsOnSale?: boolean
     }) => {
       const res = await fetch('/api/products/bulk', {
         method: 'POST',
@@ -316,6 +319,21 @@ export function AdminProductsView() {
       else next.add(id)
       return next
     })
+  }
+
+  const applyBulkBadge = () => {
+    const actions: Record<string, () => void> = {
+      'featured-on': () => bulkMutation.mutate({ setFeatured: true }),
+      'featured-off': () => bulkMutation.mutate({ setFeatured: false }),
+      'new-on': () => bulkMutation.mutate({ setIsNew: true }),
+      'new-off': () => bulkMutation.mutate({ setIsNew: false }),
+      'sale-on': () => bulkMutation.mutate({ setIsOnSale: true }),
+      'sale-off': () => bulkMutation.mutate({ setIsOnSale: false }),
+    }
+    if (actions[bulkBadge]) {
+      actions[bulkBadge]()
+      setBulkBadge('')
+    }
   }
 
   const allOnPageSelected = products.length > 0 && products.every((p: { id: string }) => selected.has(p.id))
@@ -450,6 +468,24 @@ export function AdminProductsView() {
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
                   Cancelar
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Select value={bulkBadge} onValueChange={setBulkBadge}>
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="Destacado / Nuevo / Oferta..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="featured-on">Marcar como Destacado</SelectItem>
+                    <SelectItem value="featured-off">Quitar Destacado</SelectItem>
+                    <SelectItem value="new-on">Marcar como Nuevo</SelectItem>
+                    <SelectItem value="new-off">Quitar Nuevo</SelectItem>
+                    <SelectItem value="sale-on">Marcar En Oferta</SelectItem>
+                    <SelectItem value="sale-off">Quitar En Oferta</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={applyBulkBadge} disabled={!bulkBadge || bulkMutation.isPending}>
+                  Aplicar
                 </Button>
               </div>
             </CardContent>
