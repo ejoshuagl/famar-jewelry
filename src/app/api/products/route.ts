@@ -27,13 +27,21 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '12')
     const sort = searchParams.get('sort') || 'relevance'
+    const includeHidden = searchParams.get('all') === 'true'
 
     const where: Record<string, unknown> = {}
+    if (!includeHidden) {
+      where.visible = true
+    }
     if (search) {
+      const q = { contains: search, mode: 'insensitive' }
       where.OR = [
-        { name: { contains: search } },
-        { code: { contains: search } },
-        { description: { contains: search } },
+        { name: q },
+        { code: q },
+        { description: q },
+        { material: q },
+        { color: q },
+        { tags: q },
       ]
     }
     if (category) {
@@ -95,7 +103,7 @@ export async function POST(request: NextRequest) {
     const {
       name, code, description, categoryId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, isFeatured,
-      isNew, isOnSale, tags,
+      isNew, isOnSale, tags, visible,
     } = body
 
     if (!name || !code || !categoryId || price == null) {
@@ -109,6 +117,7 @@ export async function POST(request: NextRequest) {
         status: status || 'available', mainImage,
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
+        visible: visible === undefined ? true : !!visible,
         tags: tags ? JSON.stringify(tags) : null,
       },
       include: { category: { select: { name: true, slug: true } } },

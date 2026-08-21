@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -51,6 +52,9 @@ import {
   Loader2,
   Package,
   Sparkles,
+  Eye,
+  EyeOff,
+  Tags,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ImageUploader } from './image-uploader'
@@ -73,6 +77,7 @@ interface ProductForm {
   isFeatured: boolean
   isNew: boolean
   isOnSale: boolean
+  visible: boolean
 }
 
 const emptyForm: ProductForm = {
@@ -80,21 +85,32 @@ const emptyForm: ProductForm = {
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
   galleryUrls: '', tags: '', isFeatured: false, isNew: false, isOnSale: false,
+  visible: true,
 }
 
-function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus }: {
+function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus, onToggleVisible, checked, onToggleCheck }: {
   product: Record<string, unknown>
   onEdit: (p: Record<string, unknown>) => void
   onDelete: (id: string) => void
   onToggleStatus: (p: { id: string; status: string }) => void
+  onToggleVisible: (p: { id: string; visible: boolean }) => void
+  checked: boolean
+  onToggleCheck: (id: string) => void
 }) {
   const cat = product.category as { name: string } | null
   return (
     <Card className="p-3">
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-sm truncate">{product.name}</p>
-          <p className="text-xs text-muted-foreground">{product.code}</p>
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => onToggleCheck(product.id as string)}
+            className="mt-1"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium text-sm truncate">{product.name}</p>
+            <p className="text-xs text-muted-foreground">{product.code}</p>
+          </div>
         </div>
         <Badge
           variant={product.status === 'available' ? 'default' : 'secondary'}
@@ -108,6 +124,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus }: {
         {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
         {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
         {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
+        {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
       </div>
       <div className="flex items-center justify-between mt-3">
         <div className="text-sm">
@@ -115,6 +132,18 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleStatus }: {
           <span className="text-muted-foreground ml-2">Stock: {product.stock}</span>
         </div>
         <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => onToggleVisible(product as { id: string; visible: boolean })}
+          >
+            {product.visible === false ? (
+              <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
+            )}
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)}>
             <Edit className="h-3.5 w-3.5" />
           </Button>
@@ -142,6 +171,8 @@ export function AdminProductsView() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [form, setForm] = useState<ProductForm>(emptyForm)
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkTags, setBulkTags] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-products', search, page],
@@ -149,6 +180,7 @@ export function AdminProductsView() {
       const params = new URLSearchParams({
         limit: '20',
         page: page.toString(),
+        all: 'true',
       })
       if (search) params.set('search', search)
       const res = await fetch(`/api/products?${params}`)
@@ -252,6 +284,84 @@ export function AdminProductsView() {
     },
   })
 
+  const toggleVisibleMutation = useMutation({
+    mutationFn: async (product: { id: string; visible: boolean }) => {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-name': adminName || '',
+        },
+        body: JSON.stringify({ visible: !product.visible }),
+      })
+      if (!res.ok) throw new Error('Error toggling visibility')
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+    },
+  })
+
+  const bulkMutation = useMutation({
+    mutationFn: async (payload: {
+      addTags?: string[]
+      removeTags?: string[]
+      setVisible?: boolean
+      setStatus?: string
+    }) => {
+      const res = await fetch('/api/products/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-name': adminName || '',
+        },
+        body: JSON.stringify({ ids: Array.from(selected), ...payload }),
+      })
+      if (!res.ok) throw new Error('Error updating products')
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+      toast.success(`${data.updated} producto(s) actualizado(s)`)
+      setSelected(new Set())
+      setBulkTags('')
+    },
+    onError: () => {
+      toast.error('Error al actualizar los productos')
+    },
+  })
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const allOnPageSelected = products.length > 0 && products.every((p: { id: string }) => selected.has(p.id))
+
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      if (allOnPageSelected) {
+        return new Set(Array.from(prev).filter((id) => !products.some((p: { id: string }) => p.id === id)))
+      }
+      const next = new Set(prev)
+      products.forEach((p: { id: string }) => next.add(p.id))
+      return next
+    })
+  }
+
+  const applyBulkTags = (mode: 'add' | 'remove') => {
+    const tags = bulkTags.split(',').map((t) => t.trim()).filter(Boolean)
+    if (tags.length === 0) {
+      toast.error('Escribe al menos un tag')
+      return
+    }
+    bulkMutation.mutate(mode === 'add' ? { addTags: tags } : { removeTags: tags })
+  }
+
   const openCreate = () => {
     setEditingId(null)
     setForm(emptyForm)
@@ -296,6 +406,7 @@ export function AdminProductsView() {
       isFeatured: product.isFeatured as boolean,
       isNew: product.isNew as boolean,
       isOnSale: product.isOnSale as boolean,
+      visible: product.visible !== false,
     })
     setEditDialogOpen(true)
   }
@@ -323,12 +434,49 @@ export function AdminProductsView() {
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre o código..."
+            placeholder="Buscar por nombre, código, material, color o tag..."
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1) }}
             className="pl-9"
           />
         </div>
+
+        {/* Bulk actions bar */}
+        {selected.size > 0 && (
+          <Card>
+            <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-sm font-medium whitespace-nowrap">{selected.size} seleccionado(s)</span>
+              <div className="flex flex-1 flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="Tags separados por coma (ej: Nuevo, Oferta)"
+                  value={bulkTags}
+                  onChange={(e) => setBulkTags(e.target.value)}
+                  className="flex-1"
+                />
+                <Button size="sm" variant="outline" onClick={() => applyBulkTags('add')} disabled={bulkMutation.isPending}>
+                  <Tags className="h-3.5 w-3.5 mr-1" />
+                  Agregar tags
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => applyBulkTags('remove')} disabled={bulkMutation.isPending}>
+                  Quitar tags
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: true })} disabled={bulkMutation.isPending}>
+                  <Eye className="h-3.5 w-3.5 mr-1" />
+                  Mostrar
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: false })} disabled={bulkMutation.isPending}>
+                  <EyeOff className="h-3.5 w-3.5 mr-1" />
+                  Ocultar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                  Cancelar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Desktop Table */}
         <Card className="hidden md:block">
@@ -336,6 +484,13 @@ export function AdminProductsView() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allOnPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Seleccionar todos"
+                    />
+                  </TableHead>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Código</TableHead>
@@ -362,7 +517,7 @@ export function AdminProductsView() {
                   ))
                 ) : products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No se encontraron productos
                     </TableCell>
                   </TableRow>
@@ -371,6 +526,13 @@ export function AdminProductsView() {
                     const cat = product.category as { name: string } | null
                     return (
                       <TableRow key={product.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selected.has(product.id as string)}
+                            onCheckedChange={() => toggleSelected(product.id as string)}
+                            aria-label="Seleccionar producto"
+                          />
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{(page - 1) * 20 + idx + 1}</TableCell>
                         <TableCell>
                           <div>
@@ -379,6 +541,7 @@ export function AdminProductsView() {
                               {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
                               {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
                               {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
+                              {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
                             </div>
                           </div>
                         </TableCell>
@@ -397,6 +560,19 @@ export function AdminProductsView() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title={product.visible === false ? 'Mostrar en la página' : 'Ocultar de la página'}
+                              onClick={() => toggleVisibleMutation.mutate(product as { id: string; visible: boolean })}
+                            >
+                              {product.visible === false ? (
+                                <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
                               <Edit className="h-3.5 w-3.5" />
                             </Button>
@@ -450,6 +626,9 @@ export function AdminProductsView() {
                   setDeleteDialogOpen(true)
                 }}
                 onToggleStatus={(p) => toggleStatusMutation.mutate(p)}
+                onToggleVisible={(p) => toggleVisibleMutation.mutate(p)}
+                checked={selected.has(product.id as string)}
+                onToggleCheck={toggleSelected}
               />
             ))
           )}
@@ -611,6 +790,10 @@ export function AdminProductsView() {
                   <div className="flex items-center gap-3">
                     <Switch checked={form.isOnSale} onCheckedChange={(v) => updateForm('isOnSale', v)} />
                     <Label>En Oferta</Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Switch checked={form.visible} onCheckedChange={(v) => updateForm('visible', v)} />
+                    <Label>Visible en la página</Label>
                   </div>
                 </div>
               </div>

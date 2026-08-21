@@ -36,7 +36,7 @@ export async function PUT(
     const {
       name, code, description, categoryId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, isFeatured,
-      isNew, isOnSale, tags,
+      isNew, isOnSale, tags, visible,
     } = body
 
     const product = await db.product.update({
@@ -59,6 +59,7 @@ export async function PUT(
         ...(isNew !== undefined && { isNew: !!isNew }),
         ...(isOnSale !== undefined && { isOnSale: !!isOnSale }),
         ...(tags !== undefined && { tags: tags ? JSON.stringify(tags) : null }),
+        ...(visible !== undefined && { visible: !!visible }),
       },
       include: { category: { select: { name: true, slug: true } } },
     })
