@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
-function parseTags(raw: string | null): string[] {
-  try {
-    const arr = raw ? JSON.parse(raw) : []
-    return Array.isArray(arr) ? arr : []
-  } catch {
-    return []
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const adminName = request.headers.get('x-admin-name')
@@ -18,7 +9,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { ids, addTags, removeTags, setVisible, setFeatured, setIsNew, setIsOnSale } = body
+    const { ids, setVisible, setFeatured, setIsNew, setIsOnSale } = body
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'No products selected' }, { status: 400 })
     }
@@ -27,16 +18,6 @@ export async function POST(request: NextRequest) {
 
     for (const product of products) {
       const data: Record<string, unknown> = {}
-      if (addTags || removeTags) {
-        let tags = parseTags(product.tags)
-        if (addTags) {
-          tags = [...tags, ...(addTags as string[]).filter((t) => !tags.includes(t))]
-        }
-        if (removeTags) {
-          tags = tags.filter((t) => !(removeTags as string[]).includes(t))
-        }
-        data.tags = JSON.stringify(tags)
-      }
       if (setVisible !== undefined) {
         data.visible = !!setVisible
       }

@@ -74,7 +74,7 @@ export function AdminLoginView() {
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
+                  placeholder="luisa"
                   autoComplete="username"
                 />
               </div>

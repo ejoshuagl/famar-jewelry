@@ -26,7 +26,6 @@ export interface ProductData {
   isFeatured?: boolean
   isNew?: boolean
   isOnSale?: boolean
-  tags?: string | null
   material?: string | null
   images?: string | null
 }

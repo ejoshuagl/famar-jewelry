@@ -39,7 +39,6 @@ model Product {
   isFeatured  Boolean  @default(false)
   isNew       Boolean  @default(false)
   isOnSale    Boolean  @default(false)
-  tags        String?  // JSON array: ["Nuevo", "Oferta", "Últimas unidades", "Agotado"]
   salesCount  Int      @default(0)
   visible     Boolean  @default(true) // shown on the public site
   createdAt   DateTime @default(now())

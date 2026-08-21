@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
         { description: q },
         { material: q },
         { color: q },
-        { tags: q },
       ]
     }
     if (category) {
@@ -102,9 +101,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       name, code, description, categoryId, material, weight, dimensions,
-        color, price, stock, mainImage, images, isFeatured,
-        isNew, isOnSale, tags, visible,
-      } = body
+      color, price, stock, mainImage, images, isFeatured,
+      isNew, isOnSale, visible,
+    } = body
 
     if (!name || !code || !categoryId || price == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -120,7 +119,6 @@ export async function POST(request: NextRequest) {
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
         visible: visible === undefined ? true : !!visible,
-        tags: tags ? JSON.stringify(tags) : null,
       },
       include: { category: { select: { name: true, slug: true } } },
     })
