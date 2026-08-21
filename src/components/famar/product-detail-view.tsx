@@ -57,7 +57,7 @@ export function ProductDetailView() {
       if (!product?.category?.slug) return []
       const params = new URLSearchParams({
         category: product.category.slug,
-        limit: '4',
+        limit: '8',
       })
       const res = await fetch(`/api/products?${params}`)
       const data = await res.json()
@@ -346,7 +346,7 @@ export function ProductDetailView() {
       {/* Related Products */}
       {relatedProducts && relatedProducts.length > 0 && (
         <section className="space-y-6">
-          <h2 className="text-xl font-bold">Productos Relacionados</h2>
+          <h2 className="text-xl font-bold">Productos Recomendados</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {relatedProducts.map((p, i) => (
               <ProductCard key={p.id} product={p} index={i} />

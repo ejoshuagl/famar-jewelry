@@ -6,6 +6,7 @@ import { Instagram, Facebook, Mail, Phone, MapPin, ShieldCheck } from 'lucide-re
 
 export function SiteFooter() {
   const navigate = useAppStore((s) => s.navigate)
+  const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
 
   return (
     <footer className="border-t bg-background mt-auto">
@@ -34,7 +35,10 @@ export function SiteFooter() {
               ].map((link) => (
                 <button
                   key={link.view}
-                  onClick={() => navigate(link.view)}
+                  onClick={() => {
+                    if (link.view === 'catalog') setCatalogFilter(null)
+                    navigate(link.view)
+                  }}
                   className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
                 >
                   {link.label}

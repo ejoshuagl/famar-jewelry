@@ -22,6 +22,12 @@ const fadeInUp = {
 export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setCategory = useAppStore((s) => s.setCategory)
+  const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
+
+  const goToCollection = (filter: string) => {
+    setCatalogFilter(filter)
+    navigate('catalog')
+  }
 
   const { data: featuredProducts, isLoading: loadingFeatured } = useQuery({
     queryKey: ['products', 'featured'],
@@ -122,7 +128,10 @@ export function HomeView() {
             <Button
               size="lg"
               className="bg-primary text-primary-foreground hover:bg-primary/90 text-base px-8"
-              onClick={() => navigate('catalog')}
+              onClick={() => {
+                setCatalogFilter(null)
+                navigate('catalog')
+              }}
             >
               Ver Catálogo
             </Button>
@@ -156,16 +165,32 @@ export function HomeView() {
         >
           <motion.div variants={fadeInUp} custom={0} className="flex items-center gap-3">
             <Sparkles className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-bold">Productos Destacados</h2>
+            <h2
+              className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
+              onClick={() => goToCollection('featured')}
+            >
+              Productos Destacados
+            </h2>
           </motion.div>
           {loadingFeatured ? (
             <SkeletonGrid count={4} />
           ) : featuredProducts && featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {featuredProducts.map((product, i) => (
-                <ProductCard key={product.id} product={product} index={i} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {featuredProducts.map((product, i) => (
+                  <ProductCard key={product.id} product={product} index={i} />
+                ))}
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  variant="outline"
+                  className="border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => goToCollection('featured')}
+                >
+                  Ver más destacados
+                </Button>
+              </div>
+            </>
           ) : null}
         </motion.div>
       </section>
@@ -181,16 +206,32 @@ export function HomeView() {
           >
             <motion.div variants={fadeInUp} custom={0} className="flex items-center gap-3">
               <Sparkles className="h-6 w-6 text-primary" />
-              <h2 className="text-2xl font-bold">Nuevos Ingresos</h2>
+              <h2
+                className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
+                onClick={() => goToCollection('new')}
+              >
+                Nuevos Ingresos
+              </h2>
             </motion.div>
             {loadingNew ? (
               <SkeletonGrid count={4} />
             ) : newProducts && newProducts.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {newProducts.map((product, i) => (
-                  <ProductCard key={product.id} product={product} index={i} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {newProducts.map((product, i) => (
+                    <ProductCard key={product.id} product={product} index={i} />
+                  ))}
+                </div>
+                <div className="flex justify-center">
+                  <Button
+                    variant="outline"
+                    className="border-primary/40 text-primary hover:bg-primary/10"
+                    onClick={() => goToCollection('new')}
+                  >
+                    Ver más nuevos
+                  </Button>
+                </div>
+              </>
             ) : null}
           </motion.div>
         </div>
@@ -208,16 +249,32 @@ export function HomeView() {
             >
               <motion.div variants={fadeInUp} custom={0} className="flex items-center gap-3">
                 <TrendingUp className="h-6 w-6 text-primary" />
-                <h2 className="text-2xl font-bold">Más Vendidos</h2>
+                <h2
+                  className="text-2xl font-bold cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => goToCollection('best-selling')}
+                >
+                  Más Vendidos
+                </h2>
               </motion.div>
               {loadingBest ? (
                 <SkeletonGrid count={4} />
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {bestSelling.map((product, i) => (
-                    <ProductCard key={product.id} product={product} index={i} />
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {bestSelling.map((product, i) => (
+                      <ProductCard key={product.id} product={product} index={i} />
+                    ))}
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="outline"
+                      className="border-primary/40 text-primary hover:bg-primary/10"
+                      onClick={() => goToCollection('best-selling')}
+                    >
+                      Ver más vendidos
+                    </Button>
+                  </div>
+                </>
               )}
             </motion.div>
           </div>

@@ -22,7 +22,7 @@ const navItems: { label: string; view: AppView }[] = [
 ]
 
 export function SiteHeader() {
-  const { currentView, navigate, sidebarOpen, setSidebarOpen } = useAppStore()
+  const { currentView, navigate, sidebarOpen, setSidebarOpen, setCatalogFilter } = useAppStore()
   const itemCount = useCartStore((s) => s.getItemCount())
   const favCount = useFavoritesStore((s) => s.ids.length)
   const mounted = useSyncExternalStore(
@@ -47,7 +47,10 @@ export function SiteHeader() {
           {navItems.map((item) => (
             <button
               key={item.view}
-              onClick={() => navigate(item.view)}
+              onClick={() => {
+                if (item.view === 'catalog') setCatalogFilter(null)
+                navigate(item.view)
+              }}
               className={cn(
                 'relative px-4 py-2 text-sm font-medium transition-colors',
                 currentView === item.view
@@ -106,7 +109,10 @@ export function SiteHeader() {
                 {navItems.map((item) => (
                   <button
                     key={item.view}
-                    onClick={() => navigate(item.view)}
+                    onClick={() => {
+                if (item.view === 'catalog') setCatalogFilter(null)
+                navigate(item.view)
+              }}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors text-left',
                       currentView === item.view

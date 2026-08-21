@@ -19,11 +19,13 @@ interface AppStore {
   selectedProductId: string | null
   selectedProductCode: string | null
   selectedCategory: string | null
+  catalogFilter: string | null
   searchQuery: string
   sidebarOpen: boolean
   navigate: (view: AppView, pushHistory?: boolean) => void
   selectProduct: (id: string | null, code?: string | null) => void
   setCategory: (slug: string | null) => void
+  setCatalogFilter: (filter: string | null) => void
   setSearch: (q: string) => void
   setSidebarOpen: (open: boolean) => void
 }
@@ -38,13 +40,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
   selectedProductId: null,
   selectedProductCode: null,
   selectedCategory: null,
+  catalogFilter: null,
   searchQuery: '',
   sidebarOpen: false,
   navigate: (view, pushHistory = true) => {
     const prevView = get().currentView
 
-    // Update Zustand state
-    set({ currentView: view, sidebarOpen: false })
+    // Update Zustand state; drop the collection filter unless we're going to the catalog
+    set({ currentView: view, sidebarOpen: false, catalogFilter: view === 'catalog' ? get().catalogFilter : null })
     window.scrollTo({ top: 0, behavior: 'smooth' })
 
     // Manage browser history
@@ -79,6 +82,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
   selectProduct: (id, code = null) => set({ selectedProductId: id, selectedProductCode: code }),
   setCategory: (slug) => set({ selectedCategory: slug }),
+  setCatalogFilter: (filter) => set({ catalogFilter: filter }),
   setSearch: (q) => set({ searchQuery: q }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }))

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { SlidersHorizontal, X } from 'lucide-react'
 
 export function CatalogView() {
-  const { searchQuery, selectedCategory, setCategory, setSearch } = useAppStore()
+  const { searchQuery, selectedCategory, catalogFilter, setCategory, setCatalogFilter, setSearch } = useAppStore()
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('relevance')
   const [localSearch, setLocalSearch] = useState(searchQuery)
@@ -29,18 +29,26 @@ export function CatalogView() {
     setLocalSearch(searchQuery)
   }, [searchQuery])
 
+  const filterLabels: Record<string, string> = {
+    featured: 'Destacados',
+    new: 'Nuevos ingresos',
+    'best-selling': 'Más vendidos',
+  }
+
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams()
     if (localSearch) params.set('search', localSearch)
     if (selectedCategory) params.set('category', selectedCategory)
-    params.set('sort', sort)
+    if (catalogFilter === 'featured') params.set('featured', 'true')
+    if (catalogFilter === 'new') params.set('new', 'true')
+    params.set('sort', catalogFilter === 'best-selling' ? 'best-selling' : sort)
     params.set('page', page.toString())
     params.set('limit', '12')
     return params.toString()
-  }, [localSearch, selectedCategory, sort, page])
+  }, [localSearch, selectedCategory, catalogFilter, sort, page])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', 'catalog', localSearch, selectedCategory, sort, page],
+    queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, sort, page],
     queryFn: async () => {
       const res = await fetch(`/api/products?${buildQuery()}`)
       return res.json()
@@ -60,7 +68,7 @@ export function CatalogView() {
 
   useEffect(() => {
     setPage(1)
-  }, [localSearch, selectedCategory, sort])
+  }, [localSearch, selectedCategory, catalogFilter, sort])
 
   const handleCategorySelect = (slug: string | null) => {
     setCategory(slug)
@@ -75,11 +83,12 @@ export function CatalogView() {
     setLocalSearch('')
     setSearch('')
     setCategory(null)
+    setCatalogFilter(null)
     setSort('relevance')
     setPage(1)
   }
 
-  const hasFilters = localSearch || selectedCategory || sort !== 'relevance'
+  const hasFilters = localSearch || selectedCategory || catalogFilter || sort !== 'relevance'
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -101,6 +110,21 @@ export function CatalogView() {
           selected={selectedCategory}
           onSelect={handleCategorySelect}
         />
+      )}
+
+      {/* Active collection filter */}
+      {catalogFilter && (
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-primary/40 text-primary"
+            onClick={() => setCatalogFilter(null)}
+          >
+            {filterLabels[catalogFilter] || catalogFilter}
+            <X className="ml-1 h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
 
       {/* Sort and filters */}
