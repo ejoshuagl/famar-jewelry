@@ -706,14 +706,9 @@ export function AdminProductsView() {
                   <Label>Precio *</Label>
                   <Input type="number" step="0.01" value={form.price} onChange={(e) => updateForm('price', e.target.value)} />
                 </div>
-                <div className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <Label>Stock</Label>
-                    <Input type="number" value={form.stock} onChange={(e) => updateForm('stock', e.target.value)} />
-                  </div>
-                  <p className="text-xs text-muted-foreground pb-2">
-                    Estado automático: stock 0 = Agotado
-                  </p>
+                <div>
+                  <Label>Stock</Label>
+                  <Input type="number" value={form.stock} onChange={(e) => updateForm('stock', e.target.value)} />
                 </div>
                 <div>
                   <Label>Material</Label>
