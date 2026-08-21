@@ -1,8 +1,14 @@
 'use client'
 
 import { Separator } from '@/components/ui/separator'
+import { Playfair_Display } from 'next/font/google'
 import { useAppStore } from '@/stores/app-store'
 import { Instagram, Facebook, Mail, Phone, MapPin, ShieldCheck } from 'lucide-react'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['600'],
+})
 
 export function SiteFooter() {
   const navigate = useAppStore((s) => s.navigate)
@@ -14,7 +20,7 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-xl font-bold gold-gradient-text mb-3">FAMAR</h3>
+            <h3 className={`${playfair.className} text-xl font-semibold gold-gradient-text mb-3`}>FAMAR</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Joyería y accesorios de moda con la mejor calidad. Encuentra el
               estilo perfecto para cada ocasión.

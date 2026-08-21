@@ -1,6 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
+import { Playfair_Display } from 'next/font/google'
 import { useAppStore, AppView } from '@/stores/app-store'
 import { useCartStore } from '@/stores/cart-store'
 import { useFavoritesStore } from '@/stores/favorites-store'
@@ -13,6 +14,11 @@ import {
   Heart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+})
 
 const navItems: { label: string; view: AppView }[] = [
   { label: 'Inicio', view: 'home' },
@@ -37,7 +43,7 @@ export function SiteHeader() {
         {/* Logo */}
         <button
           onClick={() => navigate('home')}
-          className="text-2xl font-bold tracking-wider gold-gradient-text"
+          className={cn(playfair.className, 'text-2xl font-semibold tracking-wider gold-gradient-text')}
         >
           FAMAR
         </button>
