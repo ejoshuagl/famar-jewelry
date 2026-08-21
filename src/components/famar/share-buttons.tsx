@@ -4,13 +4,11 @@ import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { slugify } from '@/lib/utils'
 
-const BASE_URL = 'https://famar.space-z.ai'
-
 export function getProductUrl(code: string): string {
   if (typeof window !== 'undefined') {
     return `${window.location.origin}/?p=${code}`
   }
-  return `${BASE_URL}/?p=${code}`
+  return `/?p=${code}`
 }
 
 interface ShareButtonsProps {
