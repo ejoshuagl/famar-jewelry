@@ -54,7 +54,6 @@ import {
   Sparkles,
   Eye,
   EyeOff,
-  Tags,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ImageUploader } from './image-uploader'
@@ -73,7 +72,6 @@ interface ProductForm {
   status: string
   mainImage: string
   galleryUrls: string
-  tags: string
   isFeatured: boolean
   isNew: boolean
   isOnSale: boolean
@@ -84,7 +82,7 @@ const emptyForm: ProductForm = {
   name: '', code: '', description: '', categoryId: '',
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
-  galleryUrls: '', tags: '', isFeatured: false, isNew: false, isOnSale: false,
+  galleryUrls: '', isFeatured: false, isNew: false, isOnSale: false,
   visible: true,
 }
 
@@ -169,7 +167,6 @@ export function AdminProductsView() {
   const [form, setForm] = useState<ProductForm>(emptyForm)
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [bulkTags, setBulkTags] = useState('')
   const [bulkBadge, setBulkBadge] = useState('')
 
   const { data, isLoading } = useQuery({
@@ -203,9 +200,6 @@ export function AdminProductsView() {
         ...form,
         images: form.galleryUrls
           ? form.galleryUrls.split('\n').filter((u) => u.trim())
-          : [],
-        tags: form.tags
-          ? form.tags.split(',').map((t) => t.trim()).filter(Boolean)
           : [],
       }
 
@@ -283,8 +277,6 @@ export function AdminProductsView() {
 
   const bulkMutation = useMutation({
     mutationFn: async (payload: {
-      addTags?: string[]
-      removeTags?: string[]
       setVisible?: boolean
       setFeatured?: boolean
       setIsNew?: boolean
@@ -305,7 +297,6 @@ export function AdminProductsView() {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
       toast.success(`${data.updated} producto(s) actualizado(s)`)
       setSelected(new Set())
-      setBulkTags('')
     },
     onError: () => {
       toast.error('Error al actualizar los productos')
@@ -349,15 +340,6 @@ export function AdminProductsView() {
     })
   }
 
-  const applyBulkTags = (mode: 'add' | 'remove') => {
-    const tags = bulkTags.split(',').map((t) => t.trim()).filter(Boolean)
-    if (tags.length === 0) {
-      toast.error('Escribe al menos un tag')
-      return
-    }
-    bulkMutation.mutate(mode === 'add' ? { addTags: tags } : { removeTags: tags })
-  }
-
   const openCreate = () => {
     setEditingId(null)
     setForm(emptyForm)
@@ -375,15 +357,6 @@ export function AdminProductsView() {
         imagesStr = product.images as string
       }
     }
-    let tagsStr = ''
-    if (product.tags) {
-      try {
-        const tgs = JSON.parse(product.tags as string)
-        tagsStr = (tgs as string[]).join(', ')
-      } catch {
-        tagsStr = product.tags as string
-      }
-    }
     setForm({
       name: product.name as string,
       code: product.code as string,
@@ -398,7 +371,6 @@ export function AdminProductsView() {
       status: product.status as string,
       mainImage: (product.mainImage as string) || '',
       galleryUrls: imagesStr,
-      tags: tagsStr,
       isFeatured: product.isFeatured as boolean,
       isNew: product.isNew as boolean,
       isOnSale: product.isOnSale as boolean,
@@ -442,34 +414,6 @@ export function AdminProductsView() {
           <Card>
             <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="text-sm font-medium whitespace-nowrap">{selected.size} seleccionado(s)</span>
-              <div className="flex flex-1 flex-col sm:flex-row gap-2">
-                <Input
-                  placeholder="Tags separados por coma (ej: Nuevo, Oferta)"
-                  value={bulkTags}
-                  onChange={(e) => setBulkTags(e.target.value)}
-                  className="flex-1"
-                />
-                <Button size="sm" variant="outline" onClick={() => applyBulkTags('add')} disabled={bulkMutation.isPending}>
-                  <Tags className="h-3.5 w-3.5 mr-1" />
-                  Agregar tags
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => applyBulkTags('remove')} disabled={bulkMutation.isPending}>
-                  Quitar tags
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: true })} disabled={bulkMutation.isPending}>
-                  <Eye className="h-3.5 w-3.5 mr-1" />
-                  Mostrar
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: false })} disabled={bulkMutation.isPending}>
-                  <EyeOff className="h-3.5 w-3.5 mr-1" />
-                  Ocultar
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
-                  Cancelar
-                </Button>
-              </div>
               <div className="flex items-center gap-2">
                 <Select value={bulkBadge} onValueChange={setBulkBadge}>
                   <SelectTrigger className="w-56">
@@ -486,6 +430,19 @@ export function AdminProductsView() {
                 </Select>
                 <Button size="sm" onClick={applyBulkBadge} disabled={!bulkBadge || bulkMutation.isPending}>
                   Aplicar
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: true })} disabled={bulkMutation.isPending}>
+                  <Eye className="h-3.5 w-3.5 mr-1" />
+                  Mostrar
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: false })} disabled={bulkMutation.isPending}>
+                  <EyeOff className="h-3.5 w-3.5 mr-1" />
+                  Ocultar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+                  Cancelar
                 </Button>
               </div>
             </CardContent>
@@ -787,10 +744,6 @@ export function AdminProductsView() {
                   values={form.galleryUrls.split('\n').map((u) => u.trim()).filter(Boolean)}
                   onChange={(urls) => updateForm('galleryUrls', (urls as string[]).join('\n'))}
                 />
-                <div>
-                  <Label>Tags (separados por coma)</Label>
-                  <Input value={form.tags} onChange={(e) => updateForm('tags', e.target.value)} placeholder="Nuevo, Oferta" />
-                </div>
                 <div className="flex flex-col gap-3 sm:col-span-2">
                   <div className="flex items-center gap-3">
                     <Switch checked={form.isFeatured} onCheckedChange={(v) => updateForm('isFeatured', v)} />

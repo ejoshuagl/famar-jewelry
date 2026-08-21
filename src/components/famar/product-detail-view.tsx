@@ -128,11 +128,9 @@ export function ProductDetailView() {
   }
 
   const isOutOfStock = product.status === 'out_of_stock'
-  const tags: string[] = product.tags
-    ? (() => { try { return JSON.parse(product.tags) } catch { return [] } })()
-    : []
-  if (product.isNew && !tags.includes('Nuevo')) tags.push('Nuevo')
-  if (product.isOnSale && !tags.includes('Oferta')) tags.push('Oferta')
+  const tags: string[] = []
+  if (product.isNew) tags.push('Nuevo')
+  if (product.isOnSale) tags.push('Oferta')
 
   const handleAddToCart = () => {
     if (isOutOfStock) return

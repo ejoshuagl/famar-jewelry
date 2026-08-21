@@ -45,13 +45,6 @@ export function ProductPlaceholder({ letter }: { letter: string }) {
 }
 
 function getTags(product: ProductData): string[] {
-  if (product.tags) {
-    try {
-      return JSON.parse(product.tags)
-    } catch {
-      return []
-    }
-  }
   const tags: string[] = []
   if (product.isNew) tags.push('Nuevo')
   if (product.isOnSale) tags.push('Oferta')
