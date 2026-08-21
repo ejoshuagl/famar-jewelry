@@ -29,6 +29,13 @@ export const metadata: Metadata = {
     "Ecuador",
   ],
   authors: [{ name: "FAMAR" }],
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "FAMAR - Joyería y Accesorios de Moda",
     description: "Descubre la mejor colección de joyería y accesorios de moda.",
