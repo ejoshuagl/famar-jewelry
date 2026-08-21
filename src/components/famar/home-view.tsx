@@ -2,6 +2,12 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
+import { Playfair_Display } from 'next/font/google'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['600', '700'],
+})
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAppStore } from '@/stores/app-store'
@@ -99,7 +105,7 @@ export function HomeView() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-5xl sm:text-7xl md:text-8xl font-bold tracking-wider mb-4"
+            className={`${playfair.className} text-5xl sm:text-7xl md:text-8xl font-semibold tracking-[0.12em] mb-4 drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]`}
           >
             <span className="gold-gradient-text">FAMAR</span>
           </motion.h1>
