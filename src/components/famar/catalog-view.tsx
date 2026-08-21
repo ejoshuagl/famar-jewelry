@@ -33,6 +33,7 @@ export function CatalogView() {
     featured: 'Destacados',
     new: 'Nuevos ingresos',
     'best-selling': 'Más vendidos',
+    sale: 'En oferta',
   }
 
   const buildQuery = useCallback(() => {
@@ -41,6 +42,7 @@ export function CatalogView() {
     if (selectedCategory) params.set('category', selectedCategory)
     if (catalogFilter === 'featured') params.set('featured', 'true')
     if (catalogFilter === 'new') params.set('new', 'true')
+    if (catalogFilter === 'sale') params.set('sale', 'true')
     params.set('sort', catalogFilter === 'best-selling' ? 'best-selling' : sort)
     params.set('page', page.toString())
     params.set('limit', '12')
@@ -112,8 +114,8 @@ export function CatalogView() {
         />
       )}
 
-      {/* Active collection filter */}
-      {catalogFilter && (
+      {/* Active collection filter (from home sections) */}
+      {catalogFilter === 'best-selling' && (
         <div>
           <Button
             variant="outline"
@@ -121,11 +123,30 @@ export function CatalogView() {
             className="border-primary/40 text-primary"
             onClick={() => setCatalogFilter(null)}
           >
-            {filterLabels[catalogFilter] || catalogFilter}
+            {filterLabels[catalogFilter]}
             <X className="ml-1 h-3.5 w-3.5" />
           </Button>
         </div>
       )}
+
+      {/* Quick filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {([
+          ['featured', 'Destacados'],
+          ['new', 'Nuevos'],
+          ['sale', 'En Oferta'],
+        ] as const).map(([value, label]) => (
+          <Button
+            key={value}
+            variant={catalogFilter === value ? 'default' : 'outline'}
+            size="sm"
+            className={catalogFilter === value ? 'bg-primary text-primary-foreground' : 'border-primary/40 text-primary hover:bg-primary/10'}
+            onClick={() => setCatalogFilter(catalogFilter === value ? null : value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
 
       {/* Sort and filters */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
