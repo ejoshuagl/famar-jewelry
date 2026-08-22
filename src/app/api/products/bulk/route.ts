@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { auditLog } from '@/lib/admin-auth'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const adminName = request.headers.get('x-admin-name')
-    if (!adminName) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = requireAdmin(request)
+    if (!admin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+    const adminName = admin.name
 
     const body = await request.json()
     const { ids, setVisible, setFeatured, setIsNew, setIsOnSale } = body
@@ -34,6 +37,13 @@ export async function POST(request: NextRequest) {
         await db.product.update({ where: { id: product.id }, data })
       }
     }
+
+    await auditLog({
+      action: 'bulk',
+      entity: 'product',
+      admin: adminName,
+      details: `${products.length} productos: ${JSON.stringify({ setVisible, setFeatured, setIsNew, setIsOnSale })}`,
+    })
 
     return NextResponse.json({ updated: products.length })
   } catch (error) {

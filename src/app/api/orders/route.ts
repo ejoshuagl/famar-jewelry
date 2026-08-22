@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export async function GET(request: NextRequest) {
   try {
-    const adminName = request.headers.get('x-admin-name')
-    if (!adminName) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = requireAdmin(request)
+    if (!admin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+    const adminName = admin.name
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || ''

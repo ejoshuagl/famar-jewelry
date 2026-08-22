@@ -109,7 +109,8 @@ export function AdminOrdersView() {
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (search) params.set('search', search)
       const res = await fetch(`/api/orders?${params}`, {
-        headers: { 'x-admin-name': adminName || '' },
+        headers: { 'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) throw new Error('Unauthorized')
       return res.json()
@@ -123,6 +124,7 @@ export function AdminOrdersView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({ status: 'confirmed' }),
       })
@@ -148,6 +150,7 @@ export function AdminOrdersView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({ status: 'cancelled', cancelReason: reason || null }),
       })
@@ -172,7 +175,8 @@ export function AdminOrdersView() {
     mutationFn: async (orderId: string) => {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
-        headers: { 'x-admin-name': adminName || '' },
+        headers: { 'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) {
         const d = await res.json()
@@ -200,6 +204,7 @@ export function AdminOrdersView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({
           items: editItems,

@@ -70,6 +70,7 @@ export function AdminCategoriesView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({
           name: name.trim(),
@@ -97,7 +98,8 @@ export function AdminCategoriesView() {
       if (!deletingId) return
       const res = await fetch(`/api/categories/${deletingId}`, {
         method: 'DELETE',
-        headers: { 'x-admin-name': adminName || '' },
+        headers: { 'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) {
         const data = await res.json()

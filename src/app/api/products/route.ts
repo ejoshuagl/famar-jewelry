@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin, auditLog } from '@/lib/admin-auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -113,10 +114,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const adminName = request.headers.get('x-admin-name')
-    if (!adminName) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = requireAdmin(request)
+    if (!admin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+    const adminName = admin.name
 
     const body = await request.json()
     const {
@@ -129,18 +131,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const stockCount = parseInt(stock) || 0
+    // Validaciones básicas
+    const priceValue = parseFloat(price)
+    if (!Number.isFinite(priceValue) || priceValue < 0 || priceValue > 100000) {
+      return NextResponse.json({ error: 'Precio inválido' }, { status: 400 })
+    }
+    if (String(name).length > 120 || String(code).length > 30) {
+      return NextResponse.json({ error: 'Nombre o código demasiado largo' }, { status: 400 })
+    }
+    const stockCount = Math.max(0, Math.min(parseInt(stock) || 0, 100000))
 
     const product = await db.product.create({
       data: {
         name, code, description, categoryId, material, weight, dimensions,
-        color, price: parseFloat(price), stock: stockCount,
+        color, price: priceValue, stock: stockCount,
         status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
         visible: visible === undefined ? true : !!visible,
       },
       include: { category: { select: { name: true, slug: true } } },
+    })
+
+    await auditLog({
+      action: 'create',
+      entity: 'product',
+      entityId: product.id,
+      admin: adminName,
+      details: `${product.name} (${product.code}) precio=$${product.price} stock=${product.stock}`,
     })
 
     return NextResponse.json(product, { status: 201 })

@@ -211,6 +211,7 @@ export function AdminProductsView() {
           headers: {
             'Content-Type': 'application/json',
             'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
           },
           body: JSON.stringify(body),
         })
@@ -222,6 +223,7 @@ export function AdminProductsView() {
           headers: {
             'Content-Type': 'application/json',
             'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
           },
           body: JSON.stringify(body),
         })
@@ -244,7 +246,8 @@ export function AdminProductsView() {
       if (!deletingId) return
       const res = await fetch(`/api/products/${deletingId}`, {
         method: 'DELETE',
-        headers: { 'x-admin-name': adminName || '' },
+        headers: { 'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) throw new Error('Error deleting product')
     },
@@ -266,6 +269,7 @@ export function AdminProductsView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({ visible: !product.visible }),
       })
@@ -289,6 +293,7 @@ export function AdminProductsView() {
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({ ids: Array.from(selected), ...payload }),
       })

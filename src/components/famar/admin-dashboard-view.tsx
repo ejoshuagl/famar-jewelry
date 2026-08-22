@@ -62,7 +62,8 @@ export function AdminDashboardView() {
     queryKey: ['admin-stats', salesPeriod],
     queryFn: async () => {
       const res = await fetch(`/api/stats?period=${salesPeriod}`, {
-        headers: { 'x-admin-name': adminName || '' },
+        headers: { 'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) throw new Error('Unauthorized')
       return res.json() as Promise<DashboardStats>

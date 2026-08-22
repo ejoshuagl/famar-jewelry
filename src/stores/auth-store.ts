@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware'
 interface AuthStore {
   isAuthenticated: boolean
   adminName: string | null
+  token: string | null
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
 }
@@ -13,6 +14,7 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       isAuthenticated: false,
       adminName: null,
+      token: null,
       login: async (username: string, password: string) => {
         try {
           const res = await fetch('/api/auth', {
@@ -22,7 +24,7 @@ export const useAuthStore = create<AuthStore>()(
           })
           if (res.ok) {
             const data = await res.json()
-            set({ isAuthenticated: true, adminName: data.name })
+            set({ isAuthenticated: true, adminName: data.name, token: data.token })
             return true
           }
           return false
@@ -31,7 +33,7 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
       logout: () => {
-        set({ isAuthenticated: false, adminName: null })
+        set({ isAuthenticated: false, adminName: null, token: null })
       },
     }),
     {

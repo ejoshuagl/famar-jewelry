@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { formatPrice } from '@/lib/utils'
+import { requireAdmin, auditLog } from '@/lib/admin-auth'
 
 // PUT - Update order status OR modify order items
 export async function PUT(
@@ -7,10 +9,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const adminName = request.headers.get('x-admin-name')
-    if (!adminName) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = requireAdmin(request)
+    if (!admin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+    const adminName = admin.name
 
     const { id } = await params
     const body = await request.json()
@@ -63,6 +66,14 @@ export async function PUT(
           ...(status === 'cancelled' && cancelReason !== undefined && { cancelReason: cancelReason || null }),
         },
         include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+      })
+
+      await auditLog({
+        action: status === 'confirmed' ? 'confirm' : 'cancel',
+        entity: 'order',
+        entityId: order.id,
+        admin: adminName,
+        details: `#${order.orderNumber} (${formatPrice(order.total)})${cancelReason ? ' — motivo: ' + cancelReason : ''}`,
       })
 
       if (status === 'confirmed') {
@@ -133,10 +144,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const adminName = request.headers.get('x-admin-name')
-    if (!adminName) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const admin = requireAdmin(request)
+    if (!admin) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
+    const adminName = admin.name
 
     const { id } = await params
 

@@ -94,3 +94,12 @@ model Review {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // create, update, delete, confirm, cancel, bulk
+  entity    String   // product, order, category
+  entityId  String?
+  admin     String
+  details   String?
+  createdAt DateTime @default(now())
+}
