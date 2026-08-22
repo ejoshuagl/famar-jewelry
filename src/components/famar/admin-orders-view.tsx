@@ -81,6 +81,7 @@ export function AdminOrdersView() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [cancelReasonInput, setCancelReasonInput] = useState('')
+  const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
 
   // Edit state
@@ -580,7 +581,13 @@ export function AdminOrdersView() {
                                     const img = (item.product as { mainImage?: string } | null)?.mainImage
                                     const url = img ? convertDriveUrl(img) : null
                                     return url ? (
-                                      <img src={url} alt={item.name as string} className="h-11 w-11 rounded-md object-cover shrink-0" loading="lazy" />
+                                      <img
+                                        src={url}
+                                        alt={item.name as string}
+                                        className="h-11 w-11 rounded-md object-cover shrink-0 cursor-zoom-in hover:scale-110 transition-transform"
+                                        loading="lazy"
+                                        onClick={(e) => { e.stopPropagation(); setZoomImage(url) }}
+                                      />
                                     ) : (
                                       <div className="h-11 w-11 rounded-md bg-muted flex items-center justify-center text-[10px] text-muted-foreground shrink-0">—</div>
                                     )
@@ -730,7 +737,13 @@ export function AdminOrdersView() {
                     {editItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
                         {item.image ? (
-                          <img src={convertDriveUrl(item.image)} alt={item.name} className="h-10 w-10 rounded-md object-cover shrink-0" loading="lazy" />
+                          <img
+                            src={convertDriveUrl(item.image)}
+                            alt={item.name}
+                            className="h-10 w-10 rounded-md object-cover shrink-0 cursor-zoom-in hover:scale-110 transition-transform"
+                            loading="lazy"
+                            onClick={() => setZoomImage(convertDriveUrl(item.image as string))}
+                          />
                         ) : (
                           <div className="h-10 w-10 rounded-md bg-background flex items-center justify-center text-[10px] text-muted-foreground shrink-0">—</div>
                         )}
@@ -858,6 +871,20 @@ export function AdminOrdersView() {
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========== Image Zoom ========== */}
+        <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
+          <DialogContent className="max-w-lg p-0 overflow-hidden bg-background/95 border-primary/30">
+            {zoomImage && (
+              <img
+                src={zoomImage}
+                alt="Producto"
+                className="w-full max-h-[75vh] object-contain bg-black/30"
+                onClick={() => setZoomImage(null)}
+              />
+            )}
           </DialogContent>
         </Dialog>
 
