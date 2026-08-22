@@ -280,10 +280,9 @@ export function AdminOrdersView() {
     setEditDialogOpen(true)
   }
 
-  // Máximo disponible: stock actual + unidades ya reservadas en el pedido
+  // Máximo disponible: el stock actual (en pedidos pendientes aún no se descuenta)
   const maxQtyFor = (item: EditableOrderItem): number | null => {
-    if (item.stock == null) return null
-    return item.stock + (item.baseQty ?? item.quantity)
+    return item.stock ?? null
   }
 
   const handleItemQtyChange = (itemId: string, delta: number) => {
@@ -337,10 +336,7 @@ export function AdminOrdersView() {
     const existing = editItems.find((item) => item.productId === product.id)
     if (existing) {
       // Increase quantity
-      const stock = product.stock as number
-      const max = existing.baseQty != null && existing.stock != null
-        ? existing.stock + existing.baseQty
-        : stock
+      const max = existing.stock != null ? existing.stock : (product.stock as number)
       if (existing.quantity + 1 > max) {
         toast.error(`Solo hay ${max} unidad(es) disponible(s) de "${product.name}"`)
         return
