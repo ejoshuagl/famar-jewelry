@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, convertDriveUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -66,6 +66,7 @@ interface EditableOrderItem {
   price: number
   name: string
   code: string
+  image?: string | null
 }
 
 export function AdminOrdersView() {
@@ -260,6 +261,7 @@ export function AdminOrdersView() {
       price: item.price as number,
       name: item.name as string,
       code: item.code as string,
+      image: (item.product as { mainImage?: string } | null)?.mainImage || null,
     }))
     setEditItems(items)
     setEditObs((target.observations as string) || '')
@@ -573,8 +575,21 @@ export function AdminOrdersView() {
                           {(selectedOrder.items as Array<Record<string, unknown>>).map((item) => (
                             <tr key={item.id} className="border-t">
                               <td className="px-3 py-2">
-                                <p className="font-medium truncate max-w-[150px]">{item.name}</p>
-                                <p className="text-xs text-muted-foreground">{item.code}</p>
+                                <div className="flex items-center gap-2">
+                                  {(() => {
+                                    const img = (item.product as { mainImage?: string } | null)?.mainImage
+                                    const url = img ? convertDriveUrl(img) : null
+                                    return url ? (
+                                      <img src={url} alt={item.name as string} className="h-11 w-11 rounded-md object-cover shrink-0" loading="lazy" />
+                                    ) : (
+                                      <div className="h-11 w-11 rounded-md bg-muted flex items-center justify-center text-[10px] text-muted-foreground shrink-0">—</div>
+                                    )
+                                  })()}
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate max-w-[150px]">{item.name}</p>
+                                    <p className="text-xs text-muted-foreground">{item.code}</p>
+                                  </div>
+                                </div>
                               </td>
                               <td className="text-center px-3 py-2">{item.quantity}</td>
                               <td className="text-right px-3 py-2 whitespace-nowrap">{formatPrice(item.price as number)}</td>
@@ -714,6 +729,11 @@ export function AdminOrdersView() {
                   <div className="space-y-2">
                     {editItems.map((item) => (
                       <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border">
+                        {item.image ? (
+                          <img src={convertDriveUrl(item.image)} alt={item.name} className="h-10 w-10 rounded-md object-cover shrink-0" loading="lazy" />
+                        ) : (
+                          <div className="h-10 w-10 rounded-md bg-background flex items-center justify-center text-[10px] text-muted-foreground shrink-0">—</div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.name}</p>
                           <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(item.price)} c/u</p>
