@@ -101,14 +101,15 @@ export async function GET(request: NextRequest) {
     })
     const hiddenCount = await db.product.count({ where: { visible: false } })
 
-    // Sales by category (units sold)
-    const products = await db.product.findMany({
-      select: { salesCount: true, category: { select: { name: true } } },
+    // Sales by category, from real order items (non-cancelled orders)
+    const soldItems = await db.orderItem.findMany({
+      where: { order: { status: { not: 'cancelled' } } },
+      select: { quantity: true, product: { select: { category: { select: { name: true } } } } },
     })
     const byCat = new Map<string, number>()
-    for (const p of products) {
-      const name = p.category?.name || 'Sin categoría'
-      byCat.set(name, (byCat.get(name) || 0) + p.salesCount)
+    for (const item of soldItems) {
+      const name = item.product?.category?.name || 'Sin categoría'
+      byCat.set(name, (byCat.get(name) || 0) + item.quantity)
     }
     const salesByCategory = Array.from(byCat.entries())
       .map(([name, sales]) => ({ name, sales }))

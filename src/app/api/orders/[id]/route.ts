@@ -51,6 +51,7 @@ export async function PUT(
               data: {
                 stock: Math.max(0, newStock),
                 status: newStock <= 0 ? 'out_of_stock' : product.status,
+                salesCount: { increment: item.quantity },
               },
             })
           }
