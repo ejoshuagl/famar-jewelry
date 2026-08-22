@@ -109,22 +109,25 @@ export function CartView() {
       // Build WhatsApp message
       const date = new Date().toLocaleDateString('es-EC')
       const productList = items
-        .map((item) => `  • ${item.quantity}x ${item.name} (${item.code}) - ${formatPrice(item.price * item.quantity)}`)
+        .map((item) => `🔸 ${item.quantity}x ${item.name} (${item.code}) — ${formatPrice(item.price * item.quantity)}`)
         .join('\n')
 
-      const message = `*NUEVO PEDIDO - FAMAR*
--------------------
+      const message = `✨ *NUEVO PEDIDO - FAMAR* ✨
+━━━━━━━━━━━━━━━
 
-*Cliente:* ${form.name}
-*Ciudad:* ${form.city}
-*Telefono:* ${form.phone}
-*Fecha:* ${date}
-*Pedido:* #${order.orderNumber}
--------------------
+👤 *Cliente:* ${form.name}
+📍 *Ciudad:* ${form.city}
+📱 *Teléfono:* ${form.phone}
+📅 *Fecha:* ${date}
+🧾 *Pedido:* #${order.orderNumber}
+━━━━━━━━━━━━━━━
+🛍️ *Productos:*
 ${productList}
--------------------
-*TOTAL:* ${formatPrice(total)}
-*Observaciones:* ${form.observations || 'Ninguna'}`
+━━━━━━━━━━━━━━━
+💰 *TOTAL:* ${formatPrice(total)}
+📝 *Observaciones:* ${form.observations || 'Ninguna'}
+
+🙏 ¡Gracias por tu compra!`
 
       const encodedMessage = encodeURIComponent(message)
       window.open(`https://wa.me/593988215076?text=${encodedMessage}`, '_blank')
