@@ -125,9 +125,7 @@ export function CartView() {
 ${productList}
 ━━━━━━━━━━━━━━━
 💰 *TOTAL:* ${formatPrice(total)}
-📝 *Observaciones:* ${form.observations || 'Ninguna'}
-
-🙏 ¡Gracias por tu compra!`
+📝 *Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
       window.open(`https://wa.me/593988215076?text=${encodedMessage}`, '_blank')
