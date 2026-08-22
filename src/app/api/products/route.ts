@@ -28,12 +28,32 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12')
     const sort = searchParams.get('sort') || 'relevance'
     const includeHidden = searchParams.get('all') === 'true'
+    const flag = searchParams.get('flag') || ''
 
     const where: Record<string, unknown> = {}
     if (!includeHidden) {
       where.visible = true
     }
-    if (search) {
+    if (flag === 'featured') where.isFeatured = true
+    if (flag === 'new') where.isNew = true
+    if (flag === 'sale') where.isOnSale = true
+    if (flag === 'out_of_stock') where.status = 'out_of_stock'
+    if (flag === 'hidden') where.visible = false
+    // Palabras clave en la búsqueda que equivalen a una etiqueta
+    const flagWords: Record<string, string> = {
+      nuevo: 'new', nuevos: 'new', nueva: 'new',
+      destacado: 'featured', destacados: 'featured',
+      oferta: 'sale', ofertas: 'sale',
+      agotado: 'out_of_stock', agotados: 'out_of_stock',
+      oculto: 'hidden', ocultos: 'hidden',
+    }
+    const searchFlag = flagWords[search.toLowerCase()]
+    if (searchFlag === 'new') where.isNew = true
+    if (searchFlag === 'featured') where.isFeatured = true
+    if (searchFlag === 'sale') where.isOnSale = true
+    if (searchFlag === 'out_of_stock') where.status = 'out_of_stock'
+    if (searchFlag === 'hidden') where.visible = false
+    if (search && !searchFlag) {
       const q = { contains: search, mode: 'insensitive' }
       where.OR = [
         { name: q },

@@ -160,6 +160,7 @@ export function AdminProductsView() {
   const { adminName } = useAuthStore()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [flagFilter, setFlagFilter] = useState('')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -170,7 +171,7 @@ export function AdminProductsView() {
   const [bulkBadge, setBulkBadge] = useState('')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-products', search, page],
+    queryKey: ['admin-products', search, flagFilter, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: '20',
@@ -178,6 +179,7 @@ export function AdminProductsView() {
         all: 'true',
       })
       if (search) params.set('search', search)
+      if (flagFilter) params.set('flag', flagFilter)
       const res = await fetch(`/api/products?${params}`, { cache: 'no-store' })
       return res.json()
     },
@@ -399,14 +401,29 @@ export function AdminProductsView() {
           </Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre, código, material, color o tag..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            className="pl-9"
-          />
+        <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, código, material, color..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={flagFilter || 'todos'} onValueChange={(v) => { setFlagFilter(v === 'todos' ? '' : v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="featured">Destacados</SelectItem>
+              <SelectItem value="new">Nuevos</SelectItem>
+              <SelectItem value="sale">En Oferta</SelectItem>
+              <SelectItem value="out_of_stock">Agotados</SelectItem>
+              <SelectItem value="hidden">Ocultos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Bulk actions bar */}
