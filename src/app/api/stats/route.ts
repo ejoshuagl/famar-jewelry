@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || '7'
     const orders = await db.order.findMany({
-      where: { status: { not: 'cancelled' } },
+      where: { status: 'confirmed' },
       select: { createdAt: true, total: true },
       orderBy: { createdAt: 'asc' },
     })
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 
     // Sales by category, from real order items (non-cancelled orders)
     const soldItems = await db.orderItem.findMany({
-      where: { order: { status: { not: 'cancelled' } } },
+      where: { order: { status: 'confirmed' } },
       select: { quantity: true, product: { select: { category: { select: { name: true } } } } },
     })
     const byCat = new Map<string, number>()
