@@ -25,6 +25,7 @@ export function WhatsAppButton() {
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
       aria-label="Ir al carrito de compras"
+      data-cart-button
     >
       <ShoppingCart className="h-7 w-7" />
       {mounted && itemCount > 0 && (
