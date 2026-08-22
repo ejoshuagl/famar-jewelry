@@ -109,7 +109,7 @@ export function CartView() {
       // Build WhatsApp message
       const date = new Date().toLocaleDateString('es-EC')
       const productList = items
-        .map((item) => `🔸 ${item.quantity}x ${item.name} (${item.code}) — ${formatPrice(item.price * item.quantity)}`)
+        .map((item) => `🔸 ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(item.price * item.quantity)}`)
         .join('\n')
 
       const message = `✨ *NUEVO PEDIDO - FAMAR* ✨
