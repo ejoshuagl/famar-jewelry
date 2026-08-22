@@ -79,7 +79,7 @@ export function HomeView() {
     },
     {
       icon: <Truck className="h-8 w-8 text-primary" />,
-      title: 'Envíos Nationwide',
+      title: 'Envíos a Todo el País',
       desc: 'Realizamos envíos a todo el territorio ecuatoriano.',
     },
     {
