@@ -1,9 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import {
   Package,
   ShoppingBag,
@@ -46,11 +49,19 @@ interface DashboardStats {
 
 export function AdminDashboardView() {
   const { adminName } = useAuthStore()
+  const [salesPeriod, setSalesPeriod] = useState('7')
+
+  const periods = [
+    { value: '7', label: '7 días' },
+    { value: '30', label: '30 días' },
+    { value: '90', label: '90 días' },
+    { value: 'all', label: 'Todo' },
+  ]
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats'],
+    queryKey: ['admin-stats', salesPeriod],
     queryFn: async () => {
-      const res = await fetch('/api/stats', {
+      const res = await fetch(`/api/stats?period=${salesPeriod}`, {
         headers: { 'x-admin-name': adminName || '' },
       })
       if (!res.ok) throw new Error('Unauthorized')
@@ -168,18 +179,31 @@ export function AdminDashboardView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Sales last 7 days */}
+        {/* Sales chart with period selector */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle className="text-lg flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              Ventas últimos 7 días
+              Ventas
             </CardTitle>
+            <div className="flex gap-1">
+              {periods.map((p) => (
+                <Button
+                  key={p.value}
+                  size="sm"
+                  variant={salesPeriod === p.value ? 'default' : 'ghost'}
+                  className={cn('h-7 px-2 text-xs', salesPeriod === p.value && 'bg-primary text-primary-foreground')}
+                  onClick={() => setSalesPeriod(p.value)}
+                >
+                  {p.label}
+                </Button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between gap-2 h-40">
+            <div className="flex items-end justify-between gap-1 h-40">
               {stats.salesLast7Days.map((d, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0">
                   <span className="text-[10px] text-muted-foreground truncate max-w-full">
                     {d.total > 0 ? formatPrice(d.total) : ''}
                   </span>
@@ -188,7 +212,7 @@ export function AdminDashboardView() {
                     style={{ height: `${Math.max((d.total / maxDayTotal) * 100, 2)}%` }}
                     title={`${d.count} pedidos`}
                   />
-                  <span className="text-xs text-muted-foreground capitalize">{d.day}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize truncate max-w-full">{d.day}</span>
                 </div>
               ))}
             </div>
