@@ -93,6 +93,8 @@ export function SiteHeader() {
             size="icon"
             className="h-9 w-9 relative"
             onClick={() => navigate('cart')}
+            id="cart-button"
+            data-cart-button
           >
             <ShoppingCart className="h-4 w-4" />
             {mounted && itemCount > 0 && (

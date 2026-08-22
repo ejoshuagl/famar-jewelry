@@ -35,6 +35,54 @@ interface ProductCardProps {
   index?: number
 }
 
+// Animación: una copia circular de la imagen vuela hasta el botón del carrito
+export function flyToCartFrom(source: Element | null) {
+  const target = document.querySelector('[data-cart-button]')
+  if (!source || !target) return
+
+  const from = (source as HTMLElement).getBoundingClientRect()
+  const to = target.getBoundingClientRect()
+  const size = Math.min(from.width, 80)
+
+  const ghost = document.createElement('div')
+  const imgSrc = (source as HTMLImageElement).src || (source as HTMLImageElement).style?.backgroundImage
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('http')) {
+    ghost.style.backgroundImage = `url(${imgSrc})`
+    ghost.style.backgroundSize = 'cover'
+  } else {
+    ghost.style.background = 'linear-gradient(135deg, rgba(200,169,81,0.5), rgba(200,169,81,0.15))'
+  }
+  ghost.style.position = 'fixed'
+  ghost.style.zIndex = '100'
+  ghost.style.borderRadius = '9999px'
+  ghost.style.pointerEvents = 'none'
+  ghost.style.boxShadow = '0 8px 24px rgba(200,169,81,0.4)'
+  ghost.style.width = `${size}px`
+  ghost.style.height = `${size}px`
+  ghost.style.left = `${from.left + from.width / 2 - size / 2}px`
+  ghost.style.top = `${from.top + from.height / 2 - size / 2}px`
+  document.body.appendChild(ghost)
+
+  const deltaX = to.left + to.width / 2 - (from.left + from.width / 2)
+  const deltaY = to.top + to.height / 2 - (from.top + from.height / 2)
+
+  const anim = ghost.animate(
+    [
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${deltaX * 0.5}px, ${deltaY * 0.6 - 60}px) scale(0.7)`, opacity: 0.9, offset: 0.5 },
+      { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.15)`, opacity: 0.4 },
+    ],
+    { duration: 700, easing: 'cubic-bezier(0.5, -0.2, 0.6, 1)' }
+  )
+  anim.onfinish = () => {
+    ghost.remove()
+    target.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.4)' }, { transform: 'scale(1)' }],
+      { duration: 300, easing: 'ease-out' }
+    )
+  }
+}
+
 export function ProductPlaceholder({ letter }: { letter: string }) {
   return (
     <div className="aspect-square w-full rounded-lg bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 dark:from-primary/30 dark:via-primary/15 dark:to-primary/5 flex items-center justify-center">
@@ -72,6 +120,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isOutOfStock) return
+    flyToCartFrom((e.currentTarget as HTMLElement).closest('.group')?.querySelector('img'))
     addItem({
       productId: product.id,
       code: product.code,

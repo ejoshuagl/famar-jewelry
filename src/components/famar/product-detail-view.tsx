@@ -6,7 +6,7 @@ import { useCartStore } from '@/stores/cart-store'
 import { useFavoritesStore } from '@/stores/favorites-store'
 import { formatPrice } from '@/lib/utils'
 import { ProductGallery } from './product-gallery'
-import { ProductCard, type ProductData } from './product-card'
+import { ProductCard, type ProductData, flyToCartFrom } from './product-card'
 import { ShareButtons, getProductUrl } from './share-buttons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -134,6 +134,7 @@ export function ProductDetailView() {
 
   const handleAddToCart = () => {
     if (isOutOfStock) return
+    flyToCartFrom(document.querySelector('main img'))
     addItem({
       productId: product.id,
       code: product.code,
