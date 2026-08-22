@@ -14,7 +14,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { status, items, observations, customerName, customerCity, customerPhone, total } = body
+    const { status, items, observations, customerName, customerCity, customerPhone, total, cancelReason } = body
 
     const order = await db.order.findUnique({
       where: { id },
@@ -37,7 +37,10 @@ export async function PUT(
 
       const updatedOrder = await db.order.update({
         where: { id },
-        data: { status },
+        data: {
+          status,
+          ...(status === 'cancelled' && cancelReason !== undefined && { cancelReason: cancelReason || null }),
+        },
         include: { items: true },
       })
 

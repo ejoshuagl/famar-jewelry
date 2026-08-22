@@ -57,6 +57,7 @@ model Order {
   observations  String?
   total         Float
   status        String   @default("pending") // pending, confirmed, cancelled
+  cancelReason  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

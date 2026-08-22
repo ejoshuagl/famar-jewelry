@@ -77,6 +77,9 @@ export function AdminOrdersView() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
+  const [cancelReasonInput, setCancelReasonInput] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
 
   // Edit state
@@ -135,14 +138,14 @@ export function AdminOrdersView() {
   })
 
   const cancelMutation = useMutation({
-    mutationFn: async (orderId: string) => {
+    mutationFn: async ({ orderId, reason }: { orderId: string; reason: string }) => {
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'x-admin-name': adminName || '',
         },
-        body: JSON.stringify({ status: 'cancelled' }),
+        body: JSON.stringify({ status: 'cancelled', cancelReason: reason || null }),
       })
       if (!res.ok) {
         const d = await res.json()
@@ -155,6 +158,8 @@ export function AdminOrdersView() {
       queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
       toast.success('Pedido cancelado')
       setDetailDialogOpen(false)
+      setCancelDialogOpen(false)
+      setCancelReasonInput('')
     },
     onError: (err) => toast.error(err.message || 'Error al cancelar el pedido'),
   })
@@ -406,7 +411,14 @@ export function AdminOrdersView() {
                       <TableCell className="text-sm">{order.customerCity}</TableCell>
                       <TableCell className="text-sm">{order.customerPhone}</TableCell>
                       <TableCell className="text-sm font-medium">{formatPrice(order.total as number)}</TableCell>
-                      <TableCell>{getStatusBadge(order.status as string)}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(order.status as string)}
+                        {(order.status as string) === 'cancelled' && (order.cancelReason as string) && (
+                          <p className="text-[10px] text-muted-foreground mt-1 max-w-[140px] truncate" title={order.cancelReason as string}>
+                            {order.cancelReason as string}
+                          </p>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(order.createdAt as string).toLocaleDateString('es-EC')}
                       </TableCell>
@@ -537,6 +549,13 @@ export function AdminOrdersView() {
                   </div>
                 </div>
 
+                {(selectedOrder.status as string) === 'cancelled' && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900">
+                    <span className="text-xs text-muted-foreground">Motivo de cancelación:</span>
+                    <p className="text-sm">{(selectedOrder.cancelReason as string) || 'Sin motivo registrado'}</p>
+                  </div>
+                )}
+
                 <div>
                   <h4 className="text-sm font-semibold mb-2">Productos</h4>
                   <div className="border rounded-lg overflow-hidden">
@@ -605,7 +624,11 @@ export function AdminOrdersView() {
                         <Button
                           variant="destructive"
                           className="flex-1"
-                          onClick={() => cancelMutation.mutate(selectedOrder.id as string)}
+                          onClick={() => {
+                            setCancellingOrderId(selectedOrder.id as string)
+                            setCancelReasonInput('')
+                            setCancelDialogOpen(true)
+                          }}
                           disabled={cancelMutation.isPending}
                         >
                           {cancelMutation.isPending ? (
@@ -814,6 +837,41 @@ export function AdminOrdersView() {
                   )}
                 </Button>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ========== Cancel Order with Reason ========== */}
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Cancelar pedido</DialogTitle>
+              <DialogDescription>
+                Anota el motivo para tenerlo registrado en el análisis de cancelaciones.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label>Motivo de cancelación</Label>
+              <Textarea
+                value={cancelReasonInput}
+                onChange={(e) => setCancelReasonInput(e.target.value)}
+                placeholder="Ej: cliente no respondió, se arrepintió, sin stock, precio..."
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Volver</Button>
+              <Button
+                variant="destructive"
+                onClick={() => cancellingOrderId && cancelMutation.mutate({ orderId: cancellingOrderId, reason: cancelReasonInput })}
+                disabled={cancelMutation.isPending}
+              >
+                {cancelMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelando...</>
+                ) : (
+                  'Cancelar pedido'
+                )}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

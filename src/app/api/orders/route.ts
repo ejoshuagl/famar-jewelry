@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { generateOrderNumber } from '@/lib/utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,7 +49,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const orderNumber = generateOrderNumber()
+    // Sequential order number: FAM-000001, FAM-000002...
+    const lastSeq = await db.$queryRaw<Array<{ max: bigint | null }>>`
+      SELECT MAX(NULLIF(regexp_replace("orderNumber", '\\D', '', 'g'), '')::bigint) AS max
+      FROM "Order"
+      WHERE "orderNumber" ~ '^FAM-\\d{1,6}$'
+    `
+    const totalCount = await db.order.count()
+    const lastNumber = Math.max(Number(lastSeq[0]?.max || 0), totalCount)
+    const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
     const order = await db.order.create({
       data: {
         orderNumber,
