@@ -67,6 +67,8 @@ interface EditableOrderItem {
   name: string
   code: string
   image?: string | null
+  stock?: number | null
+  baseQty?: number
 }
 
 export function AdminOrdersView() {
@@ -263,6 +265,8 @@ export function AdminOrdersView() {
       name: item.name as string,
       code: item.code as string,
       image: (item.product as { mainImage?: string } | null)?.mainImage || null,
+      stock: (item.product as { stock?: number } | null)?.stock ?? null,
+      baseQty: item.quantity as number,
     }))
     setEditItems(items)
     setEditObs((target.observations as string) || '')
@@ -276,13 +280,24 @@ export function AdminOrdersView() {
     setEditDialogOpen(true)
   }
 
+  // Máximo disponible: stock actual + unidades ya reservadas en el pedido
+  const maxQtyFor = (item: EditableOrderItem): number | null => {
+    if (item.stock == null) return null
+    return item.stock + (item.baseQty ?? item.quantity)
+  }
+
   const handleItemQtyChange = (itemId: string, delta: number) => {
     setEditItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
+      prev.map((item) => {
+        if (item.id !== itemId) return item
+        const next = item.quantity + delta
+        const max = maxQtyFor(item)
+        if (delta > 0 && max != null && next > max) {
+          toast.error(`Solo hay ${max} unidad(es) disponible(s) de "${item.name}"`)
+          return item
+        }
+        return { ...item, quantity: Math.max(1, next) }
+      })
     )
   }
 
@@ -322,6 +337,14 @@ export function AdminOrdersView() {
     const existing = editItems.find((item) => item.productId === product.id)
     if (existing) {
       // Increase quantity
+      const stock = product.stock as number
+      const max = existing.baseQty != null && existing.stock != null
+        ? existing.stock + existing.baseQty
+        : stock
+      if (existing.quantity + 1 > max) {
+        toast.error(`Solo hay ${max} unidad(es) disponible(s) de "${product.name}"`)
+        return
+      }
       setEditItems((prev) =>
         prev.map((item) =>
           item.productId === product.id
@@ -331,6 +354,10 @@ export function AdminOrdersView() {
       )
       toast.success(`Cantidad de "${product.name}" aumentada a ${existing.quantity + 1}`)
     } else {
+      if ((product.stock as number) < 1) {
+        toast.error(`"${product.name}" no tiene stock disponible`)
+        return
+      }
       const newItem: EditableOrderItem = {
         id: `new-${Date.now()}`,
         productId: product.id as string,
@@ -338,6 +365,8 @@ export function AdminOrdersView() {
         price: product.price as number,
         name: product.name as string,
         code: product.code as string,
+        stock: product.stock as number,
+        baseQty: 0,
       }
       setEditItems((prev) => [...prev, newItem])
       toast.success(`"${product.name}" agregado al pedido`)
@@ -756,7 +785,14 @@ export function AdminOrdersView() {
                             <Minus className="h-3 w-3" />
                           </Button>
                           <span className="w-7 text-center text-sm font-medium">{item.quantity}</span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, 1)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => handleItemQtyChange(item.id, 1)}
+                            disabled={maxQtyFor(item) != null && item.quantity >= (maxQtyFor(item) as number)}
+                            title={maxQtyFor(item) != null ? `Máximo disponible: ${maxQtyFor(item)}` : undefined}
+                          >
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>

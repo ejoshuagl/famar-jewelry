@@ -18,7 +18,7 @@ export async function PUT(
 
     const order = await db.order.findUnique({
       where: { id },
-      include: { items: { include: { product: { select: { mainImage: true } } } } },
+      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
     })
 
     if (!order) {
@@ -41,7 +41,7 @@ export async function PUT(
           status,
           ...(status === 'cancelled' && cancelReason !== undefined && { cancelReason: cancelReason || null }),
         },
-        include: { items: { include: { product: { select: { mainImage: true } } } } },
+        include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
       })
 
       if (status === 'confirmed') {
@@ -96,7 +96,7 @@ export async function PUT(
           })),
         },
       },
-      include: { items: { include: { product: { select: { mainImage: true } } } } },
+      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
     })
 
     return NextResponse.json(updatedOrder)

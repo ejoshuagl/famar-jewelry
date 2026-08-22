@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
-      include: { items: { include: { product: { select: { mainImage: true } } } } },
+      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
     })
 
     return NextResponse.json({ orders, total, page, limit, totalPages: Math.ceil(total / limit) })
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           })),
         },
       },
-      include: { items: { include: { product: { select: { mainImage: true } } } } },
+      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
     })
 
     return NextResponse.json(order, { status: 201 })
