@@ -45,6 +45,21 @@ export async function PUT(
       })
 
       if (status === 'confirmed') {
+        // Verificar stock disponible antes de confirmar
+        const insufficient: string[] = []
+        for (const item of order.items) {
+          const product = await db.product.findUnique({ where: { id: item.productId } })
+          if (!product) continue
+          if (product.stock < item.quantity) {
+            const label = `${product.name} (${product.code}): stock ${product.stock}, pedido ${item.quantity}`
+            insufficient.push(product.stock === 0 ? `${product.name} (${product.code}) está AGOTADO` : label)
+          }
+        }
+        if (insufficient.length > 0) {
+          return NextResponse.json({
+            error: `No se puede confirmar. Artículos sin stock suficiente: ${insufficient.join('; ')}`,
+          }, { status: 400 })
+        }
         for (const item of order.items) {
           const product = await db.product.findUnique({ where: { id: item.productId } })
           if (product) {
