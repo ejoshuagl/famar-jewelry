@@ -46,7 +46,7 @@ export function CartView() {
   const total = getTotal()
 
   const handleQuantityChange = (productId: string, delta: number) => {
-    const item = items.find((i) => i.productId === productId)
+    const item = items.find((i) => (i.itemKey || i.productId) === productId)
     if (!item) return
     updateQuantity(productId, item.quantity + delta)
   }
@@ -94,6 +94,8 @@ export function CartView() {
             price: item.price,
             name: item.name,
             code: item.code,
+            variantId: item.variantId,
+            variantName: item.variantName,
           })),
           total,
         }),
@@ -175,9 +177,10 @@ ${productList}
         {/* Items */}
         <div className="lg:col-span-2 space-y-3">
           {items.map((item) => {
+            const itemKey = item.itemKey || item.productId
             const imageUrl = item.mainImage ? convertDriveUrl(item.mainImage) : null
             return (
-              <Card key={item.productId}>
+              <Card key={itemKey}>
                 <CardContent className="p-4">
                   <div className="flex gap-4">
                     <div
@@ -209,6 +212,7 @@ ${productList}
                         {item.name}
                       </h3>
                       <p className="text-xs text-muted-foreground">{item.code}</p>
+                      {item.variantName && <p className="text-xs font-medium text-primary">Color: {item.variantName}</p>}
                       <p className="text-lg font-bold text-primary mt-1">
                         {formatPrice(item.price)}
                       </p>
@@ -219,7 +223,7 @@ ${productList}
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleQuantityChange(item.productId, -1)}
+                            onClick={() => handleQuantityChange(itemKey, -1)}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
@@ -230,7 +234,7 @@ ${productList}
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleQuantityChange(item.productId, 1)}
+                            onClick={() => handleQuantityChange(itemKey, 1)}
                             disabled={item.quantity >= item.maxStock}
                           >
                             <Plus className="h-3 w-3" />
@@ -245,7 +249,7 @@ ${productList}
                             variant="outline"
                             size="sm"
                             className="h-8 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive gap-1"
-                            onClick={() => confirmDeleteItem(item.productId, item.name)}
+                            onClick={() => confirmDeleteItem(itemKey, item.name)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                             <span className="hidden sm:inline">Eliminar</span>

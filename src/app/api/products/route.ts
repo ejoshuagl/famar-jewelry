@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
+import { parseVariants, variantsStock } from '@/lib/product-variants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const {
       name, code, description, categoryId, material, weight, dimensions,
-      color, price, stock, mainImage, images, isFeatured,
+      color, price, stock, mainImage, images, variants, isFeatured,
       isNew, isOnSale, visible, featuredExcluded,
     } = body
 
@@ -179,7 +180,10 @@ export async function POST(request: NextRequest) {
     if (String(name).length > 120 || String(code).length > 30) {
       return NextResponse.json({ error: 'Nombre o código demasiado largo' }, { status: 400 })
     }
-    const stockCount = Math.max(0, Math.min(parseInt(stock) || 0, 100000))
+    const parsedVariants = parseVariants(variants)
+    const stockCount = parsedVariants.length
+      ? variantsStock(parsedVariants)
+      : Math.max(0, Math.min(parseInt(stock) || 0, 100000))
 
     const imageHash = await tryCreatePerceptualHash(mainImage)
     const product = await db.product.create({
@@ -189,6 +193,7 @@ export async function POST(request: NextRequest) {
         status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
         imageHash,
         images: images ? JSON.stringify(images) : null,
+        variants: parsedVariants.length ? JSON.stringify(parsedVariants) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
         featuredExcluded: !!featuredExcluded,
         visible: visible === undefined ? true : !!visible,

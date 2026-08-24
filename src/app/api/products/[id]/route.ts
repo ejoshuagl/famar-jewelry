@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
+import { parseVariants, variantsStock } from '@/lib/product-variants'
 
 export async function GET(
   request: NextRequest,
@@ -38,7 +39,7 @@ export async function PUT(
     const body = await request.json()
     const {
       name, code, description, categoryId, material, weight, dimensions,
-      color, price, stock, status, mainImage, images, isFeatured,
+      color, price, stock, status, mainImage, images, variants, isFeatured,
       isNew, isOnSale, visible, featuredExcluded,
     } = body
 
@@ -52,7 +53,10 @@ export async function PUT(
     if (name !== undefined && String(name).length > 120) {
       return NextResponse.json({ error: 'Nombre demasiado largo' }, { status: 400 })
     }
-    const stockCount = stock !== undefined ? Math.max(0, Math.min(parseInt(stock) || 0, 100000)) : undefined
+    const parsedVariants = variants !== undefined ? parseVariants(variants) : undefined
+    const stockCount = parsedVariants?.length
+      ? variantsStock(parsedVariants)
+      : stock !== undefined ? Math.max(0, Math.min(parseInt(stock) || 0, 100000)) : undefined
 
     const previous = await db.product.findUnique({ where: { id } })
     if (!previous) {
@@ -82,6 +86,7 @@ export async function PUT(
         ...(mainImage !== undefined && { mainImage }),
         ...(imageHash !== undefined && { imageHash }),
         ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
+        ...(variants !== undefined && { variants: parsedVariants?.length ? JSON.stringify(parsedVariants) : null }),
         ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),
         ...(featuredExcluded !== undefined && { featuredExcluded: !!featuredExcluded }),
         ...(isNew !== undefined && { isNew: !!isNew }),

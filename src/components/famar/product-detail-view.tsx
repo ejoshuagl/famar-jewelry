@@ -10,6 +10,7 @@ import { ProductCard, type ProductData, flyToCartFrom } from './product-card'
 import { ShareButtons, getProductUrl } from './share-buttons'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
@@ -26,12 +27,14 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { parseVariants } from '@/lib/product-variants'
 
 export function ProductDetailView() {
   const { selectedProductId, navigate, selectProduct } = useAppStore()
   const addItem = useCartStore((s) => s.addItem)
   const { toggleFavorite, isFavorite, addViewed, viewedProducts } = useFavoritesStore()
   const [quantity, setQuantity] = useState(1)
+  const [selectedVariantId, setSelectedVariantId] = useState('')
   const favorite = selectedProductId ? isFavorite(selectedProductId) : false
 
   useEffect(() => {
@@ -82,6 +85,10 @@ export function ProductDetailView() {
     enabled: viewedProducts.length > 0,
   })
 
+  const variants = parseVariants(product?.variants)
+  const selectedVariant = variants.find((variant) => variant.id === selectedVariantId) || variants[0]
+  const availableStock = selectedVariant ? selectedVariant.stock : product?.stock || 0
+
   if (!selectedProductId) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
@@ -122,7 +129,7 @@ export function ProductDetailView() {
     )
   }
 
-  const isOutOfStock = product.status === 'out_of_stock'
+  const isOutOfStock = product.status === 'out_of_stock' || availableStock <= 0
   const tags: string[] = []
   if (product.isNew) tags.push('Nuevo')
   if (product.isOnSale) tags.push('Oferta')
@@ -132,17 +139,21 @@ export function ProductDetailView() {
     flyToCartFrom(document.querySelector('main img'))
     addItem({
       productId: product.id,
+      itemKey: selectedVariant ? `${product.id}:${selectedVariant.id}` : product.id,
       code: product.code,
       name: product.name,
       price: product.price,
-      mainImage: product.mainImage || '',
-      maxStock: product.stock,
+      mainImage: selectedVariant?.image || product.mainImage || '',
+      maxStock: availableStock,
+      variantId: selectedVariant?.id,
+      variantName: selectedVariant?.name,
     })
     // Add quantity times
     const currentItems = useCartStore.getState().items
-    const existing = currentItems.find(i => i.productId === product.id)
+    const itemKey = selectedVariant ? `${product.id}:${selectedVariant.id}` : product.id
+    const existing = currentItems.find(i => (i.itemKey || i.productId) === itemKey)
     if (existing && existing.quantity < quantity) {
-      useCartStore.getState().updateQuantity(product.id, quantity)
+      useCartStore.getState().updateQuantity(itemKey, quantity)
     }
     toast.success(`${product.name} agregado al carrito`)
   }
@@ -182,7 +193,7 @@ export function ProductDetailView() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gallery */}
         <ProductGallery
-          mainImage={product.mainImage}
+          mainImage={selectedVariant?.image || product.mainImage}
           images={product.images}
           productName={product.name}
         />
@@ -222,6 +233,28 @@ export function ProductDetailView() {
                 {product.category.name}
               </button>
             </p>
+          )}
+
+          <Separator />
+
+          {variants.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Color: {selectedVariant?.name}</Label>
+              <div className="flex flex-wrap gap-2">
+                {variants.map((variant) => (
+                  <button
+                    type="button"
+                    key={variant.id}
+                    onClick={() => { setSelectedVariantId(variant.id); setQuantity(1) }}
+                    className={`flex items-center gap-2 rounded-lg border p-2 text-sm transition-colors ${selectedVariant?.id === variant.id ? 'border-primary bg-primary/10' : 'hover:border-primary/60'} ${variant.stock <= 0 ? 'opacity-50' : ''}`}
+                  >
+                    {variant.image && <img src={variant.image} alt="" className="h-10 w-10 rounded-md object-cover" />}
+                    <span>{variant.name}</span>
+                    {variant.stock <= 0 && <span className="text-xs text-destructive">Agotado</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           <Separator />
@@ -272,11 +305,11 @@ export function ProductDetailView() {
               <p className="text-sm font-medium text-destructive">Agotado</p>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {product.stock > 5 ? (
+                {availableStock > 5 ? (
                   <>En stock</>
                 ) : (
                   <span className="text-amber-600 dark:text-amber-400">
-                    ¡Últimas {product.stock} unidades!
+                    ¡Últimas {availableStock} unidades!
                   </span>
                 )}
               </p>
@@ -300,7 +333,7 @@ export function ProductDetailView() {
                   variant="ghost"
                   size="icon"
                   className="h-10 w-10"
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>

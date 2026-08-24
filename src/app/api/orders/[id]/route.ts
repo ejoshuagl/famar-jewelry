@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { formatPrice } from '@/lib/utils'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { parseVariants, variantsStock } from '@/lib/product-variants'
 
 // PUT - Update order status OR modify order items
 export async function PUT(
@@ -44,11 +45,14 @@ export async function PUT(
         for (const item of order.items) {
           const product = await db.product.findUnique({ where: { id: item.productId } })
           if (!product) continue
-          if (product.stock < item.quantity) {
+          const variants = parseVariants(product.variants)
+          const variant = item.variantId ? variants.find((entry) => entry.id === item.variantId) : null
+          const available = variant ? variant.stock : product.stock
+          if (available < item.quantity) {
             insufficient.push(
-              product.stock === 0
-                ? `${product.name} (${product.code}) está AGOTADO`
-                : `${product.name} (${product.code}): stock ${product.stock}, pedido ${item.quantity}`
+              available === 0
+                ? `${product.name}${item.variantName ? ` - ${item.variantName}` : ''} (${product.code}) está AGOTADO`
+                : `${product.name}${item.variantName ? ` - ${item.variantName}` : ''} (${product.code}): stock ${available}, pedido ${item.quantity}`
             )
           }
         }
@@ -80,11 +84,18 @@ export async function PUT(
         for (const item of order.items) {
           const product = await db.product.findUnique({ where: { id: item.productId } })
           if (product) {
-            const newStock = product.stock - item.quantity
+            const variants = parseVariants(product.variants)
+            const updatedVariants = item.variantId
+              ? variants.map((variant) => variant.id === item.variantId
+                ? { ...variant, stock: Math.max(0, variant.stock - item.quantity) }
+                : variant)
+              : variants
+            const newStock = updatedVariants.length ? variantsStock(updatedVariants) : product.stock - item.quantity
             await db.product.update({
               where: { id: item.productId },
               data: {
                 stock: Math.max(0, newStock),
+                ...(updatedVariants.length && { variants: JSON.stringify(updatedVariants) }),
                 status: newStock <= 0 ? 'out_of_stock' : product.status,
                 salesCount: { increment: item.quantity },
               },
@@ -119,12 +130,14 @@ export async function PUT(
         ...(customerCity ? { customerCity } : {}),
         ...(customerPhone ? { customerPhone } : {}),
         items: {
-          create: (items || []).map((item: { productId: string; quantity: number; price: number; name: string; code: string }) => ({
+          create: (items || []).map((item: { productId: string; quantity: number; price: number; name: string; code: string; variantId?: string; variantName?: string }) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
             name: item.name,
             code: item.code,
+            variantId: item.variantId || null,
+            variantName: item.variantName || null,
           })),
         },
       },
@@ -166,11 +179,18 @@ export async function DELETE(
       for (const item of orderItems) {
         const product = await db.product.findUnique({ where: { id: item.productId } })
         if (product) {
-          const newStock = product.stock + item.quantity
+          const variants = parseVariants(product.variants)
+          const updatedVariants = item.variantId
+            ? variants.map((variant) => variant.id === item.variantId
+              ? { ...variant, stock: variant.stock + item.quantity }
+              : variant)
+            : variants
+          const newStock = updatedVariants.length ? variantsStock(updatedVariants) : product.stock + item.quantity
           await db.product.update({
             where: { id: item.productId },
             data: {
               stock: newStock,
+              ...(updatedVariants.length && { variants: JSON.stringify(updatedVariants) }),
               status: newStock > 0 ? 'available' : product.status,
             },
           })

@@ -57,6 +57,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ImageUploader } from './image-uploader'
+import type { ProductVariant } from '@/lib/product-variants'
+import { parseVariants } from '@/lib/product-variants'
 
 interface ProductForm {
   name: string
@@ -77,6 +79,7 @@ interface ProductForm {
   isNew: boolean
   isOnSale: boolean
   visible: boolean
+  variants: ProductVariant[]
 }
 
 const emptyForm: ProductForm = {
@@ -84,7 +87,7 @@ const emptyForm: ProductForm = {
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
   galleryUrls: '', isFeatured: false, featuredExcluded: false, isNew: false, isOnSale: false,
-  visible: true,
+  visible: true, variants: [],
 }
 
 function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom, checked, onToggleCheck }: {
@@ -409,6 +412,7 @@ export function AdminProductsView() {
       isNew: product.isNew as boolean,
       isOnSale: product.isOnSale as boolean,
       visible: product.visible !== false,
+      variants: parseVariants(product.variants),
     })
     setEditDialogOpen(true)
   }
@@ -430,8 +434,24 @@ export function AdminProductsView() {
     setForm(emptyForm)
   }
 
-  const updateForm = (key: keyof ProductForm, value: string | boolean) => {
+  const updateForm = (key: keyof ProductForm, value: string | boolean | ProductVariant[]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const addVariant = () => {
+    updateForm('variants', [
+      ...form.variants,
+      { id: crypto.randomUUID(), name: '', image: '', stock: 1 },
+    ])
+  }
+
+  const updateVariant = (index: number, changes: Partial<ProductVariant>) => {
+    updateForm('variants', form.variants.map((variant, current) =>
+      current === index ? { ...variant, ...changes } : variant))
+  }
+
+  const removeVariant = (index: number) => {
+    updateForm('variants', form.variants.filter((_, current) => current !== index))
   }
 
   return (
@@ -787,7 +807,13 @@ export function AdminProductsView() {
                 </div>
                 <div>
                   <Label>Stock</Label>
-                  <Input type="number" value={form.stock} onChange={(e) => updateForm('stock', e.target.value)} />
+                  <Input
+                    type="number"
+                    value={form.variants.length ? form.variants.reduce((sum, variant) => sum + variant.stock, 0) : form.stock}
+                    onChange={(e) => updateForm('stock', e.target.value)}
+                    disabled={form.variants.length > 0}
+                  />
+                  {form.variants.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Se calcula con el stock de las variantes.</p>}
                 </div>
                 <div>
                   <Label>Material</Label>
@@ -826,6 +852,35 @@ export function AdminProductsView() {
                   excludeProductId={editingId}
                   onDuplicateSelect={openDuplicateProduct}
                 />
+                <div className="sm:col-span-2 space-y-3 rounded-lg border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <Label>Variantes de color</Label>
+                      <p className="text-xs text-muted-foreground">Cada color puede tener su propia foto y stock.</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" onClick={addVariant}>
+                      <Plus className="mr-1 h-3.5 w-3.5" /> Añadir color
+                    </Button>
+                  </div>
+                  {form.variants.map((variant, index) => (
+                    <div key={variant.id} className="grid gap-3 rounded-md bg-muted/40 p-3 sm:grid-cols-[1fr_110px_auto]">
+                      <div>
+                        <Label>Nombre del color</Label>
+                        <Input value={variant.name} placeholder="Ej. Ámbar" onChange={(event) => updateVariant(index, { name: event.target.value })} />
+                      </div>
+                      <div>
+                        <Label>Stock</Label>
+                        <Input type="number" min="0" value={variant.stock} onChange={(event) => updateVariant(index, { stock: Math.max(0, Number.parseInt(event.target.value) || 0) })} />
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="mt-5 text-destructive" onClick={() => removeVariant(index)} aria-label={`Quitar variante ${variant.name || index + 1}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <div className="sm:col-span-3">
+                        <ImageUploader label={`Foto de ${variant.name || 'la variante'}`} value={variant.image} onChange={(image) => updateVariant(index, { image: image as string })} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <ImageUploader
                   label="Galería"
                   hint="Fotos extra. También se guardan al guardar el producto."

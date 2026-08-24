@@ -11,6 +11,8 @@ import { useFavoritesStore } from '@/stores/favorites-store'
 import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
+import type { ProductVariant } from '@/lib/product-variants'
+import { parseVariants } from '@/lib/product-variants'
 
 
 export interface ProductData {
@@ -28,6 +30,7 @@ export interface ProductData {
   isOnSale?: boolean
   material?: string | null
   images?: string | null
+  variants?: string | ProductVariant[] | null
 }
 
 interface ProductCardProps {
@@ -116,10 +119,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const tags = getTags(product)
   const isOutOfStock = product.status === 'out_of_stock'
   const imageUrl = product.mainImage ? convertDriveUrl(product.mainImage) : null
+  const hasVariants = parseVariants(product.variants).length > 0
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isOutOfStock) return
+    if (hasVariants) {
+      selectProduct(product.id)
+      navigate('product-detail')
+      toast.info('Elige el color antes de agregarlo')
+      return
+    }
     flyToCartFrom((e.currentTarget as HTMLElement).closest('.group')?.querySelector('img'))
     addItem({
       productId: product.id,
@@ -246,7 +256,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
                 onClick={handleAddToCart}
               >
                 <ShoppingCart className="h-3 w-3 mr-1" />
-                Agregar
+                {hasVariants ? 'Elegir color' : 'Agregar'}
               </Button>
             )}
           </div>

@@ -70,12 +70,14 @@ export async function POST(request: NextRequest) {
         total: parseFloat(total),
         status: 'pending',
         items: {
-          create: items.map((item: { productId: string; quantity: number; price: number; name: string; code: string }) => ({
+          create: items.map((item: { productId: string; quantity: number; price: number; name: string; code: string; variantId?: string; variantName?: string }) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
             name: item.name,
             code: item.code,
+            variantId: item.variantId || null,
+            variantName: item.variantName || null,
           })),
         },
       },

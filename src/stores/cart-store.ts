@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export interface CartItem {
+  itemKey?: string
   productId: string
   code: string
   name: string
@@ -9,6 +10,8 @@ export interface CartItem {
   quantity: number
   mainImage: string
   maxStock: number
+  variantId?: string
+  variantName?: string
 }
 
 interface CartStore {
@@ -27,30 +30,31 @@ export const useCartStore = create<CartStore>()(
       items: [],
       addItem: (item) => {
         const items = get().items
-        const existing = items.find((i) => i.productId === item.productId)
+        const itemKey = item.itemKey || item.productId
+        const existing = items.find((i) => (i.itemKey || i.productId) === itemKey)
         if (existing) {
           const newQty = Math.min(existing.quantity + 1, item.maxStock)
           if (newQty === existing.quantity) return
           set({
             items: items.map((i) =>
-              i.productId === item.productId ? { ...i, quantity: newQty } : i
+              (i.itemKey || i.productId) === itemKey ? { ...i, quantity: newQty } : i
             ),
           })
         } else {
-          set({ items: [...items, { ...item, quantity: 1 }] })
+          set({ items: [...items, { ...item, itemKey, quantity: 1 }] })
         }
       },
-      removeItem: (productId) => {
-        set({ items: get().items.filter((i) => i.productId !== productId) })
+      removeItem: (itemKey) => {
+        set({ items: get().items.filter((i) => (i.itemKey || i.productId) !== itemKey) })
       },
-      updateQuantity: (productId, qty) => {
+      updateQuantity: (itemKey, qty) => {
         if (qty <= 0) {
-          get().removeItem(productId)
+          get().removeItem(itemKey)
           return
         }
         set({
           items: get().items.map((i) =>
-            i.productId === productId
+            (i.itemKey || i.productId) === itemKey
               ? { ...i, quantity: Math.min(qty, i.maxStock) }
               : i
           ),

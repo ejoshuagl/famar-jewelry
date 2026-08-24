@@ -66,6 +66,8 @@ interface EditableOrderItem {
   price: number
   name: string
   code: string
+  variantId?: string | null
+  variantName?: string | null
   image?: string | null
   stock?: number | null
   baseQty?: number
@@ -269,6 +271,8 @@ export function AdminOrdersView() {
       price: item.price as number,
       name: item.name as string,
       code: item.code as string,
+      variantId: (item.variantId as string) || null,
+      variantName: (item.variantName as string) || null,
       image: (item.product as { mainImage?: string } | null)?.mainImage || null,
       stock: (item.product as { stock?: number } | null)?.stock ?? null,
       baseQty: item.quantity as number,
@@ -625,6 +629,7 @@ export function AdminOrdersView() {
                                   <div className="min-w-0">
                                     <p className="font-medium truncate max-w-[150px]">{item.name}</p>
                                     <p className="text-xs text-muted-foreground">{item.code}</p>
+                                    {item.variantName && <p className="text-xs text-primary">Color: {item.variantName as string}</p>}
                                   </div>
                                 </div>
                               </td>
@@ -780,6 +785,7 @@ export function AdminOrdersView() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.name}</p>
                           <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(item.price)} c/u</p>
+                          {item.variantName && <p className="text-xs text-primary">Color: {item.variantName}</p>}
                         </div>
                         <div className="flex items-center border rounded-md">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleItemQtyChange(item.id, -1)}>
