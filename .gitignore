@@ -73,3 +73,6 @@ prisma/dev.db-journal
 /public/uploads/products/*
 !/public/uploads/products/.gitkeep
 
+# Supabase CLI local metadata
+/supabase/.temp/
+

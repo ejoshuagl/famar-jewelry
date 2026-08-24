@@ -37,6 +37,7 @@ export function SiteFooter() {
                 { label: 'Inicio', view: 'home' as const },
                 { label: 'Catálogo', view: 'catalog' as const },
                 { label: 'Agotados', view: 'out-of-stock' as const },
+                { label: 'Guía de cuidados', view: 'jewelry-care' as const },
                 { label: 'Contacto', view: 'contact' as const },
               ].map((link) => (
                 <button

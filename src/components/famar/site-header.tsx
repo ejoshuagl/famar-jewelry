@@ -24,6 +24,7 @@ const navItems: { label: string; view: AppView }[] = [
   { label: 'Inicio', view: 'home' },
   { label: 'Catálogo', view: 'catalog' },
   { label: 'Agotados', view: 'out-of-stock' },
+  { label: 'Cuidados', view: 'jewelry-care' },
   { label: 'Contacto', view: 'contact' },
 ]
 

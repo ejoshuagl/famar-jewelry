@@ -14,6 +14,7 @@ import { ProductDetailView } from '@/components/famar/product-detail-view'
 import { CartView } from '@/components/famar/cart-view'
 import { OutOfStockView } from '@/components/famar/out-of-stock-view'
 import { ContactView } from '@/components/famar/contact-view'
+import { JewelryCareView } from '@/components/famar/jewelry-care-section'
 import { FavoritesView } from '@/components/famar/favorites-view'
 import { AdminLoginView } from '@/components/famar/admin-login-view'
 import { AdminLayout } from '@/components/famar/admin-layout'
@@ -82,6 +83,8 @@ function AppContent() {
         return <OutOfStockView />
       case 'contact':
         return <ContactView />
+      case 'jewelry-care':
+        return <JewelryCareView />
       case 'favorites':
         return <FavoritesView />
       case 'admin-login':

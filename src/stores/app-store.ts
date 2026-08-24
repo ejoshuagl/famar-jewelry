@@ -7,6 +7,7 @@ export type AppView =
   | 'cart'
   | 'out-of-stock'
   | 'contact'
+  | 'jewelry-care'
   | 'favorites'
   | 'admin-login'
   | 'admin-dashboard'
@@ -90,7 +91,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 // Initialize browser history on first load
 if (typeof window !== 'undefined') {
   const validViews: AppView[] = [
-    'home', 'catalog', 'product-detail', 'cart', 'out-of-stock', 'contact',
+    'home', 'catalog', 'product-detail', 'cart', 'out-of-stock', 'contact', 'jewelry-care',
     'favorites', 'admin-login', 'admin-dashboard', 'admin-products',
     'admin-orders', 'admin-categories',
   ]
