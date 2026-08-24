@@ -107,7 +107,7 @@ if (typeof window !== 'undefined') {
   if (initialView) {
     useAppStore.setState({ currentView: initialView })
     historyStack = [initialView]
-    window.history.replaceState({ view: initialView, index: 0 }, '', window.location.hash)
+    window.history.replaceState({ view: initialView, index: 0 }, '', `${window.location.pathname}${window.location.search}${window.location.hash}`)
   } else {
     window.history.replaceState({ view: 'home', index: 0 }, '', '#/home')
   }

@@ -61,9 +61,6 @@ export function CategoryChips({ categories, selected, onSelect }: CategoryChipsP
             onClick={() => handleSelect(cat.slug)}
           >
             {cat.name}
-            {cat._count && (
-              <span className="ml-1.5 opacity-60">({cat._count.products})</span>
-            )}
           </Button>
         </motion.div>
       ))}

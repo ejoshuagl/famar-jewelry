@@ -34,15 +34,13 @@ function AppContent() {
   useEffect(() => {
     const productCode = searchParams.get('p')
     if (productCode) {
-      // Remove ?p= from the URL so navigating away doesn't reopen the product
-      window.history.replaceState(null, '', window.location.pathname)
       fetch(`/api/products?search=${encodeURIComponent(productCode)}&limit=1`)
         .then((res) => res.json())
         .then((data) => {
           const product = data.products?.[0]
           if (product) {
-            selectProduct(product.id)
-            navigate('product-detail')
+            selectProduct(product.id, product.code)
+            navigate('product-detail', false)
           }
         })
         .catch(() => {})

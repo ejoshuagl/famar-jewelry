@@ -174,11 +174,6 @@ export function CatalogView() {
           </Button>
         )}
 
-        {!isLoading && data && (
-          <p className="text-sm text-muted-foreground">
-            {data.total} producto{data.total !== 1 ? 's' : ''}
-          </p>
-        )}
       </div>
 
       {/* Products */}

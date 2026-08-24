@@ -125,7 +125,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     e.stopPropagation()
     if (isOutOfStock) return
     if (hasVariants) {
-      selectProduct(product.id)
+      selectProduct(product.id, product.code)
       navigate('product-detail')
       toast.info('Elige el color antes de agregarlo')
       return
@@ -150,7 +150,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   }
 
   const handleViewDetail = () => {
-    selectProduct(product.id)
+    selectProduct(product.id, product.code)
     navigate('product-detail')
   }
 

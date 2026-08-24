@@ -55,6 +55,7 @@ import {
   Save,
   PackagePlus,
   AlertCircle,
+  MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
@@ -257,6 +258,13 @@ export function AdminOrdersView() {
   const openDetail = (order: Record<string, unknown>) => {
     setSelectedOrder(order)
     setDetailDialogOpen(true)
+  }
+
+  const sendPaymentInstructions = (order: Record<string, unknown>) => {
+    const localPhone = String(order.customerPhone || '').replace(/\D/g, '')
+    const whatsappPhone = localPhone.startsWith('0') ? `593${localPhone.slice(1)}` : localPhone
+    const message = `Hola ${order.customerName || ''} 👋\n\nGracias por realizar tu pedido *#${order.orderNumber}* en FAMAR Jewelry.\n\nPara confirmar y reservar tu pedido por *${formatPrice(Number(order.total) || 0)}*, por favor realiza el pago o transferencia a una de estas cuentas:\n\n*Titular:* Fabre Marin Luisa Margarita\n\n*Banco Guayaquil*\nCuenta de ahorros: 0057038131\n\n*Banco Pichincha*\nCuenta de ahorros: 2215379800\n\n*Correo:* luisafabremarin06@gmail.com\n\nCuando hayas realizado el pago, envíanos el comprobante por este chat. En cuanto lo verifiquemos, confirmaremos tu pedido. ¡Muchas gracias por confiar en FAMAR Jewelry! ✨`
+    window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, '_blank')
   }
 
   const openEdit = (order?: Record<string, unknown>) => {
@@ -665,6 +673,14 @@ export function AdminOrdersView() {
                 <div className="space-y-3 pt-2">
                   {(selectedOrder.status as string) === 'pending' && (
                     <>
+                      <Button
+                        variant="outline"
+                        className="w-full border-[#25D366]/50 text-[#159447] hover:bg-[#25D366]/10 hover:text-[#159447]"
+                        onClick={() => sendPaymentInstructions(selectedOrder)}
+                      >
+                        <MessageCircle className="mr-2 h-4 w-4" />
+                        Enviar instrucciones de pago
+                      </Button>
                       <div className="flex gap-3">
                         <Button
                           className="flex-1 bg-green-600 text-white hover:bg-green-700"

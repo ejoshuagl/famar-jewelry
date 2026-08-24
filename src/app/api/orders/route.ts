@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
     if (!customerName || !customerCity || !customerPhone || !items || !items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+    if (!/^09\d{8}$/.test(String(customerPhone).trim())) {
+      return NextResponse.json({ error: 'Número celular ecuatoriano inválido' }, { status: 400 })
+    }
 
     // Sequential order number: FAM-000001, FAM-000002...
     const lastSeq = await db.$queryRaw<Array<{ max: bigint | null }>>`

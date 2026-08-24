@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Phone, Mail, MapPin, Clock, MessageCircle, Instagram, Facebook } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock, MessageCircle, Store } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const fadeIn = {
@@ -88,7 +88,7 @@ export function ContactView() {
               </div>
               <div>
                 <h3 className="font-semibold mb-1">Ubicación</h3>
-                <p className="text-sm text-muted-foreground">Ecuador</p>
+                <p className="text-sm text-muted-foreground">Babahoyo, Ecuador</p>
                 <p className="text-xs text-muted-foreground mt-1">Envíos a todo el país</p>
               </div>
             </CardContent>
@@ -108,7 +108,7 @@ export function ContactView() {
           </Card>
         </motion.div>
 
-        {/* Social & CTA */}
+        {/* CTA */}
         <motion.div initial="hidden" animate="visible" variants={fadeIn} custom={2} className="space-y-6">
           <Card className="overflow-hidden">
             <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 p-8 text-center">
@@ -129,37 +129,26 @@ export function ContactView() {
             </div>
           </Card>
 
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-4">Síguenos en Redes Sociales</h3>
-              <div className="space-y-3">
+          <Card className="overflow-hidden border-primary/30">
+            <CardContent className="p-0">
+              <div className="bg-gradient-to-br from-primary to-primary/75 p-7 text-primary-foreground">
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/15">
+                  <Store className="h-6 w-6" />
+                </div>
+                <p className="mb-1 text-sm font-medium text-primary-foreground/80">Oportunidad para emprendedores</p>
+                <h3 className="mb-3 text-2xl font-bold">Haz tu propio negocio</h3>
+                <p className="mb-6 text-sm leading-relaxed text-primary-foreground/90">
+                  ¿Quieres revender Famar Jewelry? Compra a partir de $50 USD y recibe un 20% de descuento automático.
+                </p>
                 <a
-                  href="https://www.instagram.com/famar.ec"
+                  href="https://wa.me/593988215076?text=%C2%A1Hola!%20Quiero%20informaci%C3%B3n%20para%20revender%20Famar%20Jewelry%20y%20acceder%20al%20descuento%20para%20emprendedores."
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
                 >
-                  <div className="h-10 w-10 rounded-full bg-pink-100 dark:bg-pink-950 flex items-center justify-center">
-                    <Instagram className="h-5 w-5 text-pink-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Instagram</p>
-                    <p className="text-xs text-muted-foreground">@famar.ec</p>
-                  </div>
-                </a>
-                <a
-                  href="https://www.facebook.com/famar.ec"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors"
-                >
-                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-                    <Facebook className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Facebook</p>
-                    <p className="text-xs text-muted-foreground">FAMAR</p>
-                  </div>
+                  <Button size="lg" variant="secondary" className="w-full">
+                    <MessageCircle className="mr-2 h-5 w-5" />
+                    Quiero empezar a vender
+                  </Button>
                 </a>
               </div>
             </CardContent>

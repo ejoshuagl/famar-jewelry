@@ -77,6 +77,10 @@ export function CartView() {
       toast.error('Por favor completa todos los campos obligatorios')
       return
     }
+    if (!/^09\d{8}$/.test(form.phone.trim())) {
+      toast.error('Ingresa un celular ecuatoriano válido: debe comenzar con 09 y tener 10 números')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -336,10 +340,14 @@ ${productList}
               <Label htmlFor="phone">Teléfono *</Label>
               <Input
                 id="phone"
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                 placeholder="Ej: 0991234567"
               />
+              <p className="mt-1 text-xs text-muted-foreground">Debe comenzar con 09 y contener 10 números.</p>
             </div>
             <div>
               <Label htmlFor="observations">Observaciones</Label>
