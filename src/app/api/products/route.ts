@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,9 +71,8 @@ export async function GET(request: NextRequest) {
     if (status) {
       where.status = status
     }
-    if (featured) {
-      where.isFeatured = true
-    }
+    // `featured=true` is the public daily rotation. Manual featured flags are
+    // still available through `flag=featured` in the admin catalog.
     if (isNew) {
       where.isNew = true
     }
@@ -90,6 +90,32 @@ export async function GET(request: NextRequest) {
 
     const orderBy = [{ status: 'asc' }, baseOrderBy]
 
+    if (featured || flag === 'daily-featured') {
+      where.visible = true
+      if (!status) {
+        where.status = 'available'
+        where.stock = { gt: 0 }
+      }
+
+      const eligibleProducts = await db.product.findMany({
+        where,
+        include: { category: { select: { name: true, slug: true } } },
+      })
+      const dayIndex = getEcuadorDayIndex()
+      const dailyProducts = selectDailyFeatured(eligibleProducts, dayIndex)
+      const dailyCount = dailyProducts.length
+      const pageStart = (page - 1) * limit
+
+      return NextResponse.json({
+        products: dailyProducts.slice(pageStart, pageStart + limit),
+        total: dailyCount,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(dailyCount / limit)),
+        rotationDate: getEcuadorDate(dayIndex),
+      })
+    }
+
     const total = await db.product.count({ where })
     const products = await db.product.findMany({
       where,
@@ -99,8 +125,21 @@ export async function GET(request: NextRequest) {
       include: { category: { select: { name: true, slug: true } } },
     })
 
+    let responseProducts = products
+    if (includeHidden) {
+      const eligibleIds = await db.product.findMany({
+        where: { visible: true, status: 'available', stock: { gt: 0 } },
+        select: { id: true },
+      })
+      const dailyIds = new Set(selectDailyFeatured(eligibleIds).map((product) => product.id))
+      responseProducts = products.map((product) => ({
+        ...product,
+        isDailyFeatured: dailyIds.has(product.id),
+      }))
+    }
+
     return NextResponse.json({
-      products,
+      products: responseProducts,
       total,
       page,
       limit,

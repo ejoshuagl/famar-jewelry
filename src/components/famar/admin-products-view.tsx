@@ -116,7 +116,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, checked
         </Badge>
       </div>
       <div className="flex items-center gap-2 mt-2">
-        {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
+        {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
         {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
         {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
         {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
@@ -321,8 +321,6 @@ export function AdminProductsView() {
 
   const applyBulkBadge = () => {
     const actions: Record<string, () => void> = {
-      'featured-on': () => bulkMutation.mutate({ setFeatured: true }),
-      'featured-off': () => bulkMutation.mutate({ setFeatured: false }),
       'new-on': () => bulkMutation.mutate({ setIsNew: true }),
       'new-off': () => bulkMutation.mutate({ setIsNew: false }),
       'sale-on': () => bulkMutation.mutate({ setIsOnSale: true }),
@@ -422,7 +420,7 @@ export function AdminProductsView() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="featured">Destacados</SelectItem>
+              <SelectItem value="daily-featured">Destacados de hoy</SelectItem>
               <SelectItem value="new">Nuevos</SelectItem>
               <SelectItem value="sale">En Oferta</SelectItem>
               <SelectItem value="out_of_stock">Agotados</SelectItem>
@@ -439,11 +437,9 @@ export function AdminProductsView() {
               <div className="flex items-center gap-2">
                 <Select value={bulkBadge} onValueChange={setBulkBadge}>
                   <SelectTrigger className="w-56">
-                    <SelectValue placeholder="Destacado / Nuevo / Oferta..." />
+                    <SelectValue placeholder="Nuevo / Oferta..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="featured-on">Marcar como Destacado</SelectItem>
-                    <SelectItem value="featured-off">Quitar Destacado</SelectItem>
                     <SelectItem value="new-on">Marcar como Nuevo</SelectItem>
                     <SelectItem value="new-off">Quitar Nuevo</SelectItem>
                     <SelectItem value="sale-on">Marcar En Oferta</SelectItem>
@@ -531,7 +527,7 @@ export function AdminProductsView() {
                           <div>
                             <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
                             <div className="flex gap-1 mt-1">
-                              {product.isFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado</Badge>}
+                              {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
                               {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
                               {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
                               {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
@@ -767,10 +763,6 @@ export function AdminProductsView() {
                   onChange={(urls) => updateForm('galleryUrls', (urls as string[]).join('\n'))}
                 />
                 <div className="flex flex-col gap-3 sm:col-span-2">
-                  <div className="flex items-center gap-3">
-                    <Switch checked={form.isFeatured} onCheckedChange={(v) => updateForm('isFeatured', v)} />
-                    <Label>Destacado</Label>
-                  </div>
                   <div className="flex items-center gap-3">
                     <Switch checked={form.isNew} onCheckedChange={(v) => updateForm('isNew', v)} />
                     <Label>Nuevo</Label>
