@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
     if (includeHidden) {
       const eligibleIds = await db.product.findMany({
         where: { visible: true, status: 'available', stock: { gt: 0 } },
-        select: { id: true },
+        select: { id: true, isFeatured: true, featuredExcluded: true },
       })
       const dailyIds = new Set(selectDailyFeatured(eligibleIds).map((product) => product.id))
       responseProducts = products.map((product) => ({
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     const {
       name, code, description, categoryId, material, weight, dimensions,
       color, price, stock, mainImage, images, isFeatured,
-      isNew, isOnSale, visible,
+      isNew, isOnSale, visible, featuredExcluded,
     } = body
 
     if (!name || !code || !categoryId || price == null) {
@@ -187,6 +187,7 @@ export async function POST(request: NextRequest) {
         status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
+        featuredExcluded: !!featuredExcluded,
         visible: visible === undefined ? true : !!visible,
       },
       include: { category: { select: { name: true, slug: true } } },

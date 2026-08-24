@@ -19,20 +19,31 @@ export function getEcuadorDate(dayIndex: number) {
   return new Date(dayIndex * 86_400_000).toISOString().slice(0, 10)
 }
 
-export function selectDailyFeatured<T extends { id: string }>(
+export function selectDailyFeatured<
+  T extends { id: string; isFeatured?: boolean; featuredExcluded?: boolean }
+>(
   products: T[],
   dayIndex = getEcuadorDayIndex()
 ) {
-  const ordered = [...products].sort(
+  const eligible = products.filter((product) => !product.featuredExcluded)
+  const pinned = eligible
+    .filter((product) => product.isFeatured)
+    .sort((a, b) => stableProductHash(a.id) - stableProductHash(b.id))
+    .slice(0, DAILY_FEATURED_COUNT)
+  const ordered = eligible
+    .filter((product) => !product.isFeatured)
+    .sort(
     (a, b) => stableProductHash(a.id) - stableProductHash(b.id)
   )
-  const count = Math.min(DAILY_FEATURED_COUNT, ordered.length)
+  const count = Math.min(DAILY_FEATURED_COUNT - pinned.length, ordered.length)
   const start = ordered.length
     ? (dayIndex * DAILY_FEATURED_COUNT) % ordered.length
     : 0
 
-  return Array.from(
+  const automatic = Array.from(
     { length: count },
     (_, index) => ordered[(start + index) % ordered.length]
   )
+
+  return [...pinned, ...automatic]
 }

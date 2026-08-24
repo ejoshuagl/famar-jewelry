@@ -37,6 +37,7 @@ model Product {
   mainImage   String?
   images      String?  // JSON array of image URLs
   isFeatured  Boolean  @default(false)
+  featuredExcluded Boolean @default(false)
   isNew       Boolean  @default(false)
   isOnSale    Boolean  @default(false)
   salesCount  Int      @default(0)

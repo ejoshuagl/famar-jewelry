@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     const adminName = admin.name
 
     const body = await request.json()
-    const { ids, setVisible, setFeatured, setIsNew, setIsOnSale } = body
+    const { ids, setVisible, setFeatured, setFeaturedExcluded, setIsNew, setIsOnSale } = body
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'No products selected' }, { status: 400 })
     }
@@ -26,6 +26,9 @@ export async function POST(request: NextRequest) {
       }
       if (setFeatured !== undefined) {
         data.isFeatured = !!setFeatured
+      }
+      if (setFeaturedExcluded !== undefined) {
+        data.featuredExcluded = !!setFeaturedExcluded
       }
       if (setIsNew !== undefined) {
         data.isNew = !!setIsNew
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
       action: 'bulk',
       entity: 'product',
       admin: adminName,
-      details: `${products.length} productos: ${JSON.stringify({ setVisible, setFeatured, setIsNew, setIsOnSale })}`,
+      details: `${products.length} productos: ${JSON.stringify({ setVisible, setFeatured, setFeaturedExcluded, setIsNew, setIsOnSale })}`,
     })
 
     return NextResponse.json({ updated: products.length })

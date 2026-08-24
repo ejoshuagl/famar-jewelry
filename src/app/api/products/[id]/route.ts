@@ -38,7 +38,7 @@ export async function PUT(
     const {
       name, code, description, categoryId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, isFeatured,
-      isNew, isOnSale, visible,
+      isNew, isOnSale, visible, featuredExcluded,
     } = body
 
     // Validaciones básicas
@@ -78,6 +78,7 @@ export async function PUT(
         ...(mainImage !== undefined && { mainImage }),
         ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
         ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),
+        ...(featuredExcluded !== undefined && { featuredExcluded: !!featuredExcluded }),
         ...(isNew !== undefined && { isNew: !!isNew }),
         ...(isOnSale !== undefined && { isOnSale: !!isOnSale }),
         ...(visible !== undefined && { visible: !!visible }),
@@ -91,6 +92,7 @@ export async function PUT(
     if (previous.stock !== product.stock) changes.push(`stock ${previous.stock}→${product.stock}`)
     if (previous.visible !== product.visible) changes.push(`visible ${previous.visible}→${product.visible}`)
     if (previous.isFeatured !== product.isFeatured) changes.push('destacado')
+    if (previous.featuredExcluded !== product.featuredExcluded) changes.push('exclusión de destacados')
     if (previous.isNew !== product.isNew) changes.push('nuevo')
     if (previous.isOnSale !== product.isOnSale) changes.push('oferta')
     await auditLog({

@@ -73,6 +73,7 @@ interface ProductForm {
   mainImage: string
   galleryUrls: string
   isFeatured: boolean
+  featuredExcluded: boolean
   isNew: boolean
   isOnSale: boolean
   visible: boolean
@@ -82,7 +83,7 @@ const emptyForm: ProductForm = {
   name: '', code: '', description: '', categoryId: '',
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
-  galleryUrls: '', isFeatured: false, isNew: false, isOnSale: false,
+  galleryUrls: '', isFeatured: false, featuredExcluded: false, isNew: false, isOnSale: false,
   visible: true,
 }
 
@@ -117,6 +118,8 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, checked
       </div>
       <div className="flex items-center gap-2 mt-2">
         {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
+        {product.isFeatured && <Badge variant="outline" className="text-[10px] px-1 py-0">Fijado</Badge>}
+        {product.featuredExcluded && <Badge variant="outline" className="text-[10px] px-1 py-0">Excluido</Badge>}
         {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
         {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
         {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
@@ -285,6 +288,7 @@ export function AdminProductsView() {
     mutationFn: async (payload: {
       setVisible?: boolean
       setFeatured?: boolean
+      setFeaturedExcluded?: boolean
       setIsNew?: boolean
       setIsOnSale?: boolean
     }) => {
@@ -321,6 +325,9 @@ export function AdminProductsView() {
 
   const applyBulkBadge = () => {
     const actions: Record<string, () => void> = {
+      'featured-pin': () => bulkMutation.mutate({ setFeatured: true, setFeaturedExcluded: false }),
+      'featured-auto': () => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: false }),
+      'featured-exclude': () => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: true }),
       'new-on': () => bulkMutation.mutate({ setIsNew: true }),
       'new-off': () => bulkMutation.mutate({ setIsNew: false }),
       'sale-on': () => bulkMutation.mutate({ setIsOnSale: true }),
@@ -377,6 +384,7 @@ export function AdminProductsView() {
       mainImage: (product.mainImage as string) || '',
       galleryUrls: imagesStr,
       isFeatured: product.isFeatured as boolean,
+      featuredExcluded: product.featuredExcluded as boolean,
       isNew: product.isNew as boolean,
       isOnSale: product.isOnSale as boolean,
       visible: product.visible !== false,
@@ -437,9 +445,12 @@ export function AdminProductsView() {
               <div className="flex items-center gap-2">
                 <Select value={bulkBadge} onValueChange={setBulkBadge}>
                   <SelectTrigger className="w-56">
-                    <SelectValue placeholder="Nuevo / Oferta..." />
+                    <SelectValue placeholder="Destacados / Nuevo / Oferta..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="featured-pin">Fijar en Destacados</SelectItem>
+                    <SelectItem value="featured-auto">Dejar selección automática</SelectItem>
+                    <SelectItem value="featured-exclude">Excluir de Destacados</SelectItem>
                     <SelectItem value="new-on">Marcar como Nuevo</SelectItem>
                     <SelectItem value="new-off">Quitar Nuevo</SelectItem>
                     <SelectItem value="sale-on">Marcar En Oferta</SelectItem>
@@ -528,6 +539,8 @@ export function AdminProductsView() {
                             <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
                             <div className="flex gap-1 mt-1">
                               {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
+                              {product.isFeatured && <Badge variant="outline" className="text-[10px] px-1 py-0">Fijado</Badge>}
+                              {product.featuredExcluded && <Badge variant="outline" className="text-[10px] px-1 py-0">Excluido</Badge>}
                               {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
                               {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
                               {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
@@ -763,6 +776,32 @@ export function AdminProductsView() {
                   onChange={(urls) => updateForm('galleryUrls', (urls as string[]).join('\n'))}
                 />
                 <div className="flex flex-col gap-3 sm:col-span-2">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={form.isFeatured}
+                      onCheckedChange={(value) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          isFeatured: value,
+                          featuredExcluded: value ? false : previous.featuredExcluded,
+                        }))
+                      }
+                    />
+                    <Label>Fijar en destacados</Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={form.featuredExcluded}
+                      onCheckedChange={(value) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          featuredExcluded: value,
+                          isFeatured: value ? false : previous.isFeatured,
+                        }))
+                      }
+                    />
+                    <Label>Excluir de destacados</Label>
+                  </div>
                   <div className="flex items-center gap-3">
                     <Switch checked={form.isNew} onCheckedChange={(v) => updateForm('isNew', v)} />
                     <Label>Nuevo</Label>

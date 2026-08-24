@@ -1,0 +1,2 @@
+ALTER TABLE "Product"
+ADD COLUMN IF NOT EXISTS "featuredExcluded" BOOLEAN NOT NULL DEFAULT false;
