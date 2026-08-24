@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
+import { tryCreatePerceptualHash } from '@/lib/image-hash'
 
 export async function GET(request: NextRequest) {
   try {
@@ -180,11 +181,13 @@ export async function POST(request: NextRequest) {
     }
     const stockCount = Math.max(0, Math.min(parseInt(stock) || 0, 100000))
 
+    const imageHash = await tryCreatePerceptualHash(mainImage)
     const product = await db.product.create({
       data: {
         name, code, description, categoryId, material, weight, dimensions,
         color, price: priceValue, stock: stockCount,
         status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
+        imageHash,
         images: images ? JSON.stringify(images) : null,
         isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
         featuredExcluded: !!featuredExcluded,

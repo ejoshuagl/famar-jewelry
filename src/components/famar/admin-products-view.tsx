@@ -413,6 +413,17 @@ export function AdminProductsView() {
     setEditDialogOpen(true)
   }
 
+  const openDuplicateProduct = async (productId: string) => {
+    try {
+      const response = await fetch(`/api/products/${productId}`)
+      if (!response.ok) throw new Error('Product not found')
+      openEdit(await response.json())
+      toast.info('Abriste el producto existente para revisarlo.')
+    } catch {
+      toast.error('No se pudo abrir el producto existente')
+    }
+  }
+
   const closeDialog = () => {
     setEditDialogOpen(false)
     setEditingId(null)
@@ -811,6 +822,9 @@ export function AdminProductsView() {
                   hint="Elige la foto aquí. Se previsualiza y se guarda en Supabase al crear o actualizar el producto."
                   value={form.mainImage}
                   onChange={(url) => updateForm('mainImage', url as string)}
+                  duplicateCheck
+                  excludeProductId={editingId}
+                  onDuplicateSelect={openDuplicateProduct}
                 />
                 <ImageUploader
                   label="Galería"

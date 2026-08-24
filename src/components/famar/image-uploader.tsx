@@ -1,9 +1,10 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ImagePlus, Loader2, X } from 'lucide-react'
+import { AlertTriangle, ImagePlus, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { convertDriveUrl } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 
@@ -13,7 +14,19 @@ interface ImageUploaderProps {
   value?: string
   values?: string[]
   multiple?: boolean
+  duplicateCheck?: boolean
+  excludeProductId?: string | null
+  onDuplicateSelect?: (productId: string) => void
   onChange: (next: string | string[]) => void
+}
+
+interface DuplicateMatch {
+  id: string
+  name: string
+  code: string
+  mainImage?: string | null
+  category: string
+  similarity: number
 }
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -58,10 +71,15 @@ export function ImageUploader({
   value = '',
   values,
   multiple = false,
+  duplicateCheck = false,
+  excludeProductId,
+  onDuplicateSelect,
   onChange,
 }: ImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preparing, setPreparing] = useState(false)
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false)
+  const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([])
   const images = multiple ? values || [] : value ? [value] : []
 
   const handleFiles = async (files: FileList | null) => {
@@ -79,6 +97,30 @@ export function ImageUploader({
         onChange([...images, ...prepared])
       } else {
         onChange(prepared[0])
+        if (duplicateCheck) {
+          setCheckingDuplicates(true)
+          setDuplicateMatches([])
+          try {
+            const response = await fetch('/api/products/image-similarity', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-admin-token': useAuthStore.getState().token || '',
+              },
+              body: JSON.stringify({
+                image: prepared[0],
+                excludeProductId: excludeProductId || undefined,
+              }),
+            })
+            if (!response.ok) throw new Error('No se pudo validar la imagen')
+            const result = await response.json()
+            setDuplicateMatches(result.matches || [])
+          } catch {
+            toast.error('La foto quedó lista, pero no se pudo comprobar si está duplicada.')
+          } finally {
+            setCheckingDuplicates(false)
+          }
+        }
       }
       toast.success('Foto lista. Se guardará al crear o actualizar el producto.')
     } catch (error) {
@@ -115,7 +157,6 @@ export function ImageUploader({
             key={`${url.slice(0, 48)}-${index}`}
             className="relative h-24 w-24 overflow-hidden rounded-md border bg-muted"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={convertDriveUrl(url)}
               alt=""
@@ -150,6 +191,66 @@ export function ImageUploader({
           </Button>
         )}
       </div>
+      {checkingDuplicates && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          Comparando con las imágenes del catálogo…
+        </div>
+      )}
+      {!checkingDuplicates && duplicateMatches.length > 0 && (
+        <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-sm font-semibold">Esta imagen se parece a productos existentes</p>
+              <p className="text-xs text-muted-foreground">
+                Revisa las coincidencias antes de crear una ficha duplicada.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {duplicateMatches.map((match) => (
+              <div key={match.id} className="flex items-center gap-3 rounded-md border bg-background/80 p-2">
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                  {match.mainImage ? (
+                    <img
+                      src={convertDriveUrl(match.mainImage)}
+                      alt={match.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{match.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {match.code} · {match.category}
+                  </p>
+                  <p className="text-xs font-semibold text-amber-500">
+                    {match.similarity}% de similitud
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => onDuplicateSelect?.(match.id)}
+                >
+                  Abrir
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => setDuplicateMatches([])}
+          >
+            Es un producto nuevo, continuar
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

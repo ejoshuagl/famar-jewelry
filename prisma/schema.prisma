@@ -35,6 +35,7 @@ model Product {
   stock       Int      @default(0)
   status      String   @default("available") // available, out_of_stock, discontinued
   mainImage   String?
+  imageHash   String?
   images      String?  // JSON array of image URLs
   isFeatured  Boolean  @default(false)
   featuredExcluded Boolean @default(false)

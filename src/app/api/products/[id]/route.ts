@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { tryCreatePerceptualHash } from '@/lib/image-hash'
 
 export async function GET(
   request: NextRequest,
@@ -58,6 +59,9 @@ export async function PUT(
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
 
+    const imageHash = mainImage !== undefined
+      ? await tryCreatePerceptualHash(mainImage)
+      : undefined
     const product = await db.product.update({
       where: { id },
       data: {
@@ -76,6 +80,7 @@ export async function PUT(
           status: stockCount <= 0 ? 'out_of_stock' : 'available',
         }),
         ...(mainImage !== undefined && { mainImage }),
+        ...(imageHash !== undefined && { imageHash }),
         ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
         ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),
         ...(featuredExcluded !== undefined && { featuredExcluded: !!featuredExcluded }),
