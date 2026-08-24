@@ -7,6 +7,7 @@ import { convertDriveUrl } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 interface ImageUploaderProps {
   label: string
@@ -80,6 +81,7 @@ export function ImageUploader({
   const [preparing, setPreparing] = useState(false)
   const [checkingDuplicates, setCheckingDuplicates] = useState(false)
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([])
+  const [zoomImage, setZoomImage] = useState<string | null>(null)
   const images = multiple ? values || [] : value ? [value] : []
 
   const handleFiles = async (files: FileList | null) => {
@@ -211,7 +213,13 @@ export function ImageUploader({
           <div className="grid gap-2 sm:grid-cols-2">
             {duplicateMatches.map((match) => (
               <div key={match.id} className="flex items-center gap-3 rounded-md border bg-background/80 p-2">
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                <button
+                  type="button"
+                  className="h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted transition hover:border-primary hover:ring-2 hover:ring-primary/20"
+                  onClick={() => match.mainImage && setZoomImage(convertDriveUrl(match.mainImage))}
+                  disabled={!match.mainImage}
+                  aria-label={`Ampliar imagen de ${match.name}`}
+                >
                   {match.mainImage ? (
                     <img
                       src={convertDriveUrl(match.mainImage)}
@@ -219,7 +227,7 @@ export function ImageUploader({
                       className="h-full w-full object-cover"
                     />
                   ) : null}
-                </div>
+                </button>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{match.name}</p>
                   <p className="text-xs text-muted-foreground">
@@ -251,6 +259,19 @@ export function ImageUploader({
           </Button>
         </div>
       )}
+      <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background/95 border-primary/30">
+          <DialogTitle className="sr-only">Imagen ampliada del producto semejante</DialogTitle>
+          {zoomImage && (
+            <img
+              src={zoomImage}
+              alt="Producto semejante ampliado"
+              className="w-full max-h-[82vh] object-contain bg-black/40 cursor-zoom-out"
+              onClick={() => setZoomImage(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
