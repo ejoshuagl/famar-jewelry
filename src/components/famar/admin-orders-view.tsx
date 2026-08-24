@@ -263,7 +263,9 @@ export function AdminOrdersView() {
   const sendPaymentInstructions = (order: Record<string, unknown>) => {
     const localPhone = String(order.customerPhone || '').replace(/\D/g, '')
     const whatsappPhone = localPhone.startsWith('0') ? `593${localPhone.slice(1)}` : localPhone
-    const message = `Hola ${order.customerName || ''} 👋\n\nGracias por realizar tu pedido *#${order.orderNumber}* en FAMAR Jewelry.\n\nPara confirmar y reservar tu pedido por *${formatPrice(Number(order.total) || 0)}*, por favor realiza el pago o transferencia a una de estas cuentas:\n\n*Titular:* Fabre Marin Luisa Margarita\n\n*Banco Guayaquil*\nCuenta de ahorros: 0057038131\n\n*Banco Pichincha*\nCuenta de ahorros: 2215379800\n\n*Correo:* luisafabremarin06@gmail.com\n\nCuando hayas realizado el pago, envíanos el comprobante por este chat. En cuanto lo verifiquemos, confirmaremos tu pedido. ¡Muchas gracias por confiar en FAMAR Jewelry! ✨`
+    const waveEmoji = String.fromCodePoint(0x1f44b)
+    const sparkleEmoji = String.fromCodePoint(0x2728)
+    const message = `Hola ${order.customerName || ''} ${waveEmoji}\n\nGracias por realizar tu pedido *#${order.orderNumber}* en FAMAR Jewelry.\n\nPara confirmar y reservar tu pedido por *${formatPrice(Number(order.total) || 0)}*, por favor realiza el pago o transferencia a una de estas cuentas:\n\n*Titular:* Fabre Marin Luisa Margarita\n\n*Banco Guayaquil*\nCuenta de ahorros: 0057038131\n\n*Banco Pichincha*\nCuenta de ahorros: 2215379800\n\n*Correo:* luisafabremarin06@gmail.com\n\nCuando hayas realizado el pago, envíanos el comprobante por este chat. En cuanto lo verifiquemos, confirmaremos tu pedido. ¡Muchas gracias por confiar en FAMAR Jewelry! ${sparkleEmoji}`
     window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, '_blank')
   }
 
