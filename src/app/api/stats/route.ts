@@ -8,41 +8,63 @@ export async function GET(request: NextRequest) {
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
-    const adminName = admin.name
-
-    const totalProducts = await db.product.count()
-    const totalOrders = await db.order.count()
-    const pendingOrders = await db.order.count({ where: { status: 'pending' } })
-    const confirmedOrders = await db.order.count({ where: { status: 'confirmed' } })
-
-    const revenueResult = await db.order.aggregate({
-      where: { status: 'confirmed' },
-      _sum: { total: true },
-    })
-    const totalRevenue = revenueResult._sum.total || 0
-    const avgOrderValue = confirmedOrders > 0 ? totalRevenue / confirmedOrders : 0
-
     // Sales series, selectable period: 7 | 30 | 90 days or all (grouped by month)
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || '7'
-    const orders = await db.order.findMany({
-      where: { status: 'confirmed' },
-      select: { createdAt: true, total: true },
-      orderBy: { createdAt: 'asc' },
-    })
-
     let start = new Date()
     start.setHours(0, 0, 0, 0)
     if (period === '7' || period === '30' || period === '90') {
       start.setDate(start.getDate() - (parseInt(period) - 1))
-    } else if (orders.length > 0) {
-      start = new Date(orders[0].createdAt)
-      start.setHours(0, 0, 0, 0)
     } else {
-      start.setDate(start.getDate() - 6)
+      start = new Date(start.getFullYear(), start.getMonth() - 23, 1)
     }
 
-    const inRange = orders.filter((o) => o.createdAt >= start)
+    const [
+      totalProducts,
+      totalOrders,
+      pendingOrders,
+      confirmedOrders,
+      revenueResult,
+      orders,
+      oneUnitCount,
+      twoUnitsCount,
+      threePlusCount,
+      outOfStockCount,
+      hiddenCount,
+      availableStock,
+      soldItems,
+      recentOrders,
+    ] = await Promise.all([
+      db.product.count(),
+      db.order.count(),
+      db.order.count({ where: { status: 'pending' } }),
+      db.order.count({ where: { status: 'confirmed' } }),
+      db.order.aggregate({ where: { status: 'confirmed' }, _sum: { total: true } }),
+      db.order.findMany({
+        where: { status: 'confirmed', createdAt: { gte: start } },
+        select: { createdAt: true, total: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      db.product.count({ where: { visible: true, stock: 1 } }),
+      db.product.count({ where: { visible: true, stock: 2 } }),
+      db.product.count({ where: { visible: true, stock: { gte: 3 } } }),
+      db.product.count({ where: { visible: true, stock: { lte: 0 } } }),
+      db.product.count({ where: { visible: false } }),
+      db.product.aggregate({ where: { visible: true, stock: { gt: 0 } }, _sum: { stock: true } }),
+      db.orderItem.findMany({
+        where: { order: { status: 'confirmed' } },
+        select: { quantity: true, product: { select: { category: { select: { name: true } } } } },
+      }),
+      db.order.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: { id: true, orderNumber: true, customerName: true, total: true, status: true, createdAt: true },
+      }),
+    ])
+    const totalRevenue = revenueResult._sum.total || 0
+    const avgOrderValue = confirmedOrders > 0 ? totalRevenue / confirmedOrders : 0
+    const availableUnits = availableStock._sum.stock || 0
+    const inRange = orders
     const salesLast7Days: { day: string; total: number; count: number }[] = []
 
     if (period === '7' || period === '30') {
@@ -91,23 +113,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Inventory availability
-    const availableCount = await db.product.count({
-      where: { visible: true, status: 'available', stock: { gt: 5 } },
-    })
-    const lowStockCount = await db.product.count({
-      where: { visible: true, status: 'available', stock: { lte: 5, gt: 0 } },
-    })
-    const outOfStockCount = await db.product.count({
-      where: { visible: true, status: 'out_of_stock' },
-    })
-    const hiddenCount = await db.product.count({ where: { visible: false } })
-
     // Sales by category, from real order items (non-cancelled orders)
-    const soldItems = await db.orderItem.findMany({
-      where: { order: { status: 'confirmed' } },
-      select: { quantity: true, product: { select: { category: { select: { name: true } } } } },
-    })
     const byCat = new Map<string, number>()
     for (const item of soldItems) {
       const name = item.product?.category?.name || 'Sin categoría'
@@ -118,12 +124,6 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 6)
 
-    const recentOrders = await db.order.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      include: { items: true },
-    })
-
     return NextResponse.json({
       totalProducts,
       totalOrders,
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
       totalRevenue,
       avgOrderValue,
       salesLast7Days,
-      availability: { availableCount, lowStockCount, outOfStockCount, hiddenCount },
+      availability: { availableUnits, oneUnitCount, twoUnitsCount, threePlusCount, outOfStockCount, hiddenCount },
       salesByCategory,
       recentOrders,
     })

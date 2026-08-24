@@ -187,6 +187,7 @@ export function AdminProductsView() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [flagFilter, setFlagFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -198,7 +199,7 @@ export function AdminProductsView() {
   const [zoomImage, setZoomImage] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-products', search, flagFilter, page],
+    queryKey: ['admin-products', search, flagFilter, categoryFilter, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: '20',
@@ -207,6 +208,7 @@ export function AdminProductsView() {
       })
       if (search) params.set('search', search)
       if (flagFilter) params.set('flag', flagFilter)
+      if (categoryFilter) params.set('category', categoryFilter)
       const res = await fetch(`/api/products?${params}`, { cache: 'no-store' })
       return res.json()
     },
@@ -464,7 +466,7 @@ export function AdminProductsView() {
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+        <div className="flex flex-col sm:flex-row gap-2 max-w-4xl">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -487,6 +489,17 @@ export function AdminProductsView() {
               <SelectItem value="hidden">Ocultos</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={categoryFilter || 'todas'} onValueChange={(v) => { setCategoryFilter(v === 'todas' ? '' : v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Todas las categorías" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Todas las categorías</SelectItem>
+              {(categories || []).map((category: { id: string; name: string; slug: string }) => (
+                <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Bulk actions bar */}
@@ -494,6 +507,24 @@ export function AdminProductsView() {
           <Card>
             <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="text-sm font-medium whitespace-nowrap">{selected.size} seleccionado(s)</span>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: true })}
+                  disabled={bulkMutation.isPending}
+                >
+                  Excluir de destacados
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: false })}
+                  disabled={bulkMutation.isPending}
+                >
+                  Volver a selección automática
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <Select value={bulkBadge} onValueChange={setBulkBadge}>
                   <SelectTrigger className="w-56">
@@ -501,8 +532,6 @@ export function AdminProductsView() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="featured-pin">Fijar en Destacados</SelectItem>
-                    <SelectItem value="featured-auto">Dejar selección automática</SelectItem>
-                    <SelectItem value="featured-exclude">Excluir de Destacados</SelectItem>
                     <SelectItem value="new-on">Marcar como Nuevo</SelectItem>
                     <SelectItem value="new-off">Quitar Nuevo</SelectItem>
                     <SelectItem value="sale-on">Marcar En Oferta</SelectItem>

@@ -31,8 +31,10 @@ interface DashboardStats {
   avgOrderValue: number
   salesLast7Days: DaySales[]
   availability: {
-    availableCount: number
-    lowStockCount: number
+    availableUnits: number
+    oneUnitCount: number
+    twoUnitsCount: number
+    threePlusCount: number
     outOfStockCount: number
     hiddenCount: number
   }
@@ -69,6 +71,10 @@ export function AdminDashboardView() {
       return res.json() as Promise<DashboardStats>
     },
     enabled: !!adminName,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   })
 
   if (isLoading || !stats) {
@@ -123,34 +129,33 @@ export function AdminDashboardView() {
   ]
 
   const maxDayTotal = Math.max(...stats.salesLast7Days.map((d) => d.total), 1)
-  const { availableCount, lowStockCount, outOfStockCount, hiddenCount } = stats.availability
-  const inventoryTotal = availableCount + lowStockCount + outOfStockCount + hiddenCount || 1
-  const pct = (n: number) => Math.round((n / inventoryTotal) * 100)
+  const { availableUnits, oneUnitCount, twoUnitsCount, threePlusCount, outOfStockCount, hiddenCount } = stats.availability
   const maxCatSales = Math.max(...stats.salesByCategory.map((c) => c.sales), 1)
 
-  const availabilityBars = [
+  const inventoryGroups = [
     {
-      label: 'Disponibles (stock alto)',
-      count: availableCount,
-      color: 'bg-green-500',
-      text: 'text-green-600 dark:text-green-400',
+      label: 'Con 1 unidad',
+      count: oneUnitCount,
+      text: 'text-primary',
     },
     {
-      label: 'Stock bajo (1-5 uds)',
-      count: lowStockCount,
-      color: 'bg-amber-500',
-      text: 'text-amber-600 dark:text-amber-400',
+      label: 'Con 2 unidades',
+      count: twoUnitsCount,
+      text: 'text-primary',
+    },
+    {
+      label: 'Con 3 unidades o más',
+      count: threePlusCount,
+      text: 'text-primary',
     },
     {
       label: 'Agotados',
       count: outOfStockCount,
-      color: 'bg-red-500',
       text: 'text-red-600 dark:text-red-400',
     },
     {
       label: 'Ocultos',
       count: hiddenCount,
-      color: 'bg-gray-400',
       text: 'text-muted-foreground',
     },
   ]
@@ -229,28 +234,16 @@ export function AdminDashboardView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex h-4 w-full rounded-full overflow-hidden">
-              {availabilityBars.map((b) => (
-                b.count > 0 && (
-                  <div
-                    key={b.label}
-                    className={b.color}
-                    style={{ width: `${pct(b.count)}%` }}
-                    title={`${b.label}: ${b.count}`}
-                  />
-                )
-              ))}
+            <div className="rounded-lg border bg-primary/5 p-4">
+              <p className="text-sm text-muted-foreground">Existencias disponibles</p>
+              <p className="text-3xl font-bold text-primary">{availableUnits}</p>
+              <p className="text-xs text-muted-foreground">unidades en productos visibles</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {availabilityBars.map((b) => (
-                <div key={b.label} className="flex items-center gap-2">
-                  <span className={`h-3 w-3 rounded-full ${b.color} shrink-0`} />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground truncate">{b.label}</p>
-                    <p className={`text-sm font-bold ${b.text}`}>
-                      {b.count} <span className="text-xs font-normal text-muted-foreground">({pct(b.count)}%)</span>
-                    </p>
-                  </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {inventoryGroups.map((group) => (
+                <div key={group.label} className="rounded-lg border p-3 text-center">
+                  <p className={`text-xl font-bold ${group.text}`}>{group.count}</p>
+                  <p className="text-xs text-muted-foreground">{group.label}</p>
                 </div>
               ))}
             </div>
