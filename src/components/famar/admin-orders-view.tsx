@@ -264,7 +264,7 @@ export function AdminOrdersView() {
     const localPhone = String(order.customerPhone || '').replace(/\D/g, '')
     const whatsappPhone = localPhone.startsWith('0') ? `593${localPhone.slice(1)}` : localPhone
     const delivery = order.customerAddress || order.customerLocation
-      ? `\n\n*Entrega registrada:*\n${order.customerAddress || 'Ubicación compartida'}${order.customerLocation ? `\n${order.customerLocation}` : ''}`
+      ? `\n\n*Entrega registrada:*\n${order.customerAddress || 'Ubicación compartida directamente con FAMAR'}`
       : ''
     const message = `Hola ${order.customerName || ''} 👋\n\nGracias por realizar tu pedido *#${order.orderNumber}* en FAMAR Jewelry.\n\nPara confirmar y reservar tu pedido por *${formatPrice(Number(order.total) || 0)}*, por favor realiza el pago o transferencia a una de estas cuentas:\n\n*Titular:* Fabre Marin Luisa Margarita\n\n*Banco Guayaquil*\nCuenta de ahorros: 0057038131\n\n*Banco Pichincha*\nCuenta de ahorros: 2215379800\n\n*Correo:* luisafabremarin06@gmail.com${delivery}\n\nCuando hayas realizado el pago, envíanos el comprobante por este chat. En cuanto lo verifiquemos, confirmaremos tu pedido. ¡Muchas gracias por confiar en FAMAR Jewelry! ✨`
     window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, '_blank')

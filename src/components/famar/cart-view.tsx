@@ -132,7 +132,6 @@ export function CartView() {
 📍 *Ciudad:* ${form.city}
 📱 *Teléfono:* ${form.phone}
 🏠 *Dirección:* ${form.address || 'Ubicación compartida desde el dispositivo'}
-📍 *Ubicación:* ${form.location || 'No compartida'}
 📅 *Fecha:* ${date}
 🧾 *Pedido:* #${order.orderNumber}
 ━━━━━━━━━━━━━━━
