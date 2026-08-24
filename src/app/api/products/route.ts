@@ -93,18 +93,24 @@ export async function GET(request: NextRequest) {
     const orderBy = [{ status: 'asc' }, baseOrderBy]
 
     if (featured || flag === 'daily-featured') {
-      where.visible = true
-      if (!status) {
-        where.status = 'available'
-        where.stock = { gt: 0 }
-      }
-
+      // Calculate today's rotation from the complete eligible catalog first.
+      // Category, search and other active filters must narrow that fixed set,
+      // never generate a different rotation of their own.
       const eligibleProducts = await db.product.findMany({
-        where,
+        where: { visible: true, status: 'available', stock: { gt: 0 } },
         include: { category: { select: { name: true, slug: true } } },
       })
       const dayIndex = getEcuadorDayIndex()
-      const dailyProducts = selectDailyFeatured(eligibleProducts, dayIndex)
+      const dailySelection = selectDailyFeatured(eligibleProducts, dayIndex)
+      const dailyIds = dailySelection.map((product) => product.id)
+      const matchingProducts = await db.product.findMany({
+        where: { AND: [where, { id: { in: dailyIds } }] },
+        include: { category: { select: { name: true, slug: true } } },
+      })
+      const matchingById = new Map(matchingProducts.map((product) => [product.id, product]))
+      const dailyProducts = dailyIds
+        .map((id) => matchingById.get(id))
+        .filter((product): product is NonNullable<typeof product> => Boolean(product))
       const dailyCount = dailyProducts.length
       const pageStart = (page - 1) * limit
 
