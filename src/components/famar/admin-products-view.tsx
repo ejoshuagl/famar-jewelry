@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, convertDriveUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -87,14 +87,19 @@ const emptyForm: ProductForm = {
   visible: true,
 }
 
-function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, checked, onToggleCheck }: {
+function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom, checked, onToggleCheck }: {
   product: Record<string, unknown>
   onEdit: (p: Record<string, unknown>) => void
   onDelete: (id: string) => void
   onToggleVisible: (p: { id: string; visible: boolean }) => void
+  onZoom: (url: string) => void
   checked: boolean
   onToggleCheck: (id: string) => void
 }) {
+  const imageUrl = typeof product.mainImage === 'string' && product.mainImage
+    ? convertDriveUrl(product.mainImage)
+    : null
+
   return (
     <Card className="p-3">
       <div className="flex items-start justify-between gap-2">
@@ -104,6 +109,21 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, checked
             onCheckedChange={() => onToggleCheck(product.id as string)}
             className="mt-1"
           />
+          <button
+            type="button"
+            className="h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted"
+            onClick={() => imageUrl && onZoom(imageUrl)}
+            aria-label={`Ampliar imagen de ${product.name as string}`}
+            disabled={!imageUrl}
+          >
+            {imageUrl ? (
+              <img src={imageUrl} alt={product.name as string} className="h-full w-full object-cover" />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center">
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </span>
+            )}
+          </button>
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm truncate">{product.name}</p>
             <p className="text-xs text-muted-foreground">{product.code}</p>
@@ -172,6 +192,7 @@ export function AdminProductsView() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkBadge, setBulkBadge] = useState('')
+  const [zoomImage, setZoomImage] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-products', search, flagFilter, page],
@@ -492,6 +513,7 @@ export function AdminProductsView() {
                     />
                   </TableHead>
                   <TableHead className="w-12">#</TableHead>
+                  <TableHead className="w-16">Imagen</TableHead>
                   <TableHead>Producto</TableHead>
                   <TableHead>Código</TableHead>
                   <TableHead>Categoría</TableHead>
@@ -506,6 +528,7 @@ export function AdminProductsView() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><div className="h-4 w-8 bg-muted rounded animate-pulse" /></TableCell>
+                      <TableCell><div className="h-10 w-10 bg-muted rounded animate-pulse" /></TableCell>
                       <TableCell><div className="h-4 w-32 bg-muted rounded animate-pulse" /></TableCell>
                       <TableCell><div className="h-4 w-16 bg-muted rounded animate-pulse" /></TableCell>
                       <TableCell><div className="h-4 w-20 bg-muted rounded animate-pulse" /></TableCell>
@@ -517,7 +540,7 @@ export function AdminProductsView() {
                   ))
                 ) : products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No se encontraron productos
                     </TableCell>
                   </TableRow>
@@ -534,6 +557,26 @@ export function AdminProductsView() {
                           />
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{(page - 1) * 20 + idx + 1}</TableCell>
+                        <TableCell>
+                          {typeof product.mainImage === 'string' && product.mainImage ? (
+                            <button
+                              type="button"
+                              className="h-10 w-10 overflow-hidden rounded-md border bg-muted transition hover:border-primary/60"
+                              onClick={() => setZoomImage(convertDriveUrl(product.mainImage as string))}
+                              aria-label={`Ampliar imagen de ${product.name as string}`}
+                            >
+                              <img
+                                src={convertDriveUrl(product.mainImage as string)}
+                                alt={product.name as string}
+                                className="h-full w-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted">
+                              <Package className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
@@ -628,6 +671,7 @@ export function AdminProductsView() {
                   setDeleteDialogOpen(true)
                 }}
                 onToggleVisible={(p) => toggleVisibleMutation.mutate(p)}
+                onZoom={setZoomImage}
                 checked={selected.has(product.id as string)}
                 onToggleCheck={toggleSelected}
               />
@@ -831,6 +875,20 @@ export function AdminProductsView() {
                 )}
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Image zoom */}
+        <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
+          <DialogContent className="max-w-lg p-0 overflow-hidden bg-background/95 border-primary/30">
+            {zoomImage && (
+              <img
+                src={zoomImage}
+                alt="Producto"
+                className="w-full max-h-[75vh] object-contain bg-black/30 cursor-zoom-out"
+                onClick={() => setZoomImage(null)}
+              />
+            )}
           </DialogContent>
         </Dialog>
 
