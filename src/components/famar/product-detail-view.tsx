@@ -51,21 +51,16 @@ export function ProductDetailView() {
     enabled: !!selectedProductId,
   })
 
-  const { data: relatedProducts } = useQuery({
-    queryKey: ['products', 'related', product?.category?.slug],
+  const { data: relatedProducts, isLoading: loadingRelated } = useQuery({
+    queryKey: ['products', 'recommendations', product?.id],
     queryFn: async () => {
-      if (!product?.category?.slug) return []
-      const params = new URLSearchParams({
-        category: product.category.slug,
-        limit: '8',
-      })
-      const res = await fetch(`/api/products?${params}`)
+      if (!product?.id) return []
+      const res = await fetch(`/api/products/${product.id}/recommendations?limit=8`)
+      if (!res.ok) return []
       const data = await res.json()
-      return (data.products as ProductData[]).filter(
-        (p) => p.id !== selectedProductId
-      )
+      return data.products as ProductData[]
     },
-    enabled: !!product?.category?.slug,
+    enabled: !!product?.id,
   })
 
   const { data: viewedProductsData } = useQuery({
@@ -342,14 +337,27 @@ export function ProductDetailView() {
         </motion.div>
       </div>
 
-      {/* Related Products */}
-      {relatedProducts && relatedProducts.length > 0 && (
+      {/* Smart cross-category recommendations */}
+      {(loadingRelated || (relatedProducts && relatedProducts.length > 0)) && (
         <section className="space-y-6">
-          <h2 className="text-xl font-bold">Productos Recomendados</h2>
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold">Completa tu look</h2>
+            <p className="text-sm text-muted-foreground">
+              Piezas de distintas categorías elegidas para combinar con este producto.
+            </p>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {relatedProducts.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} />
-            ))}
+            {loadingRelated
+              ? Array.from({ length: 8 }).map((_, index) => (
+                  <div key={index} className="space-y-3">
+                    <Skeleton className="aspect-square rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ))
+              : relatedProducts?.map((p, i) => (
+                  <ProductCard key={p.id} product={p} index={i} />
+                ))}
           </div>
         </section>
       )}
