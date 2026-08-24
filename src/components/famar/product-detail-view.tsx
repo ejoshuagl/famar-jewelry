@@ -25,6 +25,7 @@ import {
   Weight,
   Palette,
   ChevronRight,
+  Bell,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { parseVariants } from '@/lib/product-variants'
@@ -156,6 +157,11 @@ export function ProductDetailView() {
       useCartStore.getState().updateQuantity(itemKey, quantity)
     }
     toast.success(`${product.name} agregado al carrito`)
+  }
+
+  const handleRequestImport = () => {
+    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(product.price)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
+    window.open(`https://wa.me/593988215076?text=${encodeURIComponent(message)}`, '_blank')
   }
 
   return (
@@ -358,6 +364,18 @@ export function ProductDetailView() {
                 <Heart className={`h-4 w-4 ${favorite ? 'fill-red-500 text-red-500' : ''}`} />
               </Button>
             </div>
+          )}
+
+          {isOutOfStock && (
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full border-primary/50 text-primary hover:bg-primary/10"
+              onClick={handleRequestImport}
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              Solicitar este producto
+            </Button>
           )}
 
           {/* Share */}
