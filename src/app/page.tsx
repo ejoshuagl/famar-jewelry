@@ -25,27 +25,35 @@ import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function AppContent() {
-  const { currentView } = useAppStore()
+  const { currentView, selectedProductId } = useAppStore()
   const { isAuthenticated } = useAuthStore()
   const searchParams = useSearchParams()
-  const { selectProduct, navigate } = useAppStore()
+  const { selectProduct } = useAppStore()
 
   // Handle shared product URL: ?p=FAM-AR001
   useEffect(() => {
     const productCode = searchParams.get('p')
-    if (productCode) {
-      fetch(`/api/products?search=${encodeURIComponent(productCode)}&limit=1`)
+    if (currentView === 'product-detail' && productCode && !selectedProductId) {
+      const controller = new AbortController()
+      fetch(`/api/products?code=${encodeURIComponent(productCode)}`, { signal: controller.signal })
         .then((res) => res.json())
         .then((data) => {
-          const product = data.products?.[0]
-          if (product) {
+          const product = data.product
+          const activeCode = new URLSearchParams(window.location.search).get('p')
+          if (product && useAppStore.getState().currentView === 'product-detail' && activeCode === productCode) {
             selectProduct(product.id, product.code)
-            navigate('product-detail', false)
           }
         })
-        .catch(() => {})
+        .catch((error) => {
+          if (error?.name !== 'AbortError') console.error('Error restoring product:', error)
+        })
+      return () => controller.abort()
     }
-  }, [searchParams, selectProduct, navigate])
+  }, [searchParams, selectProduct, currentView, selectedProductId])
+
+  const restoringProduct = currentView === 'product-detail'
+    && Boolean(searchParams.get('p'))
+    && !selectedProductId
 
   // Redirect to login if trying to access admin without auth
   const isAdminView =
@@ -74,7 +82,20 @@ function AppContent() {
       case 'catalog':
         return <CatalogView />
       case 'product-detail':
-        return <ProductDetailView />
+        return restoringProduct ? (
+          <div className="container mx-auto px-4 py-6">
+            <Skeleton className="mb-6 h-6 w-48" />
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+              <Skeleton className="aspect-square rounded-lg" />
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-3/4" />
+                <Skeleton className="h-5 w-1/3" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-11 w-full" />
+              </div>
+            </div>
+          </div>
+        ) : <ProductDetailView />
       case 'cart':
         return <CartView />
       case 'out-of-stock':

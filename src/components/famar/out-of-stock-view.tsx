@@ -69,7 +69,7 @@ Gracias!`
                 <Card
                   className="h-full flex flex-col overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
                   onClick={() => {
-                    selectProduct(product.id)
+                    selectProduct(product.id, product.code)
                     navigate('product-detail')
                   }}
                 >

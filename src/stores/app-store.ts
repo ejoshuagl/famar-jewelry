@@ -74,7 +74,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
     // Push browser history entry
     const state = { view, index: historyIndex }
-    window.history.pushState(state, '', `${search}${hash}`)
+    window.history.pushState(state, '', `${window.location.pathname}${search}${hash}`)
 
     // Reset the skipPopState flag after a tick so the pushState event doesn't trigger popState handler
     requestAnimationFrame(() => {
@@ -103,7 +103,8 @@ if (typeof window !== 'undefined') {
     return validViews.includes(match[1] as AppView) ? (match[1] as AppView) : null
   }
 
-  const initialView = restoreViewFromHash()
+  const sharedProductCode = new URLSearchParams(window.location.search).get('p')
+  const initialView = restoreViewFromHash() || (sharedProductCode ? 'product-detail' : null)
   if (initialView) {
     useAppStore.setState({ currentView: initialView })
     historyStack = [initialView]
