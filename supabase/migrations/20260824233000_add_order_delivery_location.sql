@@ -1,0 +1,3 @@
+ALTER TABLE "Order"
+ADD COLUMN IF NOT EXISTS "customerAddress" TEXT,
+ADD COLUMN IF NOT EXISTS "customerLocation" TEXT;

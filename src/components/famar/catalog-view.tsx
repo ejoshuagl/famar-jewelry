@@ -168,10 +168,17 @@ export function CatalogView() {
         </div>
 
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="h-3 w-3 mr-1" />
-            Limpiar filtros
-          </Button>
+          <div className="flex items-center gap-3">
+            {!isLoading && data && (
+              <p className="text-sm text-muted-foreground">
+                {data.total} resultado{data.total !== 1 ? 's' : ''} encontrado{data.total !== 1 ? 's' : ''}
+              </p>
+            )}
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <X className="h-3 w-3 mr-1" />
+              Limpiar filtros
+            </Button>
+          </div>
         )}
 
       </div>

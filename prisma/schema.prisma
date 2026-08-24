@@ -57,6 +57,8 @@ model Order {
   customerName  String
   customerCity  String
   customerPhone String
+  customerAddress String?
+  customerLocation String?
   observations  String?
   total         Float
   status        String   @default("pending") // pending, confirmed, cancelled

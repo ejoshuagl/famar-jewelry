@@ -45,13 +45,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { customerName, customerCity, customerPhone, observations, items, total } = body
+    const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, total } = body
 
     if (!customerName || !customerCity || !customerPhone || !items || !items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
     if (!/^09\d{8}$/.test(String(customerPhone).trim())) {
       return NextResponse.json({ error: 'Número celular ecuatoriano inválido' }, { status: 400 })
+    }
+    if (!String(customerAddress || '').trim() && !String(customerLocation || '').startsWith('https://maps.google.com/')) {
+      return NextResponse.json({ error: 'La dirección o ubicación actual es obligatoria' }, { status: 400 })
     }
 
     // Sequential order number: FAM-000001, FAM-000002...
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
         customerName,
         customerCity,
         customerPhone,
+        customerAddress: String(customerAddress || '').trim() || null,
+        customerLocation: String(customerLocation || '').trim() || null,
         observations: observations || null,
         total: parseFloat(total),
         status: 'pending',

@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { EmptyState } from './empty-state'
-import { ShoppingBag, Minus, Plus, Trash2, Loader2 } from 'lucide-react'
+import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -39,8 +39,9 @@ export function CartView() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
   const [deletingProductName, setDeletingProductName] = useState('')
-  const [form, setForm] = useState({ name: '', city: '', phone: '', observations: '' })
+  const [form, setForm] = useState({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
   const [submitting, setSubmitting] = useState(false)
+  const [locating, setLocating] = useState(false)
   const queryClient = useQueryClient()
 
   const total = getTotal()
@@ -81,6 +82,10 @@ export function CartView() {
       toast.error('Ingresa un celular ecuatoriano válido: debe comenzar con 09 y tener 10 números')
       return
     }
+    if (!form.address.trim() && !form.location) {
+      toast.error('Escribe tu dirección de entrega o permite tomar tu ubicación actual')
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -91,6 +96,8 @@ export function CartView() {
           customerName: form.name.trim(),
           customerCity: form.city.trim(),
           customerPhone: form.phone.trim(),
+          customerAddress: form.address.trim(),
+          customerLocation: form.location,
           observations: form.observations.trim(),
           items: items.map((item) => ({
             productId: item.productId,
@@ -124,6 +131,8 @@ export function CartView() {
 👤 *Cliente:* ${form.name}
 📍 *Ciudad:* ${form.city}
 📱 *Teléfono:* ${form.phone}
+🏠 *Dirección:* ${form.address || 'Ubicación compartida desde el dispositivo'}
+📍 *Ubicación:* ${form.location || 'No compartida'}
 📅 *Fecha:* ${date}
 🧾 *Pedido:* #${order.orderNumber}
 ━━━━━━━━━━━━━━━
@@ -139,12 +148,37 @@ ${productList}
       toast.success('¡Pedido creado exitosamente!')
       clearCart()
       setOrderDialogOpen(false)
-      setForm({ name: '', city: '', phone: '', observations: '' })
+      setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
     } catch {
       toast.error('Error al crear el pedido. Intenta de nuevo.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const captureCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no permite obtener la ubicación. Escribe tu dirección manualmente.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const latitude = coords.latitude.toFixed(6)
+        const longitude = coords.longitude.toFixed(6)
+        setForm((current) => ({
+          ...current,
+          location: `https://maps.google.com/?q=${latitude},${longitude}`,
+        }))
+        setLocating(false)
+        toast.success('Ubicación actual agregada al pedido')
+      },
+      () => {
+        setLocating(false)
+        toast.error('No pudimos obtener tu ubicación. Revisa el permiso o escribe tu dirección.')
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    )
   }
 
   if (items.length === 0) {
@@ -310,14 +344,18 @@ ${productList}
 
       {/* Order Form Dialog */}
       <Dialog open={orderDialogOpen} onOpenChange={setOrderDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Completar Pedido</DialogTitle>
             <DialogDescription>
-              Ingresa tus datos para enviar el pedido por WhatsApp
+              Usa tus datos reales para que podamos contactarte y coordinar correctamente la entrega.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <p className="font-semibold">Ingresa información real y verificable</p>
+              <p className="mt-1 text-xs leading-relaxed">Usaremos estos datos únicamente para contactarte, confirmar el pedido y coordinar la entrega.</p>
+            </div>
             <div>
               <Label htmlFor="name">Nombre completo *</Label>
               <Input
@@ -349,13 +387,28 @@ ${productList}
               />
               <p className="mt-1 text-xs text-muted-foreground">Debe comenzar con 09 y contener 10 números.</p>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Dirección de entrega *</Label>
+              <Textarea
+                id="address"
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="Ej: ciudadela, calle principal, número de casa y referencia"
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">Si no conoces la dirección exacta, comparte la ubicación de tu dispositivo.</p>
+              <Button type="button" variant="outline" className="w-full" onClick={captureCurrentLocation} disabled={locating}>
+                {locating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+                {locating ? 'Obteniendo ubicación...' : form.location ? 'Ubicación actual agregada ✓' : 'Tomar mi ubicación actual'}
+              </Button>
+            </div>
             <div>
               <Label htmlFor="observations">Observaciones</Label>
               <Textarea
                 id="observations"
                 value={form.observations}
                 onChange={(e) => setForm({ ...form, observations: e.target.value })}
-                placeholder="Instrucciones especiales, dirección de entrega, etc."
+                placeholder="Referencias, horario preferido u otras instrucciones"
                 rows={3}
               />
             </div>

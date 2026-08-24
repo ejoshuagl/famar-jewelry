@@ -110,25 +110,6 @@ export function ContactView() {
 
         {/* CTA */}
         <motion.div initial="hidden" animate="visible" variants={fadeIn} custom={2} className="space-y-6">
-          <Card className="overflow-hidden">
-            <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 p-8 text-center">
-              <h3 className="text-xl font-bold mb-2">¿Necesitas ayuda?</h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Nuestro equipo está listo para asesorarte en la elección perfecta
-              </p>
-              <a
-                href="https://wa.me/593988215076?text=%C2%A1Hola!%20Necesito%20asesor%C3%ADa%20sobre%20un%20producto."
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button size="lg" className="bg-[#25D366] text-white hover:bg-[#25D366]/90">
-                  <MessageCircle className="mr-2 h-5 w-5" />
-                  Chatear por WhatsApp
-                </Button>
-              </a>
-            </div>
-          </Card>
-
           <Card className="overflow-hidden border-primary/30">
             <CardContent className="p-0">
               <div className="bg-gradient-to-br from-primary to-primary/75 p-7 text-primary-foreground">
@@ -138,7 +119,7 @@ export function ContactView() {
                 <p className="mb-1 text-sm font-medium text-primary-foreground/80">Oportunidad para emprendedores</p>
                 <h3 className="mb-3 text-2xl font-bold">Haz tu propio negocio</h3>
                 <p className="mb-6 text-sm leading-relaxed text-primary-foreground/90">
-                  ¿Quieres revender Famar Jewelry? Compra a partir de $50 USD y recibe un 20% de descuento automático.
+                  ¿Quieres revender Famar Jewelry? Compra a partir de $80 USD y recibe un 20% de descuento automático.
                 </p>
                 <a
                   href="https://wa.me/593988215076?text=%C2%A1Hola!%20Quiero%20informaci%C3%B3n%20para%20revender%20Famar%20Jewelry%20y%20acceder%20al%20descuento%20para%20emprendedores."
