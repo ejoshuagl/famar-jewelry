@@ -743,9 +743,9 @@ export function AdminProductsView() {
                   <div className="flex gap-2">
                     <Input
                       value={form.code}
-                      onChange={(e) => updateForm('code', e.target.value)}
-                      readOnly={!!editingId}
-                      className={editingId ? 'bg-muted' : ''}
+                      readOnly
+                      aria-readonly="true"
+                      className="cursor-not-allowed bg-muted"
                       placeholder="Se genera al seleccionar categoría"
                     />
                     {!editingId && form.categoryId && (
