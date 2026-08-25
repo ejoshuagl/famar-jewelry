@@ -985,14 +985,14 @@ export function AdminProductsView() {
             {zoomImage && (
               <button
                 type="button"
-                className="block max-h-[80dvh] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg bg-black/80"
+                className="flex h-[80dvh] w-[calc(100vw-2rem)] max-w-lg items-center justify-center overflow-hidden rounded-lg bg-black/80"
                 onClick={() => setZoomImage(null)}
                 aria-label="Cerrar imagen ampliada"
               >
                 <img
                   src={zoomImage}
                   alt="Producto"
-                  className="block max-h-[80dvh] max-w-[calc(100vw-2rem)] object-contain"
+                  className="h-full w-full object-contain"
                 />
               </button>
             )}
