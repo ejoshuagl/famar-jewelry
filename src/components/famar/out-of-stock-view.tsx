@@ -102,7 +102,7 @@ Gracias!`
                     </div>
                   </div>
                   <CardContent className="p-3 flex flex-col flex-1 min-h-0">
-                    <h3 className="font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
+                    <h3 className="allow-text-selection font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
                       {product.name}
                     </h3>
                     <div className="mt-auto pt-2 flex items-end justify-between gap-2">

@@ -225,6 +225,22 @@
   border-color: #C8A951;
 }
 
+/* Protect public presentation copy while keeping useful product data copyable. */
+.public-store {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.public-store input,
+.public-store textarea,
+.public-store [contenteditable="true"],
+.public-store .allow-text-selection {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* Seasonal Christmas theme: restrained decorations that never block content. */
 html[data-site-theme="christmas"] body {
   background-image:

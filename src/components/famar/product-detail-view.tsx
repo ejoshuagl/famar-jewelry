@@ -220,8 +220,8 @@ export function ProductDetailView() {
             </div>
           )}
 
-          <h1 className="text-2xl sm:text-3xl font-bold">{product.name}</h1>
-          <p className="text-sm text-muted-foreground">Código: {product.code}</p>
+          <h1 className="allow-text-selection text-2xl sm:text-3xl font-bold">{product.name}</h1>
+          <p className="allow-text-selection text-sm text-muted-foreground">Código: {product.code}</p>
           <p className="text-3xl font-bold text-primary">
             {formatPrice(product.price)}
           </p>

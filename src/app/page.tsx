@@ -157,7 +157,7 @@ function AppContent() {
   const isAdmin = isAdminView
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={`${isAdmin ? 'admin-app' : 'public-store'} min-h-screen flex flex-col`}>
       {!isAdmin && <SiteTheme />}
       {!isAdmin && <SiteHeader />}
       <main className="flex-1">{renderView()}</main>
