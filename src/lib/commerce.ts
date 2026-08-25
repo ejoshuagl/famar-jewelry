@@ -6,20 +6,20 @@ export interface CouponRecord {
   active: boolean; usageLimit: number | null; usageCount: number; startsAt: Date | null; endsAt: Date | null; createdAt: Date; updatedAt: Date
 }
 
+let commerceTablesReady: Promise<void> | null = null
+
 export const DEFAULT_WHOLESALE_TIERS: WholesaleTier[] = [
   { min: 50, discount: 10, label: '10% OFF automático' },
   { min: 100, discount: 20, label: '20% OFF + Atención personalizada' },
 ]
 
-export async function ensureCommerceTables() {
+async function createCommerceTables() {
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "CommerceSetting" (
       "key" TEXT NOT NULL, "value" TEXT NOT NULL, "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT "CommerceSetting_pkey" PRIMARY KEY ("key")
     )
   `)
-  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageLimit" INTEGER')
-  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageCount" INTEGER NOT NULL DEFAULT 0')
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "DiscountCoupon" (
       "id" TEXT NOT NULL, "code" TEXT NOT NULL, "description" TEXT, "discount" DOUBLE PRECISION NOT NULL,
@@ -29,6 +29,46 @@ export async function ensureCommerceTables() {
       CONSTRAINT "DiscountCoupon_pkey" PRIMARY KEY ("id"), CONSTRAINT "DiscountCoupon_code_key" UNIQUE ("code")
     )
   `)
+  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageLimit" INTEGER')
+  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageCount" INTEGER NOT NULL DEFAULT 0')
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "CouponRedemption" (
+      "id" TEXT NOT NULL,
+      "couponId" TEXT NOT NULL,
+      "orderId" TEXT NOT NULL,
+      "customerPhone" TEXT NOT NULL,
+      "discount" DOUBLE PRECISION NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "CouponRedemption_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "CouponRedemption_orderId_key" UNIQUE ("orderId"),
+      CONSTRAINT "CouponRedemption_couponId_customerPhone_key" UNIQUE ("couponId", "customerPhone"),
+      CONSTRAINT "CouponRedemption_couponId_fkey" FOREIGN KEY ("couponId") REFERENCES "DiscountCoupon"("id") ON DELETE RESTRICT,
+      CONSTRAINT "CouponRedemption_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "Order"("id") ON DELETE CASCADE
+    )
+  `)
+  await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "CouponRedemption_couponId_createdAt_idx" ON "CouponRedemption"("couponId", "createdAt")')
+  await db.$executeRawUnsafe(`
+    INSERT INTO "CouponRedemption" ("id", "couponId", "orderId", "customerPhone", "discount", "createdAt")
+    SELECT DISTINCT ON (coupon."id", orders."customerPhone")
+      md5(coupon."id" || orders."id"), coupon."id", orders."id", orders."customerPhone", coupon."discount", orders."createdAt"
+    FROM "DiscountCoupon" AS coupon
+    JOIN "Order" AS orders ON orders."observations" ILIKE ('%[Cupón ' || coupon."code" || ':%')
+    ORDER BY coupon."id", orders."customerPhone", orders."createdAt"
+    ON CONFLICT DO NOTHING
+  `)
+  await db.$executeRawUnsafe(`
+    UPDATE "DiscountCoupon" AS coupon SET "usageCount" = GREATEST(coupon."usageCount", redemptions.total)
+    FROM (SELECT "couponId", COUNT(*)::integer AS total FROM "CouponRedemption" GROUP BY "couponId") AS redemptions
+    WHERE coupon."id" = redemptions."couponId"
+  `)
+}
+
+export function ensureCommerceTables() {
+  commerceTablesReady ||= createCommerceTables().catch((error) => {
+    commerceTablesReady = null
+    throw error
+  })
+  return commerceTablesReady
 }
 
 export async function getWholesaleTiers(): Promise<WholesaleTier[]> {
@@ -73,5 +113,5 @@ export async function calculateDiscount(subtotal: number, couponCode?: string) {
   const source = coupon && coupon.discount > wholesale ? `Cupón ${coupon.code}` : wholesale > 0 ? 'Descuento mayorista' : null
   const amount = Math.round(subtotal * percent) / 100
   const appliedCoupon = coupon && coupon.discount > wholesale ? coupon.code : null
-  return { subtotal, percent, amount, total: Math.max(0, subtotal - amount), source, coupon: appliedCoupon, validCoupon: coupon?.code || null, tiers }
+  return { subtotal, percent, amount, total: Math.max(0, subtotal - amount), source, coupon: appliedCoupon, couponId: appliedCoupon ? coupon?.id || null : null, validCoupon: coupon?.code || null, tiers }
 }

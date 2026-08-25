@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
 import { calculateDiscount } from '@/lib/commerce'
+import { ensureProductRelations } from '@/lib/relations'
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +46,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureProductRelations()
     const body = await request.json()
     const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode } = body
 
@@ -94,6 +96,11 @@ export async function POST(request: NextRequest) {
     const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
     const order = await db.$transaction(async (tx) => {
       if (pricing.coupon) {
+        const previousClaim = await tx.couponRedemption.findFirst({
+          where: { couponId: pricing.couponId || '', customerPhone: String(customerPhone).trim() },
+          select: { id: true },
+        })
+        if (previousClaim) throw new Error('COUPON_ALREADY_USED')
         const claimed = await tx.$queryRawUnsafe<Array<{ id: string }>>(
           `UPDATE "DiscountCoupon" SET "usageCount" = "usageCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
            WHERE UPPER("code") = UPPER($1) AND "active" = true
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
         )
         if (!claimed.length) throw new Error('COUPON_EXHAUSTED')
       }
-      return tx.order.create({ data: {
+      const createdOrder = await tx.order.create({ data: {
         orderNumber,
         customerName,
         customerCity,
@@ -123,6 +130,17 @@ export async function POST(request: NextRequest) {
           })),
         },
       }, include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } } })
+      if (pricing.coupon && pricing.couponId) {
+        await tx.couponRedemption.create({
+          data: {
+            couponId: pricing.couponId,
+            orderId: createdOrder.id,
+            customerPhone: String(customerPhone).trim(),
+            discount: pricing.percent,
+          },
+        })
+      }
+      return createdOrder
     })
 
     return NextResponse.json({ ...order, subtotal: pricing.subtotal, discountPercent: pricing.percent, discountAmount: pricing.amount, discountSource: pricing.source }, { status: 201 })
@@ -132,6 +150,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Uno de los productos o variantes ya no está disponible en la cantidad solicitada' }, { status: 409 })
     }
     if (error instanceof Error && error.message === 'COUPON_EXHAUSTED') return NextResponse.json({ error: 'Este cupón acaba de alcanzar su límite de reclamaciones' }, { status: 409 })
+    if (error instanceof Error && error.message === 'COUPON_ALREADY_USED') return NextResponse.json({ error: 'Este número ya reclamó el cupón' }, { status: 409 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

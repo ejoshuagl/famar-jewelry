@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 
-export async function ensureCampaignTable() {
+let campaignTableReady: Promise<void> | null = null
+
+async function createCampaignTable() {
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "Campaign" (
       "id" TEXT NOT NULL,
@@ -48,4 +50,33 @@ export async function ensureCampaignTable() {
     CREATE INDEX IF NOT EXISTS "Campaign_active_startAt_endAt_idx"
     ON "Campaign"("active", "startAt", "endAt")
   `)
+  await db.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "CampaignProduct" (
+      "campaignId" TEXT NOT NULL,
+      "productId" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "CampaignProduct_pkey" PRIMARY KEY ("campaignId", "productId"),
+      CONSTRAINT "CampaignProduct_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE,
+      CONSTRAINT "CampaignProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE
+    )
+  `)
+  await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "CampaignProduct_productId_idx" ON "CampaignProduct"("productId")')
+  await db.$executeRawUnsafe(`
+    INSERT INTO "CampaignProduct" ("campaignId", "productId")
+    SELECT campaign."id", selected."productId"
+    FROM "Campaign" AS campaign
+    CROSS JOIN LATERAL jsonb_array_elements_text(
+      CASE WHEN campaign."productIds" IS NULL OR BTRIM(campaign."productIds") = '' THEN '[]'::jsonb ELSE campaign."productIds"::jsonb END
+    ) AS selected("productId")
+    JOIN "Product" ON "Product"."id" = selected."productId"
+    ON CONFLICT ("campaignId", "productId") DO NOTHING
+  `)
+}
+
+export function ensureCampaignTable() {
+  campaignTableReady ||= createCampaignTable().catch((error) => {
+    campaignTableReady = null
+    throw error
+  })
+  return campaignTableReady
 }

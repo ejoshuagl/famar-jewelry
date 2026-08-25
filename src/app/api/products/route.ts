@@ -5,9 +5,11 @@ import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/d
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { ensureCampaignTable } from '@/lib/campaigns'
+import { ensureProductRelations } from '@/lib/relations'
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureProductRelations()
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
@@ -45,14 +47,9 @@ export async function GET(request: NextRequest) {
       const now = new Date()
       const campaign = await db.campaign.findFirst({
         where: { id: campaignId, active: true, startAt: { lte: now }, endAt: { gte: now } },
-        select: { productIds: true },
+        select: { products: { select: { productId: true } } },
       })
-      let productIds: string[] = []
-      try {
-        productIds = campaign?.productIds ? JSON.parse(campaign.productIds) : []
-      } catch {
-        productIds = []
-      }
+      const productIds = campaign?.products.map((product) => product.productId) || []
       where.id = { in: productIds }
     }
     if (flag === 'featured') where.isFeatured = true
@@ -178,6 +175,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureProductRelations()
     const admin = requireAdmin(request)
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

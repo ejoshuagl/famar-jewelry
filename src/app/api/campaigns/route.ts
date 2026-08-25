@@ -32,11 +32,13 @@ export async function GET(request: NextRequest) {
         endAt: { gte: now },
       },
       orderBy: [{ priority: 'desc' }, { startAt: 'desc' }],
+      include: { products: { select: { productId: true } } },
     })
 
     return NextResponse.json(campaigns.map((campaign) => ({
       ...campaign,
-      productIds: (() => { try { return campaign.productIds ? JSON.parse(campaign.productIds) : [] } catch { return [] } })(),
+      productIds: campaign.products.map((product) => product.productId),
+      products: undefined,
     })))
   } catch (error) {
     console.error('GET /api/campaigns error:', error)
@@ -60,6 +62,9 @@ export async function POST(request: NextRequest) {
     if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
     if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
 
+    const productIds = Array.isArray(body.productIds)
+      ? Array.from(new Set(body.productIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)))
+      : []
     const campaign = await db.campaign.create({
       data: {
         title: String(body.title).slice(0, 120),
@@ -71,15 +76,17 @@ export async function POST(request: NextRequest) {
         displayMode,
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
         ctaView: body.ctaView || null,
-        productIds: Array.isArray(body.productIds) ? JSON.stringify(body.productIds) : null,
+        productIds: productIds.length ? JSON.stringify(productIds) : null,
         startAt,
         endAt,
         active: body.active !== false,
         priority: Number.isFinite(Number(body.priority)) ? Number(body.priority) : 0,
+        products: { create: productIds.map((productId) => ({ productId })) },
       },
+      include: { products: { select: { productId: true } } },
     })
     await auditLog({ action: 'create', entity: 'campaign', entityId: campaign.id, admin: admin.name, details: campaign.title })
-    return NextResponse.json(campaign, { status: 201 })
+    return NextResponse.json({ ...campaign, productIds: campaign.products.map((product) => product.productId), products: undefined }, { status: 201 })
   } catch (error) {
     console.error('POST /api/campaigns error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

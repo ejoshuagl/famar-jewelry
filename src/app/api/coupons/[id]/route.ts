@@ -21,6 +21,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const admin = requireAdmin(request); if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   await ensureCommerceTables(); const { id } = await params
+  const claims = await db.couponRedemption.count({ where: { couponId: id } })
+  if (claims > 0) return NextResponse.json({ error: 'Este cupón tiene pedidos asociados. Desactívalo para conservar el historial.' }, { status: 409 })
   await db.$executeRawUnsafe('DELETE FROM "DiscountCoupon" WHERE "id"=$1', id)
   await auditLog({ action: 'delete', entity: 'coupon', entityId: id, admin: admin.name }); return NextResponse.json({ success: true })
 }

@@ -25,6 +25,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const displayMode = ['banner', 'popup', 'both'].includes(body.displayMode) ? body.displayMode : 'both'
     if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
     if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
+    const productIds = Array.isArray(body.productIds)
+      ? Array.from(new Set(body.productIds.filter((productId: unknown): productId is string => typeof productId === 'string' && productId.length > 0)))
+      : []
     const campaign = await db.campaign.update({
       where: { id },
       data: {
@@ -37,15 +40,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         displayMode,
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
         ctaView: body.ctaView || null,
-        productIds: Array.isArray(body.productIds) ? JSON.stringify(body.productIds) : null,
+        productIds: productIds.length ? JSON.stringify(productIds) : null,
         startAt,
         endAt,
         active: body.active !== false,
         priority: Number.isFinite(Number(body.priority)) ? Number(body.priority) : 0,
+        products: {
+          deleteMany: {},
+          create: productIds.map((productId) => ({ productId })),
+        },
       },
+      include: { products: { select: { productId: true } } },
     })
     await auditLog({ action: 'update', entity: 'campaign', entityId: id, admin: admin.name, details: campaign.title })
-    return NextResponse.json(campaign)
+    return NextResponse.json({ ...campaign, productIds: campaign.products.map((product) => product.productId), products: undefined })
   } catch (error) {
     console.error('PUT /api/campaigns/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
