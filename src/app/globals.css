@@ -413,11 +413,19 @@ html[data-site-theme="valentine"] .bg-card {
   font-size: 44px;
   text-shadow: 0 0 14px rgb(180 134 210 / 70%);
   opacity: 0;
-  animation: ghost-stroll 18s ease-in-out infinite;
+  will-change: transform, opacity;
+  animation: ghost-drift-a 27s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-.ghost-one { top: 28%; left: 6%; }
-.ghost-two { top: 58%; right: 8%; animation-delay: -9s; transform: scaleX(-1); }
+.ghost-one { top: 0; left: -70px; }
+.ghost-two {
+  top: 0;
+  left: auto;
+  right: -70px;
+  animation-name: ghost-drift-b;
+  animation-delay: -14s;
+  animation-duration: 33s;
+}
 
 .halloween-bat {
   z-index: 49;
@@ -486,10 +494,26 @@ html[data-site-theme="valentine"] .bg-card {
   97% { opacity: 0; transform: translate3d(-108vw, 8vh, 0) rotate(8deg); }
 }
 
-@keyframes ghost-stroll {
-  0%, 68%, 100% { opacity: 0; transform: translate3d(-35px, 20px, 0); }
-  74% { opacity: 0.5; }
-  92% { opacity: 0.34; transform: translate3d(42vw, -28px, 0); }
+@keyframes ghost-drift-a {
+  0%, 8% { opacity: 0; transform: translate3d(-20px, 72vh, 0) rotate(-8deg) scale(0.78); }
+  13% { opacity: 0.5; }
+  25% { transform: translate3d(24vw, 28vh, 0) rotate(7deg) scale(0.95); }
+  39% { transform: translate3d(48vw, 62vh, 0) rotate(-5deg) scale(1.08); }
+  51% { opacity: 0.34; transform: translate3d(66vw, 18vh, 0) rotate(8deg) scale(0.88); }
+  64% { opacity: 0.52; transform: translate3d(84vw, 48vh, 0) rotate(-6deg) scale(1); }
+  74% { opacity: 0; transform: translate3d(112vw, 8vh, 0) rotate(10deg) scale(0.76); }
+  75%, 100% { opacity: 0; transform: translate3d(112vw, 8vh, 0); }
+}
+
+@keyframes ghost-drift-b {
+  0%, 12% { opacity: 0; transform: translate3d(20px, 12vh, 0) scaleX(-1) rotate(7deg) scale(0.72); }
+  17% { opacity: 0.46; }
+  29% { transform: translate3d(-20vw, 54vh, 0) scaleX(-1) rotate(-7deg) scale(0.94); }
+  43% { opacity: 0.28; transform: translate3d(-44vw, 22vh, 0) scaleX(-1) rotate(5deg) scale(1.08); }
+  57% { opacity: 0.5; transform: translate3d(-69vw, 76vh, 0) scaleX(-1) rotate(-8deg) scale(0.9); }
+  70% { transform: translate3d(-88vw, 38vh, 0) scaleX(-1) rotate(6deg) scale(1); }
+  82% { opacity: 0; transform: translate3d(-115vw, 92vh, 0) scaleX(-1) rotate(-10deg) scale(0.7); }
+  83%, 100% { opacity: 0; transform: translate3d(-115vw, 92vh, 0) scaleX(-1); }
 }
 
 @keyframes bat-fly-and-hang {
