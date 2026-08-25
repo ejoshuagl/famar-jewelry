@@ -233,7 +233,7 @@ ${productList}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Items */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="cart-items-scroll max-h-[56vh] space-y-3 overflow-y-auto pr-2 lg:col-span-2 lg:max-h-[calc(100vh-10rem)]">
           {items.map((item) => {
             const itemKey = item.itemKey || item.productId
             const imageUrl = item.mainImage ? convertDriveUrl(item.mainImage) : null
@@ -324,12 +324,12 @@ ${productList}
 
         {/* Summary */}
         <div>
-          <Card className="sticky top-20">
-            <CardHeader>
+          <Card className="lg:sticky lg:top-20 lg:flex lg:max-h-[calc(100vh-6rem)] lg:flex-col">
+            <CardHeader className="shrink-0">
               <CardTitle className="text-lg">Resumen del Pedido</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="space-y-4 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+              <div className="cart-summary-scroll max-h-52 space-y-2 overflow-y-auto pr-2 lg:max-h-none lg:min-h-20 lg:flex-1">
                 {items.map((item) => (
                   <div key={item.itemKey || item.productId} className="flex justify-between text-sm">
                     <span className="text-muted-foreground truncate mr-2">
