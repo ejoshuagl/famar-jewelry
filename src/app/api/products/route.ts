@@ -4,12 +4,10 @@ import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
-import { ensureCampaignTable } from '@/lib/campaigns'
 import { ensureProductRelations } from '@/lib/relations'
 
 export async function GET(request: NextRequest) {
   try {
-    await ensureProductRelations()
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
@@ -43,7 +41,6 @@ export async function GET(request: NextRequest) {
       where.visible = true
     }
     if (campaignId) {
-      await ensureCampaignTable()
       const now = new Date()
       const campaign = await db.campaign.findFirst({
         where: { id: campaignId, active: true, startAt: { lte: now }, endAt: { gte: now } },

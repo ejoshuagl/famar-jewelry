@@ -73,7 +73,6 @@ export function ensureCommerceTables() {
 }
 
 export async function getWholesaleTiers(): Promise<WholesaleTier[]> {
-  await ensureCommerceTables()
   const rows = await db.$queryRawUnsafe<Array<{ value: string }>>('SELECT "value" FROM "CommerceSetting" WHERE "key" = $1', 'wholesale-tiers')
   if (!rows[0]) return DEFAULT_WHOLESALE_TIERS
   try {
@@ -92,7 +91,6 @@ export async function saveWholesaleTiers(tiers: WholesaleTier[]) {
 }
 
 export async function getSaleDiscount() {
-  await ensureCommerceTables()
   const rows = await db.$queryRawUnsafe<Array<{ value: string }>>('SELECT "value" FROM "CommerceSetting" WHERE "key" = $1', 'sale-discount')
   const value = Number(rows[0]?.value ?? DEFAULT_SALE_DISCOUNT)
   return Number.isFinite(value) ? Math.min(90, Math.max(0, value)) : DEFAULT_SALE_DISCOUNT
@@ -114,7 +112,6 @@ export function wholesaleDiscount(subtotal: number, tiers: WholesaleTier[]) {
 }
 
 export async function findValidCoupon(code: string, subtotal: number): Promise<CouponRecord | null> {
-  await ensureCommerceTables()
   const rows = await db.$queryRawUnsafe<CouponRecord[]>(
     `SELECT * FROM "DiscountCoupon" WHERE UPPER("code") = UPPER($1) AND "active" = true
      AND "minPurchase" <= $2 AND ("startsAt" IS NULL OR "startsAt" <= CURRENT_TIMESTAMP)

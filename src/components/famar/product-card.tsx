@@ -249,21 +249,21 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 shrink-0 border-primary/30 px-2 text-[11px] text-primary hover:bg-primary/10 sm:px-3 sm:text-xs"
+                className="h-8 shrink-0 border-primary/30 px-1.5 text-[10px] text-primary hover:bg-primary/10 sm:px-3 sm:text-xs"
                 onClick={handleRequestImport}
                 aria-label={`Solicitar importación de ${product.name}`}
               >
-                <Bell className="hidden h-3.5 w-3.5 sm:mr-1 sm:inline" />
+                <Bell className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 <span>Solicitar</span>
               </Button>
             ) : (
               <Button
                 size="sm"
-                className="h-8 shrink-0 bg-primary px-2 text-[11px] text-primary-foreground hover:bg-primary/90 sm:px-3 sm:text-xs"
+                className="h-8 shrink-0 bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary/90 sm:px-3 sm:text-xs"
                 onClick={handleAddToCart}
                 aria-label={hasVariants ? `Elegir color de ${product.name}` : `Agregar ${product.name} al carrito`}
               >
-                <ShoppingCart className="hidden h-3.5 w-3.5 sm:mr-1 sm:inline" />
+                <ShoppingCart className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 {hasVariants ? <><span className="sm:hidden">Elegir</span><span className="hidden sm:inline">Elegir color</span></> : <span>Agregar</span>}
               </Button>
             )}

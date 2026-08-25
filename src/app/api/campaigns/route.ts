@@ -16,7 +16,6 @@ function parseEcuadorDate(value: unknown) {
 
 export async function GET(request: NextRequest) {
   try {
-    await ensureCampaignTable()
     const { searchParams } = new URL(request.url)
     const includeAll = searchParams.get('all') === 'true'
 
