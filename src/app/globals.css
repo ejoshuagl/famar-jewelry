@@ -392,14 +392,21 @@ html[data-site-theme="valentine"] .bg-card {
 }
 
 .halloween-spider {
-  top: 24%;
+  top: 0;
   font-size: 25px;
   filter: grayscale(1) brightness(0.75) drop-shadow(0 0 5px #e78331);
-  animation: spider-walk 16s linear infinite;
+  animation: spider-roam 22s ease-in-out infinite;
 }
 
 .spider-one { left: -35px; }
-.spider-two { top: 68%; left: auto; right: -35px; animation-direction: reverse; animation-delay: -7s; }
+.spider-two {
+  top: 0;
+  left: auto;
+  right: -35px;
+  animation-name: spider-roam-alt;
+  animation-delay: -10s;
+  animation-duration: 26s;
+}
 
 .halloween-ghost {
   color: rgb(255 255 255 / 68%);
@@ -457,10 +464,26 @@ html[data-site-theme="valentine"] .bg-card {
 .theme-click-black-friday i:nth-child(3n + 2) { color: #d82948; }
 .theme-click-valentine i { color: #d34c69; }
 
-@keyframes spider-walk {
-  0% { transform: translateX(0) rotate(-8deg); }
-  48% { transform: translateX(105vw) rotate(8deg); }
-  49%, 100% { transform: translateX(105vw); }
+@keyframes spider-roam {
+  0%, 100% { opacity: 0; transform: translate3d(0, 12vh, 0) rotate(-12deg); }
+  5% { opacity: 0.78; }
+  18% { transform: translate3d(24vw, 58vh, 0) rotate(18deg); }
+  34% { transform: translate3d(48vw, 20vh, 0) rotate(-20deg); }
+  52% { transform: translate3d(72vw, 82vh, 0) rotate(16deg); }
+  68% { transform: translate3d(92vw, 42vh, 0) rotate(-14deg); }
+  82% { opacity: 0.72; transform: translate3d(55vw, 68vh, 0) rotate(20deg); }
+  96% { opacity: 0; transform: translate3d(108vw, 96vh, 0) rotate(-8deg); }
+}
+
+@keyframes spider-roam-alt {
+  0%, 100% { opacity: 0; transform: translate3d(0, 85vh, 0) rotate(10deg); }
+  6% { opacity: 0.7; }
+  20% { transform: translate3d(-20vw, 35vh, 0) rotate(-18deg); }
+  38% { transform: translate3d(-47vw, 74vh, 0) rotate(16deg); }
+  56% { transform: translate3d(-70vw, 16vh, 0) rotate(-16deg); }
+  74% { transform: translate3d(-92vw, 55vh, 0) rotate(20deg); }
+  90% { opacity: 0.65; transform: translate3d(-58vw, 90vh, 0) rotate(-12deg); }
+  97% { opacity: 0; transform: translate3d(-108vw, 8vh, 0) rotate(8deg); }
 }
 
 @keyframes ghost-stroll {
