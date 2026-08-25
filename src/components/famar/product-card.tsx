@@ -241,30 +241,30 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             {product.name}
           </h3>
           <div className="mt-auto pt-2 flex items-end justify-between gap-2">
-            <span className="text-base font-bold text-primary leading-none">
-              {product.isOnSale && <span className="mr-1.5 text-xs font-normal text-muted-foreground line-through">{formatPrice(product.price)}</span>}
+            <span className="flex min-w-0 flex-col items-start gap-0.5 text-base font-bold leading-none text-primary sm:block">
+              {product.isOnSale && <span className="text-[10px] font-normal text-muted-foreground line-through sm:mr-1.5 sm:text-xs">{formatPrice(product.price)}</span>}
               {formatPrice(currentPrice)}
             </span>
             {isOutOfStock ? (
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 w-8 shrink-0 border-primary/30 p-0 text-xs text-primary hover:bg-primary/10 sm:w-auto sm:px-3"
+                className="h-8 shrink-0 border-primary/30 px-2 text-[11px] text-primary hover:bg-primary/10 sm:px-3 sm:text-xs"
                 onClick={handleRequestImport}
                 aria-label={`Solicitar importación de ${product.name}`}
               >
-                <Bell className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden sm:inline">Solicitar</span>
+                <Bell className="hidden h-3.5 w-3.5 sm:mr-1 sm:inline" />
+                <span>Solicitar</span>
               </Button>
             ) : (
               <Button
                 size="sm"
-                className="h-8 w-8 shrink-0 bg-primary p-0 text-xs text-primary-foreground hover:bg-primary/90 sm:w-auto sm:px-3"
+                className="h-8 shrink-0 bg-primary px-2 text-[11px] text-primary-foreground hover:bg-primary/90 sm:px-3 sm:text-xs"
                 onClick={handleAddToCart}
                 aria-label={hasVariants ? `Elegir color de ${product.name}` : `Agregar ${product.name} al carrito`}
               >
-                <ShoppingCart className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden sm:inline">{hasVariants ? 'Elegir color' : 'Agregar'}</span>
+                <ShoppingCart className="hidden h-3.5 w-3.5 sm:mr-1 sm:inline" />
+                {hasVariants ? <><span className="sm:hidden">Elegir</span><span className="hidden sm:inline">Elegir color</span></> : <span>Agregar</span>}
               </Button>
             )}
           </div>
