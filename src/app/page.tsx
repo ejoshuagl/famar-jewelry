@@ -6,7 +6,7 @@ import { useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { SiteHeader } from '@/components/famar/site-header'
 import { SiteFooter } from '@/components/famar/site-footer'
-import { WhatsAppButton } from '@/components/famar/whatsapp-button'
+import { FloatingCartButton } from '@/components/famar/floating-cart-button'
 import { ScrollToTop } from '@/components/famar/scroll-to-top'
 import { HomeView } from '@/components/famar/home-view'
 import { CatalogView } from '@/components/famar/catalog-view'
@@ -162,7 +162,7 @@ function AppContent() {
       {!isAdmin && <SiteHeader />}
       <main className="flex-1">{renderView()}</main>
       {!isAdmin && <SiteFooter />}
-      {!isAdmin && <WhatsAppButton />}
+      {!isAdmin && <FloatingCartButton />}
       <ScrollToTop />
     </div>
   )

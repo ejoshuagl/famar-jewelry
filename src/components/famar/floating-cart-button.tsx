@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/cart-store'
 import { useAppStore } from '@/stores/app-store'
 import { Badge } from '@/components/ui/badge'
 
-export function WhatsAppButton() {
+export function FloatingCartButton() {
   const itemCount = useCartStore((s) => s.getItemCount())
   const navigate = useAppStore((s) => s.navigate)
   const mounted = useSyncExternalStore(
