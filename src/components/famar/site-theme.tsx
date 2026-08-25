@@ -24,6 +24,41 @@ const STARS = Array.from({ length: 12 }, (_, index) => ({
   delay: `${(index % 5) * 0.6}s`,
 }))
 
+type SeasonalTheme = 'christmas' | 'halloween' | 'black-friday' | 'valentine'
+
+const CLICK_SYMBOLS: Record<SeasonalTheme, string[]> = {
+  christmas: ['✦', '❄', '✧'],
+  halloween: ['✦', '◆', '☾'],
+  'black-friday': ['%', '✦', 'SALE'],
+  valentine: ['♥', '♡', '✦'],
+}
+
+function ThemeClickEffects({ theme }: { theme: SeasonalTheme }) {
+  const [bursts, setBursts] = useState<Array<{ id: number; x: number; y: number; symbols: string[] }>>([])
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let nextId = 0
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target?.closest('button, a, [role="button"]')) return
+      const id = nextId++
+      setBursts((current) => [...current.slice(-3), { id, x: event.clientX, y: event.clientY, symbols: CLICK_SYMBOLS[theme] }])
+      window.setTimeout(() => setBursts((current) => current.filter((burst) => burst.id !== id)), 850)
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [theme])
+
+  return (
+    <div className={`theme-click-effects theme-click-${theme}`} aria-hidden="true">
+      {bursts.flatMap((burst) => burst.symbols.map((symbol, index) => (
+        <i key={`${burst.id}-${index}`} style={{ left: burst.x, top: burst.y, '--burst-index': index } as React.CSSProperties}>{symbol}</i>
+      )))}
+    </div>
+  )
+}
+
 export function SiteTheme() {
   const [theme, setTheme] = useState<'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'>('standard')
 
@@ -53,19 +88,32 @@ export function SiteTheme() {
     }[theme]
 
     return (
-      <div className={`seasonal-decorations seasonal-${theme}`} aria-hidden="true">
-        <div className="seasonal-top-accent" />
-        {decorations.map((symbol, index) => (
-          <i
-            key={`${symbol}-${index}`}
-            style={{ left: `${4 + ((index * 29) % 91)}%`, animationDelay: `${index * -0.7}s`, animationDuration: `${7 + (index % 4)}s` }}
-          >{symbol}</i>
-        ))}
-      </div>
+      <>
+        <div className={`seasonal-decorations seasonal-${theme}`} aria-hidden="true">
+          <div className="seasonal-top-accent" />
+          {decorations.map((symbol, index) => (
+            <i
+              key={`${symbol}-${index}`}
+              style={{ left: `${4 + ((index * 29) % 91)}%`, animationDelay: `${index * -0.7}s`, animationDuration: `${7 + (index % 4)}s` }}
+            >{symbol}</i>
+          ))}
+          {theme === 'halloween' ? (
+            <>
+              <span className="halloween-spider spider-one">🕷</span>
+              <span className="halloween-spider spider-two">🕷</span>
+              <span className="halloween-ghost ghost-one">👻</span>
+              <span className="halloween-ghost ghost-two">👻</span>
+              <span className="halloween-bat">◆</span>
+            </>
+          ) : null}
+        </div>
+        <ThemeClickEffects theme={theme} />
+      </>
     )
   }
 
   return (
+    <>
     <div className="christmas-decorations" aria-hidden="true">
       <div className="christmas-light-wire">
         {LIGHTS.map((light) => (
@@ -88,5 +136,7 @@ export function SiteTheme() {
         ))}
       </div>
     </div>
+    <ThemeClickEffects theme="christmas" />
+    </>
   )
 }

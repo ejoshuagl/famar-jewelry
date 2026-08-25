@@ -272,7 +272,7 @@ html[data-site-theme="christmas"] .gold-gradient-text {
 }
 
 .black-friday-theme-preview {
-  background: repeating-linear-gradient(120deg, transparent 0 28px, rgb(200 169 81 / 8%) 29px 30px), linear-gradient(135deg, #020202, #191919 55%, #6c531a);
+  background: repeating-linear-gradient(120deg, transparent 0 28px, rgb(255 255 255 / 8%) 29px 30px), linear-gradient(135deg, #020202, #191919 52%, #9f1027);
 }
 
 .valentine-theme-preview {
@@ -285,7 +285,7 @@ html[data-site-theme="halloween"] body {
 }
 
 html[data-site-theme="black-friday"] body {
-  background-image: repeating-linear-gradient(125deg, transparent 0 90px, rgb(200 169 81 / 2.5%) 91px 92px);
+  background-image: radial-gradient(circle at 90% 14%, rgb(178 20 46 / 16%), transparent 22rem), repeating-linear-gradient(125deg, transparent 0 90px, rgb(255 255 255 / 2.5%) 91px 92px);
   background-attachment: fixed;
 }
 
@@ -295,7 +295,7 @@ html[data-site-theme="valentine"] body {
 }
 
 html[data-site-theme="halloween"] header { border-bottom-color: rgb(221 126 43 / 55%); box-shadow: 0 5px 22px rgb(75 19 85 / 18%); }
-html[data-site-theme="black-friday"] header { border-bottom-color: rgb(200 169 81 / 70%); box-shadow: 0 5px 22px rgb(200 169 81 / 10%); }
+html[data-site-theme="black-friday"] header { border-bottom-color: rgb(194 28 55 / 72%); box-shadow: 0 5px 22px rgb(194 28 55 / 18%); }
 html[data-site-theme="valentine"] header { border-bottom-color: rgb(184 41 71 / 55%); box-shadow: 0 5px 22px rgb(140 20 48 / 16%); }
 
 html[data-site-theme="halloween"] main h1::after,
@@ -358,12 +358,141 @@ html[data-site-theme="valentine"] main h2::after {
 }
 
 .seasonal-halloween .seasonal-top-accent { color: #d8762d; }
-.seasonal-black-friday .seasonal-top-accent { color: #c8a951; }
+.seasonal-black-friday .seasonal-top-accent { color: #c71f3e; }
 .seasonal-valentine .seasonal-top-accent { color: #bd3453; }
 
 @keyframes seasonal-fall {
   from { transform: translate3d(0, -4vh, 0) rotate(0deg); }
   to { transform: translate3d(35px, 108vh, 0) rotate(300deg); }
+}
+
+html[data-site-theme="black-friday"] .gold-gradient-text {
+  background-image: linear-gradient(120deg, #fff, #c8a951 42%, #d62a49 72%, #fff);
+}
+
+html[data-site-theme="black-friday"] .bg-primary,
+html[data-site-theme="black-friday"] button.bg-primary {
+  box-shadow: 0 0 0 1px rgb(211 39 68 / 30%), 0 5px 18px rgb(175 18 44 / 18%);
+}
+
+html[data-site-theme="valentine"] .gold-gradient-text {
+  background-image: linear-gradient(120deg, #c8a951, #f5e2a8, #cf536e, #e8d9a0);
+}
+
+html[data-site-theme="valentine"] .bg-card {
+  box-shadow: 0 8px 30px rgb(137 20 47 / 5%);
+}
+
+.halloween-spider,
+.halloween-ghost,
+.halloween-bat {
+  position: fixed;
+  font-style: normal;
+  pointer-events: none;
+}
+
+.halloween-spider {
+  top: 24%;
+  font-size: 25px;
+  filter: grayscale(1) brightness(0.75) drop-shadow(0 0 5px #e78331);
+  animation: spider-walk 16s linear infinite;
+}
+
+.spider-one { left: -35px; }
+.spider-two { top: 68%; left: auto; right: -35px; animation-direction: reverse; animation-delay: -7s; }
+
+.halloween-ghost {
+  color: rgb(255 255 255 / 68%);
+  font-size: 44px;
+  text-shadow: 0 0 14px rgb(180 134 210 / 70%);
+  opacity: 0;
+  animation: ghost-stroll 18s ease-in-out infinite;
+}
+
+.ghost-one { top: 28%; left: 6%; }
+.ghost-two { top: 58%; right: 8%; animation-delay: -9s; transform: scaleX(-1); }
+
+.halloween-bat {
+  z-index: 49;
+  top: 20px;
+  left: 50%;
+  width: 34px;
+  height: 18px;
+  color: #050505;
+  font-size: 0;
+  background: #090909;
+  border-radius: 50% 50% 15% 15%;
+  filter: drop-shadow(0 0 5px rgb(231 131 49 / 65%));
+  animation: bat-fly-and-hang 18s ease-in-out infinite;
+}
+
+.halloween-bat::before,
+.halloween-bat::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  width: 25px;
+  height: 14px;
+  background: #090909;
+  clip-path: polygon(100% 0, 75% 100%, 45% 55%, 0 88%, 24% 10%);
+  transform-origin: right center;
+  animation: bat-wing 0.28s ease-in-out infinite alternate;
+}
+
+.halloween-bat::before { right: 23px; }
+.halloween-bat::after { left: 23px; transform: scaleX(-1); animation-name: bat-wing-right; }
+
+.theme-click-effects {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.theme-click-effects i {
+  --burst-index: 0;
+  position: absolute;
+  color: #c8a951;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  text-shadow: 0 0 7px currentColor;
+  animation: themed-click-burst 0.8s ease-out forwards;
+}
+
+.theme-click-effects i:nth-child(3n + 2) { color: #fff; }
+.theme-click-halloween i:nth-child(3n + 2) { color: #e4792b; }
+.theme-click-black-friday i:nth-child(3n + 2) { color: #d82948; }
+.theme-click-valentine i { color: #d34c69; }
+
+@keyframes spider-walk {
+  0% { transform: translateX(0) rotate(-8deg); }
+  48% { transform: translateX(105vw) rotate(8deg); }
+  49%, 100% { transform: translateX(105vw); }
+}
+
+@keyframes ghost-stroll {
+  0%, 68%, 100% { opacity: 0; transform: translate3d(-35px, 20px, 0); }
+  74% { opacity: 0.5; }
+  92% { opacity: 0.34; transform: translate3d(42vw, -28px, 0); }
+}
+
+@keyframes bat-fly-and-hang {
+  0% { transform: translate3d(-48vw, 35vh, 0) rotate(15deg); }
+  18% { transform: translate3d(35vw, 55vh, 0) rotate(-18deg); }
+  38% { transform: translate3d(-22vw, 20vh, 0) rotate(12deg); }
+  58% { transform: translate3d(24vw, 8vh, 0) rotate(-10deg); }
+  70%, 96% { transform: translate3d(-12px, 33px, 0) rotate(180deg); }
+  100% { transform: translate3d(-48vw, 35vh, 0) rotate(15deg); }
+}
+
+@keyframes bat-wing { from { transform: rotate(12deg); } to { transform: rotate(-28deg); } }
+@keyframes bat-wing-right { from { transform: scaleX(-1) rotate(12deg); } to { transform: scaleX(-1) rotate(-28deg); } }
+
+@keyframes themed-click-burst {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+  to { opacity: 0; transform: translate(calc(-50% + (var(--burst-index) - 1) * 30px), calc(-50% - 42px + var(--burst-index) * 8px)) scale(1.25) rotate(20deg); }
 }
 
 .christmas-decorations,
@@ -521,6 +650,10 @@ html[data-site-theme="valentine"] main h2::after {
   .christmas-stars i,
   .christmas-ornament { animation: none; }
   .seasonal-decorations i { animation: none; top: 12%; }
+  .halloween-spider,
+  .halloween-ghost,
+  .halloween-bat,
+  .theme-click-effects { display: none; }
 }
 
 @media (max-width: 640px) {
