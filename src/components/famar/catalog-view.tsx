@@ -20,9 +20,7 @@ import { Button } from '@/components/ui/button'
 import { SlidersHorizontal, X } from 'lucide-react'
 
 export function CatalogView() {
-  const { searchQuery, selectedCategory, catalogFilter, campaignFilter, setCategory, setCatalogFilter, setCampaignFilter, setSearch } = useAppStore()
-  const [page, setPage] = useState(1)
-  const [sort, setSort] = useState('relevance')
+  const { searchQuery, selectedCategory, catalogFilter, campaignFilter, catalogPage: page, catalogSort: sort, setCategory, setCatalogFilter, setCampaignFilter, setCatalogPage: setPage, setCatalogSort: setSort, setSearch } = useAppStore()
   const [localSearch, setLocalSearch] = useState(searchQuery)
 
   const filterLabels: Record<string, string> = {
@@ -86,10 +84,17 @@ export function CatalogView() {
     setPage(1)
   }
 
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage)
+    window.requestAnimationFrame(() => {
+      document.getElementById('catalog-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   const hasFilters = localSearch || selectedCategory || catalogFilter || campaignFilter || sort !== 'relevance'
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-6">
+    <div id="catalog-top" className="container mx-auto scroll-mt-20 space-y-6 px-4 py-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold mb-1">Catálogo</h1>
@@ -219,7 +224,7 @@ export function CatalogView() {
           <PaginationControls
             currentPage={page}
             totalPages={totalPages}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
           />
         </>
       )}
