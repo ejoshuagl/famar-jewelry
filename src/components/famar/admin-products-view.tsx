@@ -104,7 +104,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
     : null
 
   return (
-    <Card className="p-3">
+    <Card className="min-w-0 overflow-hidden p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 min-w-0 flex-1">
           <Checkbox
@@ -139,7 +139,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
           {product.status === 'available' ? 'Disponible' : 'Agotado'}
         </Badge>
       </div>
-      <div className="flex items-center gap-2 mt-2">
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
         {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
         {product.isFeatured && <Badge variant="outline" className="text-[10px] px-1 py-0">Fijado</Badge>}
         {product.featuredExcluded && <Badge variant="outline" className="text-[10px] px-1 py-0">Excluido</Badge>}
@@ -147,12 +147,12 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
         {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
         {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
       </div>
-      <div className="flex items-center justify-between mt-3">
-        <div className="text-sm">
+      <div className="flex min-w-0 items-center justify-between gap-2 mt-3">
+        <div className="min-w-0 text-sm whitespace-nowrap">
           <span className="font-bold">{formatPrice(product.price as number)}</span>
           <span className="text-muted-foreground ml-2">Stock: {product.stock}</span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -457,7 +457,7 @@ export function AdminProductsView() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Productos</h1>
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" onClick={openCreate}>
@@ -480,7 +480,7 @@ export function AdminProductsView() {
             <SelectTrigger className="w-full sm:w-44">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
               <SelectItem value="todos">Todos</SelectItem>
               <SelectItem value="daily-featured">Destacados de hoy</SelectItem>
               <SelectItem value="new">Nuevos</SelectItem>
@@ -493,7 +493,7 @@ export function AdminProductsView() {
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Todas las categorías" />
             </SelectTrigger>
-            <SelectContent>
+                  <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
               <SelectItem value="todas">Todas las categorías</SelectItem>
               {(categories || []).map((category: { id: string; name: string; slug: string }) => (
                 <SelectItem key={category.id} value={category.slug}>{category.name}</SelectItem>
@@ -505,7 +505,7 @@ export function AdminProductsView() {
         {/* Bulk actions bar */}
         {selected.size > 0 && (
           <Card>
-            <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+            <CardContent className="min-w-0 overflow-hidden p-3 flex flex-col sm:flex-row sm:items-center gap-2">
               <span className="text-sm font-medium whitespace-nowrap">{selected.size} seleccionado(s)</span>
               <div className="flex flex-wrap gap-2">
                 <Button
@@ -525,12 +525,12 @@ export function AdminProductsView() {
                   Volver a selección automática
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:w-auto">
                 <Select value={bulkBadge} onValueChange={setBulkBadge}>
-                  <SelectTrigger className="w-56">
+                  <SelectTrigger className="w-full sm:w-56">
                     <SelectValue placeholder="Destacados / Nuevo / Oferta..." />
                   </SelectTrigger>
-                  <SelectContent>
+            <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
                     <SelectItem value="featured-pin">Fijar en Destacados</SelectItem>
                     <SelectItem value="new-on">Marcar como Nuevo</SelectItem>
                     <SelectItem value="new-off">Quitar Nuevo</SelectItem>
@@ -704,7 +704,7 @@ export function AdminProductsView() {
         </Card>
 
         {/* Mobile Cards */}
-        <div className="md:hidden space-y-2">
+        <div className="min-w-0 md:hidden space-y-2 overflow-hidden">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="p-3">
@@ -823,7 +823,7 @@ export function AdminProductsView() {
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
                       {categories?.map((cat: { id: string; name: string }) => (
                         <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                       ))}
@@ -978,14 +978,23 @@ export function AdminProductsView() {
 
         {/* Image zoom */}
         <Dialog open={!!zoomImage} onOpenChange={(open) => !open && setZoomImage(null)}>
-          <DialogContent className="max-w-lg p-0 overflow-hidden bg-background/95 border-primary/30">
+          <DialogContent
+            showCloseButton={false}
+            className="h-auto w-auto max-w-[calc(100vw-2rem)] border-0 bg-transparent p-0 shadow-none"
+          >
             {zoomImage && (
-              <img
-                src={zoomImage}
-                alt="Producto"
-                className="w-full max-h-[75vh] object-contain bg-black/30 cursor-zoom-out"
+              <button
+                type="button"
+                className="block max-h-[80dvh] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg bg-black/80"
                 onClick={() => setZoomImage(null)}
-              />
+                aria-label="Cerrar imagen ampliada"
+              >
+                <img
+                  src={zoomImage}
+                  alt="Producto"
+                  className="block max-h-[80dvh] max-w-[calc(100vw-2rem)] object-contain"
+                />
+              </button>
             )}
           </DialogContent>
         </Dialog>
