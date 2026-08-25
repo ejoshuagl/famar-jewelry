@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(campaigns.map((campaign) => ({
       ...campaign,
-      productIds: campaign.productIds ? JSON.parse(campaign.productIds) : [],
+      productIds: (() => { try { return campaign.productIds ? JSON.parse(campaign.productIds) : [] } catch { return [] } })(),
     })))
   } catch (error) {
     console.error('GET /api/campaigns error:', error)
@@ -56,13 +56,19 @@ export async function POST(request: NextRequest) {
     if (!body.title || !startAt || !endAt || endAt <= startAt) {
       return NextResponse.json({ error: 'Título o fechas inválidas' }, { status: 400 })
     }
+    const displayMode = ['banner', 'popup', 'both'].includes(body.displayMode) ? body.displayMode : 'both'
+    if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
+    if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
 
     const campaign = await db.campaign.create({
       data: {
         title: String(body.title).slice(0, 120),
         message: body.message ? String(body.message).slice(0, 500) : null,
         image: body.image || null,
-        placement: body.placement === 'banner' ? 'banner' : 'popup',
+        placement: displayMode === 'banner' ? 'banner' : 'popup',
+        bannerImage: body.bannerImage || null,
+        popupImage: body.popupImage || null,
+        displayMode,
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
         ctaView: body.ctaView || null,
         productIds: Array.isArray(body.productIds) ? JSON.stringify(body.productIds) : null,

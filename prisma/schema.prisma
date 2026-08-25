@@ -117,6 +117,9 @@ model Campaign {
   message     String?
   image       String?
   placement   String   @default("popup") // popup, banner
+  bannerImage String?
+  popupImage  String?
+  displayMode String   @default("both") // banner, popup, both
   ctaLabel    String?
   ctaView     String?
   productIds  String?  // JSON array of associated product IDs

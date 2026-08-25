@@ -16,7 +16,7 @@ import { useAppStore, type AppView } from '@/stores/app-store'
 import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
 import { SearchBar } from './search-bar'
-import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, TrendingUp, X } from 'lucide-react'
+import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -33,6 +33,9 @@ interface Campaign {
   message: string | null
   image: string | null
   placement: 'popup' | 'banner'
+  bannerImage: string | null
+  popupImage: string | null
+  displayMode: 'popup' | 'banner' | 'both'
   ctaLabel: string | null
   ctaView: AppView | null
   productIds: string[]
@@ -53,6 +56,8 @@ export function HomeView() {
   const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
   const setCampaignFilter = useAppStore((s) => s.setCampaignFilter)
   const [newArrivalsOpen, setNewArrivalsOpen] = useState(false)
+  const [popupIndex, setPopupIndex] = useState(0)
+  const [bannerIndex, setBannerIndex] = useState(0)
 
   const goToCollection = (filter: string) => {
     setCatalogFilter(filter)
@@ -78,14 +83,21 @@ export function HomeView() {
     staleTime: 60_000,
   })
 
-  const popupCampaign = campaigns.find((campaign) => campaign.placement === 'popup')
-  const bannerCampaigns = campaigns.filter((campaign) => campaign.placement === 'banner')
+  const popupCampaigns = campaigns.filter((campaign) => (campaign.displayMode === 'popup' || campaign.displayMode === 'both' || (!campaign.displayMode && campaign.placement === 'popup')) && (campaign.popupImage || campaign.image))
+  const bannerCampaigns = campaigns.filter((campaign) => (campaign.displayMode === 'banner' || campaign.displayMode === 'both' || (!campaign.displayMode && campaign.placement === 'banner')) && (campaign.bannerImage || campaign.image))
+  const popupCampaign = popupCampaigns[popupIndex % Math.max(1, popupCampaigns.length)]
+  const bannerCampaign = bannerCampaigns[bannerIndex % Math.max(1, bannerCampaigns.length)]
 
   useEffect(() => {
     if (!popupCampaign) return
     const timer = window.setTimeout(() => setNewArrivalsOpen(true), 900)
     return () => window.clearTimeout(timer)
-  }, [popupCampaign?.id])
+  }, [popupCampaigns.length])
+
+  const previousPopup = () => setPopupIndex((index) => (index - 1 + popupCampaigns.length) % popupCampaigns.length)
+  const nextPopup = () => setPopupIndex((index) => (index + 1) % popupCampaigns.length)
+  const previousBanner = () => setBannerIndex((index) => (index - 1 + bannerCampaigns.length) % bannerCampaigns.length)
+  const nextBanner = () => setBannerIndex((index) => (index + 1) % bannerCampaigns.length)
 
   const followCampaign = (campaign: Campaign) => {
     setNewArrivalsOpen(false)
@@ -159,14 +171,15 @@ export function HomeView() {
           >
             <X className="mr-1 h-4 w-4" />Cerrar
           </Button>
-          {popupCampaign?.image && <button type="button" className="relative block w-full" onClick={() => followCampaign(popupCampaign)} aria-label={`Abrir ${popupCampaign.title}`}>
+          {(popupCampaign?.popupImage || popupCampaign?.image) && <button type="button" className="relative block w-full" onClick={() => followCampaign(popupCampaign)} aria-label={`Abrir ${popupCampaign.title}`}>
             <img
-              src={popupCampaign.image}
+              src={popupCampaign.popupImage || popupCampaign.image || ''}
               alt={popupCampaign.title}
               className="aspect-square max-h-[58dvh] w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent" />
           </button>}
+          {popupCampaigns.length > 1 && <><Button type="button" size="icon" variant="secondary" className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={previousPopup} aria-label="Publicidad anterior"><ChevronLeft className="h-5 w-5" /></Button><Button type="button" size="icon" variant="secondary" className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={nextPopup} aria-label="Publicidad siguiente"><ChevronRight className="h-5 w-5" /></Button></>}
           <div className="space-y-3 px-5 pb-5 pt-3 text-center sm:px-8 sm:pb-7">
             <DialogTitle className={`${playfair.className} text-2xl font-bold text-primary sm:text-3xl`}>
               {popupCampaign?.title}
@@ -180,29 +193,31 @@ export function HomeView() {
             >
               {popupCampaign.ctaLabel}
             </Button>}
+            {popupCampaigns.length > 1 && <div className="flex justify-center gap-1.5">{popupCampaigns.map((campaign, index) => <button key={campaign.id} type="button" className={`h-1.5 rounded-full transition-all ${index === popupIndex % popupCampaigns.length ? 'w-6 bg-primary' : 'w-1.5 bg-white/35'}`} onClick={() => setPopupIndex(index)} aria-label={`Ver publicidad ${index + 1}`} />)}</div>}
           </div>
         </DialogContent>
       </Dialog>
 
-      {bannerCampaigns.map((campaign) => (
+      {bannerCampaign && <div className="relative w-full">
         <button
-          key={campaign.id}
+          key={bannerCampaign.id}
           type="button"
           className="group relative block min-h-44 w-full overflow-hidden border-b border-primary/30 bg-black text-left text-white sm:min-h-52"
-          onClick={() => followCampaign(campaign)}
-          aria-label={`Abrir campaña ${campaign.title}`}
+          onClick={() => followCampaign(bannerCampaign)}
+          aria-label={`Abrir campaña ${bannerCampaign.title}`}
         >
-          {campaign.image && <img src={campaign.image} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
+          <img src={bannerCampaign.bannerImage || bannerCampaign.image || ''} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/25" />
           <div className="container relative mx-auto flex min-h-44 items-center px-5 py-7 sm:min-h-52 sm:px-8">
             <div className="max-w-xl space-y-2">
-              <p className={`${playfair.className} text-2xl font-bold text-primary sm:text-4xl`}>{campaign.title}</p>
-              {campaign.message && <p className="text-sm text-white/80 sm:text-base">{campaign.message}</p>}
-              {campaign.ctaLabel && campaign.ctaView && <span className="mt-3 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{campaign.ctaLabel}</span>}
+              <p className={`${playfair.className} text-2xl font-bold text-primary sm:text-4xl`}>{bannerCampaign.title}</p>
+              {bannerCampaign.message && <p className="text-sm text-white/80 sm:text-base">{bannerCampaign.message}</p>}
+              {bannerCampaign.ctaLabel && bannerCampaign.ctaView && <span className="mt-3 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{bannerCampaign.ctaLabel}</span>}
             </div>
           </div>
         </button>
-      ))}
+        {bannerCampaigns.length > 1 && <><Button type="button" size="icon" variant="secondary" className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={previousBanner} aria-label="Banner anterior"><ChevronLeft className="h-5 w-5" /></Button><Button type="button" size="icon" variant="secondary" className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={nextBanner} aria-label="Banner siguiente"><ChevronRight className="h-5 w-5" /></Button><div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">{bannerCampaigns.map((campaign, index) => <button key={campaign.id} type="button" className={`h-1.5 rounded-full transition-all ${index === bannerIndex % bannerCampaigns.length ? 'w-6 bg-primary' : 'w-1.5 bg-white/45'}`} onClick={() => setBannerIndex(index)} aria-label={`Ver banner ${index + 1}`} />)}</div></>}
+      </div>}
 
       {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">

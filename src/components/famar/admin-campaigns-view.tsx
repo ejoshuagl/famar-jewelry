@@ -24,6 +24,9 @@ interface Campaign {
   message: string | null
   image: string | null
   placement: 'popup' | 'banner'
+  bannerImage: string | null
+  popupImage: string | null
+  displayMode: 'popup' | 'banner' | 'both'
   ctaLabel: string | null
   ctaView: string | null
   startAt: string
@@ -36,8 +39,9 @@ interface Campaign {
 interface CampaignForm {
   title: string
   message: string
-  image: string
-  placement: 'popup' | 'banner'
+  bannerImage: string
+  popupImage: string
+  displayMode: 'popup' | 'banner' | 'both'
   ctaLabel: string
   ctaView: string
   startAt: string
@@ -56,7 +60,7 @@ const initialForm = (): CampaignForm => {
   const start = new Date()
   const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
   return {
-    title: '', message: '', image: '', placement: 'popup', ctaLabel: 'Ver catálogo',
+    title: '', message: '', bannerImage: '', popupImage: '', displayMode: 'both', ctaLabel: 'Ver catálogo',
     ctaView: 'catalog', startAt: toEcuadorInput(start), endAt: toEcuadorInput(end), active: true, priority: '0', productIds: [],
   }
 }
@@ -161,8 +165,9 @@ export function AdminCampaignsView() {
     setForm({
       title: campaign.title,
       message: campaign.message || '',
-      image: campaign.image || '',
-      placement: campaign.placement,
+      bannerImage: campaign.bannerImage || (campaign.placement === 'banner' ? campaign.image || '' : ''),
+      popupImage: campaign.popupImage || (campaign.placement === 'popup' ? campaign.image || '' : ''),
+      displayMode: campaign.displayMode || campaign.placement,
       ctaLabel: campaign.ctaLabel || '',
       ctaView: campaign.ctaView || 'catalog',
       startAt: toEcuadorInput(campaign.startAt),
@@ -201,14 +206,14 @@ export function AdminCampaignsView() {
           const status = statusOf(campaign)
           return (
             <Card key={campaign.id} className="overflow-hidden">
-              {campaign.image && <img src={campaign.image} alt="" className="h-40 w-full object-cover" />}
+              {(campaign.bannerImage || campaign.popupImage || campaign.image) && <img src={campaign.bannerImage || campaign.popupImage || campaign.image || ''} alt="" className="h-40 w-full object-cover" />}
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="font-semibold">{campaign.title}</h2>
                       <Badge variant={status.variant}>{status.label}</Badge>
-                      <Badge variant="outline">{campaign.placement === 'popup' ? 'Flotante' : 'Banner'}</Badge>
+                      <Badge variant="outline">{campaign.displayMode === 'both' ? 'Banner + Flotante' : campaign.displayMode === 'popup' ? 'Flotante' : 'Banner'}</Badge>
                     </div>
                     {campaign.message && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{campaign.message}</p>}
                   </div>
@@ -236,8 +241,9 @@ export function AdminCampaignsView() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2"><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
             <div className="sm:col-span-2"><Label>Mensaje</Label><Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} /></div>
-            <ImageUploader label="Imagen publicitaria" hint="JPG, PNG o WEBP. Se adapta al formato elegido." value={form.image} onChange={(value) => setForm({ ...form, image: value as string })} />
-            <div><Label>Formato</Label><Select value={form.placement} onValueChange={(value: 'popup' | 'banner') => setForm({ ...form, placement: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="popup">Ventana flotante</SelectItem><SelectItem value="banner">Banner superior</SelectItem></SelectContent></Select></div>
+            <div className="sm:col-span-2"><Label>Dónde mostrar</Label><Select value={form.displayMode} onValueChange={(value: 'popup' | 'banner' | 'both') => setForm({ ...form, displayMode: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="both">Banner y ventana flotante</SelectItem><SelectItem value="banner">Solo banner</SelectItem><SelectItem value="popup">Solo ventana flotante</SelectItem></SelectContent></Select></div>
+            {(form.displayMode === 'banner' || form.displayMode === 'both') && <ImageUploader label="Imagen horizontal para banner *" hint="Recomendado 1536 × 512 px, JPG, PNG o WEBP." value={form.bannerImage} onChange={(value) => setForm({ ...form, bannerImage: value as string })} />}
+            {(form.displayMode === 'popup' || form.displayMode === 'both') && <ImageUploader label="Imagen vertical para flotante *" hint="Recomendado 1080 × 1350 px, JPG, PNG o WEBP." value={form.popupImage} onChange={(value) => setForm({ ...form, popupImage: value as string })} />}
             <div><Label>Prioridad</Label><Input type="number" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} /></div>
             <div><Label>Empieza *</Label><Input type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} /></div>
             <div><Label>Termina *</Label><Input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} /></div>
