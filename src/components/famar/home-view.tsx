@@ -202,16 +202,16 @@ export function HomeView() {
         <button
           key={bannerCampaign.id}
           type="button"
-          className="group relative block min-h-44 w-full overflow-hidden border-b border-primary/30 bg-black text-left text-white sm:min-h-52"
+          className="group relative block h-44 w-full overflow-hidden border-b border-primary/30 bg-black text-left text-white sm:h-52"
           onClick={() => followCampaign(bannerCampaign)}
           aria-label={`Abrir campaña ${bannerCampaign.title}`}
         >
           <img src={bannerCampaign.bannerImage || bannerCampaign.image || ''} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/25" />
-          <div className="container relative mx-auto flex min-h-44 items-center px-5 py-7 sm:min-h-52 sm:px-8">
+          <div className="container relative mx-auto flex h-full items-center px-14 py-5 sm:px-16 sm:py-7">
             <div className="max-w-xl space-y-2">
-              <p className={`${playfair.className} text-2xl font-bold text-primary sm:text-4xl`}>{bannerCampaign.title}</p>
-              {bannerCampaign.message && <p className="text-sm text-white/80 sm:text-base">{bannerCampaign.message}</p>}
+              <p className={`${playfair.className} line-clamp-2 text-2xl font-bold leading-tight text-primary sm:text-4xl`}>{bannerCampaign.title}</p>
+              {bannerCampaign.message && <p className="line-clamp-2 text-sm text-white/80 sm:text-base">{bannerCampaign.message}</p>}
               {bannerCampaign.ctaLabel && bannerCampaign.ctaView && <span className="mt-3 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{bannerCampaign.ctaLabel}</span>}
             </div>
           </div>

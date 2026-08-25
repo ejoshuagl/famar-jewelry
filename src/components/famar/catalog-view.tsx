@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/app-store'
 import { ProductCard, type ProductData, ProductCardSkeleton } from './product-card'
@@ -24,10 +24,6 @@ export function CatalogView() {
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('relevance')
   const [localSearch, setLocalSearch] = useState(searchQuery)
-
-  useEffect(() => {
-    setLocalSearch(searchQuery)
-  }, [searchQuery])
 
   const filterLabels: Record<string, string> = {
     featured: 'Destacados',
@@ -69,15 +65,13 @@ export function CatalogView() {
   const products = (data?.products || []) as ProductData[]
   const totalPages = data?.totalPages || 1
 
-  useEffect(() => {
-    setPage(1)
-  }, [localSearch, selectedCategory, catalogFilter, campaignFilter, sort])
-
   const handleCategorySelect = (slug: string | null) => {
+    setPage(1)
     setCategory(slug)
   }
 
   const handleSearch = (q: string) => {
+    setPage(1)
     setLocalSearch(q)
     setSearch(q)
   }
@@ -123,7 +117,7 @@ export function CatalogView() {
             variant="outline"
             size="sm"
             className="border-primary/40 text-primary"
-            onClick={() => setCatalogFilter(null)}
+            onClick={() => { setPage(1); setCatalogFilter(null) }}
           >
             {filterLabels[catalogFilter]}
             <X className="ml-1 h-3.5 w-3.5" />
@@ -137,7 +131,7 @@ export function CatalogView() {
           <p className="text-xs text-muted-foreground">Colección de campaña</p>
           <div className="flex items-center justify-between gap-3">
             <p className="font-semibold text-primary">{campaignFilter.title}</p>
-            <Button size="sm" variant="ghost" onClick={() => setCampaignFilter(null)}>
+            <Button size="sm" variant="ghost" onClick={() => { setPage(1); setCampaignFilter(null) }}>
               <X className="mr-1 h-3.5 w-3.5" />Quitar
             </Button>
           </div>
@@ -154,7 +148,7 @@ export function CatalogView() {
             variant={catalogFilter === value ? 'default' : 'outline'}
             size="sm"
             className={catalogFilter === value ? 'bg-primary text-primary-foreground' : 'border-primary/40 text-primary hover:bg-primary/10'}
-            onClick={() => { setCampaignFilter(null); setCatalogFilter(catalogFilter === value ? null : value) }}
+            onClick={() => { setPage(1); setCampaignFilter(null); setCatalogFilter(catalogFilter === value ? null : value) }}
           >
             {label}
           </Button>
@@ -165,7 +159,7 @@ export function CatalogView() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
-          <Select value={sort} onValueChange={setSort}>
+          <Select value={sort} onValueChange={(value) => { setPage(1); setSort(value) }}>
             <SelectTrigger className="w-44">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>

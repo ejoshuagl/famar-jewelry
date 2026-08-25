@@ -19,7 +19,8 @@ export function SearchBar({ onSearch, placeholder = 'Buscar productos...', autoF
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setLocalQuery(searchQuery)
+    const syncQuery = window.setTimeout(() => setLocalQuery(searchQuery), 0)
+    return () => window.clearTimeout(syncQuery)
   }, [searchQuery])
 
   useEffect(() => {
