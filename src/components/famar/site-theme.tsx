@@ -103,7 +103,13 @@ export function SiteTheme() {
               <span className="halloween-spider spider-two">🕷</span>
               <span className="halloween-ghost ghost-one">👻</span>
               <span className="halloween-ghost ghost-two">👻</span>
-              <span className="halloween-bat">◆</span>
+              <span className="halloween-bat">
+                <svg viewBox="0 0 64 32" role="presentation">
+                  <path d="M32 12c-3-4-6-5-9-4C19 4 14 2 8 2c4 6 3 11-4 16 8-1 13 2 17 8 3-4 7-6 11-5 4-1 8 1 11 5 4-6 9-9 17-8-7-5-8-10-4-16-6 0-11 2-15 6-3-1-6 0-9 4Z" />
+                  <circle cx="28.5" cy="14" r="1" />
+                  <circle cx="35.5" cy="14" r="1" />
+                </svg>
+              </span>
             </>
           ) : null}
         </div>
