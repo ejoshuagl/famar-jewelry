@@ -159,14 +159,14 @@ export function HomeView() {
           >
             <X className="mr-1 h-4 w-4" />Cerrar
           </Button>
-          {popupCampaign?.image && <div className="relative">
+          {popupCampaign?.image && <button type="button" className="relative block w-full" onClick={() => followCampaign(popupCampaign)} aria-label={`Abrir ${popupCampaign.title}`}>
             <img
               src={popupCampaign.image}
               alt={popupCampaign.title}
               className="aspect-square max-h-[58dvh] w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent" />
-          </div>}
+          </button>}
           <div className="space-y-3 px-5 pb-5 pt-3 text-center sm:px-8 sm:pb-7">
             <DialogTitle className={`${playfair.className} text-2xl font-bold text-primary sm:text-3xl`}>
               {popupCampaign?.title}
@@ -185,16 +185,23 @@ export function HomeView() {
       </Dialog>
 
       {bannerCampaigns.map((campaign) => (
-        <section key={campaign.id} className="border-b border-primary/30 bg-black text-white">
-          <div className="container mx-auto flex flex-col items-center gap-3 px-4 py-3 text-center sm:flex-row sm:text-left">
-            {campaign.image && <img src={campaign.image} alt="" className="h-16 w-24 shrink-0 rounded-md object-cover" />}
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-primary">{campaign.title}</p>
-              {campaign.message && <p className="text-sm text-white/70">{campaign.message}</p>}
+        <button
+          key={campaign.id}
+          type="button"
+          className="group relative block min-h-44 w-full overflow-hidden border-b border-primary/30 bg-black text-left text-white sm:min-h-52"
+          onClick={() => followCampaign(campaign)}
+          aria-label={`Abrir campaña ${campaign.title}`}
+        >
+          {campaign.image && <img src={campaign.image} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/25" />
+          <div className="container relative mx-auto flex min-h-44 items-center px-5 py-7 sm:min-h-52 sm:px-8">
+            <div className="max-w-xl space-y-2">
+              <p className={`${playfair.className} text-2xl font-bold text-primary sm:text-4xl`}>{campaign.title}</p>
+              {campaign.message && <p className="text-sm text-white/80 sm:text-base">{campaign.message}</p>}
+              {campaign.ctaLabel && campaign.ctaView && <span className="mt-3 inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">{campaign.ctaLabel}</span>}
             </div>
-            {campaign.ctaLabel && campaign.ctaView && <Button size="sm" onClick={() => followCampaign(campaign)}>{campaign.ctaLabel}</Button>}
           </div>
-        </section>
+        </button>
       ))}
 
       {/* Hero */}
