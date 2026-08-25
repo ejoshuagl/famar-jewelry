@@ -23,6 +23,8 @@ import { AdminProductsView } from '@/components/famar/admin-products-view'
 import { AdminOrdersView } from '@/components/famar/admin-orders-view'
 import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
 import { AdminCampaignsView } from '@/components/famar/admin-campaigns-view'
+import { AdminThemesView } from '@/components/famar/admin-themes-view'
+import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function AppContent() {
@@ -63,6 +65,7 @@ function AppContent() {
     currentView === 'admin-orders' ||
     currentView === 'admin-categories' ||
     currentView === 'admin-campaigns'
+    || currentView === 'admin-themes'
 
   if (isAdminView && !isAuthenticated) {
     return (
@@ -140,6 +143,12 @@ function AppContent() {
             <AdminCampaignsView />
           </AdminLayout>
         )
+      case 'admin-themes':
+        return (
+          <AdminLayout>
+            <AdminThemesView />
+          </AdminLayout>
+        )
       default:
         return <HomeView />
     }
@@ -149,6 +158,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {!isAdmin && <SiteTheme />}
       {!isAdmin && <SiteHeader />}
       <main className="flex-1">{renderView()}</main>
       {!isAdmin && <SiteFooter />}

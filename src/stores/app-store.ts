@@ -15,6 +15,7 @@ export type AppView =
   | 'admin-orders'
   | 'admin-categories'
   | 'admin-campaigns'
+  | 'admin-themes'
 
 interface AppStore {
   currentView: AppView
@@ -98,7 +99,7 @@ if (typeof window !== 'undefined') {
   const validViews: AppView[] = [
     'home', 'catalog', 'product-detail', 'cart', 'out-of-stock', 'contact', 'jewelry-care',
     'favorites', 'admin-login', 'admin-dashboard', 'admin-products',
-    'admin-orders', 'admin-categories', 'admin-campaigns',
+    'admin-orders', 'admin-categories', 'admin-campaigns', 'admin-themes',
   ]
 
   // Restore the view from the URL hash so a reload keeps the user where they were
