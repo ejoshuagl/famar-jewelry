@@ -65,7 +65,7 @@ export function CartView() {
     queryFn: async () => {
       const response = await fetch('/api/discount/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eligibleSubtotal, saleBaseSubtotal, saleSubtotal, code: couponCode }) })
       if (!response.ok) throw new Error('No se pudo calcular el descuento')
-      return response.json() as Promise<{ subtotal: number; eligibleSubtotal: number; saleSubtotal: number; percent: number; amount: number; total: number; source: string | null; coupon: string | null; couponError?: string }>
+      return response.json() as Promise<{ subtotal: number; eligibleSubtotal: number; saleSubtotal: number; percent: number; amount: number; total: number; source: string | null; coupon: string | null; validCoupon?: string | null; couponError?: string }>
     },
     enabled: subtotal > 0,
   })
@@ -360,19 +360,22 @@ ${productList}
 
               <div className="space-y-2">
                 <Label htmlFor="coupon">Cupón de descuento</Label>
-                <div className="flex gap-2"><Input id="coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Ej: FAMAR10" /><Button type="button" variant="outline" onClick={applyCoupon} disabled={pricingLoading}><TicketPercent className="mr-1 h-4 w-4" />Aplicar</Button></div>
-                {couponCode && pricing?.couponError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"><strong>El cupón no se aplicó.</strong><p className="mt-1">{pricing.couponError}</p></div> : null}
-                {pricing?.percent ? <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm"><div className="flex justify-between font-medium"><span>{pricing.source}</span><strong>-{pricing.percent}%</strong></div><p className="text-xs text-muted-foreground">Este descuento se calcula únicamente sobre los productos sin oferta: <strong className="text-foreground">{formatPrice(eligibleSubtotal)}</strong>.</p><div className="flex justify-between border-t border-primary/15 pt-2"><span>Ahorro aplicado</span><strong className="text-primary">-{formatPrice(pricing.amount)}</strong></div></div> : null}
+                <p className="text-xs text-muted-foreground">Se aplica únicamente a productos sin oferta.</p>
+                <div className="flex gap-2"><Input id="coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Ej: FAMAR10" disabled={pricingLoading} /><Button type="button" variant="outline" onClick={applyCoupon} disabled={pricingLoading}>{pricingLoading && couponCode ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <TicketPercent className="mr-1 h-4 w-4" />}{pricingLoading && couponCode ? 'Aplicando…' : 'Aplicar'}</Button></div>
+                {couponCode && pricingLoading ? <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" /><span>Estamos validando tu cupón. Espera un momento…</span></div> : null}
+                {couponCode && !pricingLoading && pricing?.couponError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"><strong>El cupón no se aplicó.</strong><p className="mt-1">{pricing.couponError}</p></div> : null}
+                {couponCode && !pricingLoading && pricing?.coupon && !pricing.couponError ? <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-500"><strong>¡Cupón aplicado correctamente!</strong><p className="mt-1">El descuento ya está incluido en el total de tu pedido.</p></div> : null}
+                {couponCode && !pricingLoading && pricing?.validCoupon && !pricing.coupon && !pricing.couponError ? <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs text-muted-foreground"><strong className="text-foreground">Tu cupón es válido.</strong><p className="mt-1">Ya tienes un descuento igual o mayor, por eso conservamos automáticamente el que más te beneficia.</p></div> : null}
               </div>
 
-              {saleSubtotal > 0 && <div className="space-y-2 rounded-lg bg-destructive/5 p-3 text-sm"><div className="flex justify-between"><span>Productos sin oferta</span><span>{formatPrice(eligibleSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Productos en oferta</span><span>{formatPrice(saleSubtotal)}</span></div><p className="text-xs leading-relaxed text-muted-foreground">El valor de oferta ya incluye {saleDiscount}% de descuento. Por eso estos productos no reciben otro cupón ni cuentan para alcanzar la compra mínima.</p></div>}
-              <div className="flex justify-between text-sm text-muted-foreground"><span>{pricing?.percent ? 'Subtotal antes del cupón' : 'Subtotal'}</span><span>{formatPrice(subtotal)}</span></div>
+              {saleSubtotal > 0 && <div className="space-y-2 rounded-lg bg-destructive/5 p-3 text-sm"><div className="flex justify-between"><span>Productos sin oferta</span><span>{formatPrice(eligibleSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Ofertas ({saleDiscount}% incluido)</span><span>{formatPrice(saleSubtotal)}</span></div></div>}
+              <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
+              {pricing?.percent ? <div className="flex justify-between text-sm"><span>{pricing.source}</span><strong className="text-primary">-{formatPrice(pricing.amount)}</strong></div> : null}
 
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold">Total</span>
                 <span className="text-xl font-bold text-primary">{formatPrice(total)}</span>
               </div>
-              {pricing?.percent ? <p className="text-right text-xs text-muted-foreground">{formatPrice(eligibleSubtotal)} − {formatPrice(pricing.amount)}{saleSubtotal > 0 ? ` + ${formatPrice(saleSubtotal)} en ofertas` : ''} = {formatPrice(total)}</p> : null}
 
               <Button
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
