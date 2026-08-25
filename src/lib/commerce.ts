@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 export interface WholesaleTier { min: number; discount: number; label: string }
 export interface CouponRecord {
   id: string; code: string; description: string | null; discount: number; minPurchase: number
-  active: boolean; startsAt: Date | null; endsAt: Date | null; createdAt: Date; updatedAt: Date
+  active: boolean; usageLimit: number | null; usageCount: number; startsAt: Date | null; endsAt: Date | null; createdAt: Date; updatedAt: Date
 }
 
 export const DEFAULT_WHOLESALE_TIERS: WholesaleTier[] = [
@@ -18,6 +18,8 @@ export async function ensureCommerceTables() {
       CONSTRAINT "CommerceSetting_pkey" PRIMARY KEY ("key")
     )
   `)
+  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageLimit" INTEGER')
+  await db.$executeRawUnsafe('ALTER TABLE "DiscountCoupon" ADD COLUMN IF NOT EXISTS "usageCount" INTEGER NOT NULL DEFAULT 0')
   await db.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "DiscountCoupon" (
       "id" TEXT NOT NULL, "code" TEXT NOT NULL, "description" TEXT, "discount" DOUBLE PRECISION NOT NULL,
@@ -57,7 +59,8 @@ export async function findValidCoupon(code: string, subtotal: number): Promise<C
   const rows = await db.$queryRawUnsafe<CouponRecord[]>(
     `SELECT * FROM "DiscountCoupon" WHERE UPPER("code") = UPPER($1) AND "active" = true
      AND "minPurchase" <= $2 AND ("startsAt" IS NULL OR "startsAt" <= CURRENT_TIMESTAMP)
-     AND ("endsAt" IS NULL OR "endsAt" >= CURRENT_TIMESTAMP) LIMIT 1`, code.trim(), subtotal,
+     AND ("endsAt" IS NULL OR "endsAt" >= CURRENT_TIMESTAMP)
+     AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit") LIMIT 1`, code.trim(), subtotal,
   )
   return rows[0] || null
 }
@@ -69,5 +72,6 @@ export async function calculateDiscount(subtotal: number, couponCode?: string) {
   const percent = Math.max(wholesale, coupon?.discount || 0)
   const source = coupon && coupon.discount > wholesale ? `Cupón ${coupon.code}` : wholesale > 0 ? 'Descuento mayorista' : null
   const amount = Math.round(subtotal * percent) / 100
-  return { subtotal, percent, amount, total: Math.max(0, subtotal - amount), source, coupon: coupon?.code || null, tiers }
+  const appliedCoupon = coupon && coupon.discount > wholesale ? coupon.code : null
+  return { subtotal, percent, amount, total: Math.max(0, subtotal - amount), source, coupon: appliedCoupon, validCoupon: coupon?.code || null, tiers }
 }

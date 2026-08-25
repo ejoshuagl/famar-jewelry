@@ -92,8 +92,16 @@ export async function POST(request: NextRequest) {
     const totalCount = await db.order.count()
     const lastNumber = Math.max(Number(lastSeq[0]?.max || 0), totalCount)
     const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
-    const order = await db.order.create({
-      data: {
+    const order = await db.$transaction(async (tx) => {
+      if (pricing.coupon) {
+        const claimed = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+          `UPDATE "DiscountCoupon" SET "usageCount" = "usageCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
+           WHERE UPPER("code") = UPPER($1) AND "active" = true
+           AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit") RETURNING "id"`, pricing.coupon,
+        )
+        if (!claimed.length) throw new Error('COUPON_EXHAUSTED')
+      }
+      return tx.order.create({ data: {
         orderNumber,
         customerName,
         customerCity,
@@ -114,8 +122,7 @@ export async function POST(request: NextRequest) {
             variantName: item.variantName || null,
           })),
         },
-      },
-      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+      }, include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } } })
     })
 
     return NextResponse.json({ ...order, subtotal: pricing.subtotal, discountPercent: pricing.percent, discountAmount: pricing.amount, discountSource: pricing.source }, { status: 201 })
@@ -124,6 +131,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && ['PRODUCT_UNAVAILABLE', 'VARIANT_INVALID', 'INSUFFICIENT_STOCK'].includes(error.message)) {
       return NextResponse.json({ error: 'Uno de los productos o variantes ya no está disponible en la cantidad solicitada' }, { status: 409 })
     }
+    if (error instanceof Error && error.message === 'COUPON_EXHAUSTED') return NextResponse.json({ error: 'Este cupón acaba de alcanzar su límite de reclamaciones' }, { status: 409 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

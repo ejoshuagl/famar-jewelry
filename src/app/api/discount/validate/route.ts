@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   const subtotal = Number(body.subtotal)
   if (!Number.isFinite(subtotal) || subtotal < 0) return NextResponse.json({ error: 'Subtotal inválido' }, { status: 400 })
   const result = await calculateDiscount(subtotal, String(body.code || ''))
-  if (body.code && !result.coupon && result.source !== `Cupón ${String(body.code).trim().toUpperCase()}`) {
+  if (body.code && !result.validCoupon) {
     return NextResponse.json({ ...result, couponError: 'Cupón inválido, vencido o no cumple el mínimo de compra' })
   }
   return NextResponse.json(result)
