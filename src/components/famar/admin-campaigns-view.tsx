@@ -70,6 +70,7 @@ export function AdminCampaignsView() {
   const [productSearch, setProductSearch] = useState('')
   const [productCategory, setProductCategory] = useState('all')
   const [productVisibility, setProductVisibility] = useState('all')
+  const [productBadge, setProductBadge] = useState('all')
 
   const headers = () => ({
     'Content-Type': 'application/json',
@@ -94,7 +95,7 @@ export function AdminCampaignsView() {
       return response.json()
     },
   })
-  const products = (productsData?.products || []) as Array<{ id: string; name: string; code: string; mainImage?: string; category?: { name: string }; visible: boolean }>
+  const products = (productsData?.products || []) as Array<{ id: string; name: string; code: string; mainImage?: string; category?: { name: string }; visible: boolean; isNew: boolean; isOnSale: boolean; isDailyFeatured?: boolean }>
   const productCategories = Array.from(new Set(products.map((product) => product.category?.name).filter(Boolean) as string[])).sort()
   const normalizedSearch = productSearch.trim().toLowerCase()
   const filteredProducts = products.filter((product) => {
@@ -103,7 +104,11 @@ export function AdminCampaignsView() {
     const matchesVisibility = productVisibility === 'all'
       || (productVisibility === 'visible' && product.visible)
       || (productVisibility === 'hidden' && !product.visible)
-    return matchesSearch && matchesCategory && matchesVisibility
+    const matchesBadge = productBadge === 'all'
+      || (productBadge === 'new' && product.isNew)
+      || (productBadge === 'featured' && product.isDailyFeatured)
+      || (productBadge === 'sale' && product.isOnSale)
+    return matchesSearch && matchesCategory && matchesVisibility && matchesBadge
   })
 
   const saveMutation = useMutation({
@@ -147,6 +152,7 @@ export function AdminCampaignsView() {
     setProductSearch('')
     setProductCategory('all')
     setProductVisibility('all')
+    setProductBadge('all')
     setDialogOpen(true)
   }
 
@@ -168,6 +174,7 @@ export function AdminCampaignsView() {
     setProductSearch('')
     setProductCategory('all')
     setProductVisibility('all')
+    setProductBadge('all')
     setDialogOpen(true)
   }
 
@@ -241,7 +248,7 @@ export function AdminCampaignsView() {
                 <div><Label>Productos de la campaña</Label><p className="text-xs text-muted-foreground">Al pulsar el anuncio, el catálogo mostrará únicamente los productos seleccionados.</p></div>
                 <Badge variant="outline">{form.productIds.length} seleccionados</Badge>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 <Input placeholder="Buscar por nombre o código…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
                 <Select value={productCategory} onValueChange={setProductCategory}>
                   <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
@@ -250,6 +257,15 @@ export function AdminCampaignsView() {
                 <Select value={productVisibility} onValueChange={setProductVisibility}>
                   <SelectTrigger><SelectValue placeholder="Visibilidad" /></SelectTrigger>
                   <SelectContent><SelectItem value="all">Visibles y ocultos</SelectItem><SelectItem value="visible">Solo visibles</SelectItem><SelectItem value="hidden">Solo ocultos</SelectItem></SelectContent>
+                </Select>
+                <Select value={productBadge} onValueChange={setProductBadge}>
+                  <SelectTrigger><SelectValue placeholder="Etiqueta" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las etiquetas</SelectItem>
+                    <SelectItem value="new">Nuevos</SelectItem>
+                    <SelectItem value="featured">Destacados de hoy</SelectItem>
+                    <SelectItem value="sale">En oferta</SelectItem>
+                  </SelectContent>
                 </Select>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 p-2">
