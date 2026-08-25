@@ -1,17 +1,28 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Check, Loader2, Snowflake, Sparkles } from 'lucide-react'
+import { BadgePercent, Check, Ghost, Heart, Loader2, Snowflake, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { cn } from '@/lib/utils'
 
-type ThemeName = 'standard' | 'christmas'
+type ThemeName = 'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'
 
 const THEMES = [
   { id: 'standard' as const, name: 'Estándar', description: 'El estilo negro y dorado actual de FAMAR.', icon: Sparkles },
   { id: 'christmas' as const, name: 'Navideño', description: 'Negro, dorado, detalles festivos y nieve sutil.', icon: Snowflake },
+  { id: 'halloween' as const, name: 'Halloween', description: 'Negro, naranja, luna y detalles misteriosos.', icon: Ghost },
+  { id: 'black-friday' as const, name: 'Black Friday', description: 'Negro intenso, dorado y acentos de oferta.', icon: BadgePercent },
+  { id: 'valentine' as const, name: 'San Valentín', description: 'Negro elegante, rosas, corazones y destellos.', icon: Heart },
 ]
+
+const PREVIEW_CLASS: Record<ThemeName, string> = {
+  standard: 'bg-gradient-to-br from-black via-zinc-900 to-black',
+  christmas: 'christmas-theme-preview',
+  halloween: 'halloween-theme-preview',
+  'black-friday': 'black-friday-theme-preview',
+  valentine: 'valentine-theme-preview',
+}
 
 export function AdminThemesView() {
   const [activeTheme, setActiveTheme] = useState<ThemeName>('standard')
@@ -21,7 +32,7 @@ export function AdminThemesView() {
 
   useEffect(() => {
     fetch('/api/theme').then((response) => response.json()).then((data) => {
-      setActiveTheme(data.theme === 'christmas' ? 'christmas' : 'standard')
+      setActiveTheme(THEMES.some((theme) => theme.id === data.theme) ? data.theme : 'standard')
     }).finally(() => setLoading(false))
   }, [])
 
@@ -35,7 +46,7 @@ export function AdminThemesView() {
       })
       if (!response.ok) throw new Error('No se pudo guardar')
       setActiveTheme(theme)
-      toast.success(`Tema ${theme === 'christmas' ? 'navideño' : 'estándar'} activado`)
+      toast.success(`Tema ${THEMES.find((item) => item.id === theme)?.name} activado`)
     } catch {
       toast.error('No se pudo cambiar el tema')
     } finally {
@@ -55,7 +66,7 @@ export function AdminThemesView() {
           const active = activeTheme === theme.id
           return (
             <article key={theme.id} className={cn('overflow-hidden rounded-xl border bg-card', active && 'border-primary ring-1 ring-primary')}>
-              <div className={cn('relative flex h-44 items-center justify-center overflow-hidden', theme.id === 'christmas' ? 'christmas-theme-preview' : 'bg-gradient-to-br from-black via-zinc-900 to-black')}>
+              <div className={cn('relative flex h-44 items-center justify-center overflow-hidden', PREVIEW_CLASS[theme.id])}>
                 <Icon className="h-12 w-12 text-primary" />
                 <span className="absolute bottom-4 font-serif text-xl tracking-[0.25em] text-[#d9bd68]">FAMAR</span>
               </div>

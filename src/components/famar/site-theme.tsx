@@ -25,13 +25,13 @@ const STARS = Array.from({ length: 12 }, (_, index) => ({
 }))
 
 export function SiteTheme() {
-  const [theme, setTheme] = useState<'standard' | 'christmas'>('standard')
+  const [theme, setTheme] = useState<'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'>('standard')
 
   useEffect(() => {
     const controller = new AbortController()
     fetch('/api/theme', { signal: controller.signal })
       .then((response) => response.json())
-      .then((data) => setTheme(data.theme === 'christmas' ? 'christmas' : 'standard'))
+      .then((data) => setTheme(['christmas', 'halloween', 'black-friday', 'valentine'].includes(data.theme) ? data.theme : 'standard'))
       .catch((error) => {
         if (error?.name !== 'AbortError') console.error('Error loading theme:', error)
       })
@@ -43,7 +43,27 @@ export function SiteTheme() {
     return () => { delete document.documentElement.dataset.siteTheme }
   }, [theme])
 
-  if (theme !== 'christmas') return null
+  if (theme === 'standard') return null
+
+  if (theme !== 'christmas') {
+    const decorations = {
+      halloween: ['☾', '✦', '◆', '✧', '☾', '✦', '◆', '✧'],
+      'black-friday': ['%', '✦', '%', '◆', '%', '✦', '%', '◆'],
+      valentine: ['♥', '✦', '♡', '♥', '✧', '♡', '♥', '✦'],
+    }[theme]
+
+    return (
+      <div className={`seasonal-decorations seasonal-${theme}`} aria-hidden="true">
+        <div className="seasonal-top-accent" />
+        {decorations.map((symbol, index) => (
+          <i
+            key={`${symbol}-${index}`}
+            style={{ left: `${4 + ((index * 29) % 91)}%`, animationDelay: `${index * -0.7}s`, animationDuration: `${7 + (index % 4)}s` }}
+          >{symbol}</i>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="christmas-decorations" aria-hidden="true">

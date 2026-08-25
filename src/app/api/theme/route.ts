@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
     const admin = requireAdmin(request)
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const body = await request.json()
-    const theme: SiteTheme = body.theme === 'christmas' ? 'christmas' : 'standard'
+    const allowed = new Set<SiteTheme>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])
+    const theme: SiteTheme = allowed.has(body.theme) ? body.theme : 'standard'
     await setSiteTheme(theme)
     await auditLog({ action: 'update', entity: 'theme', admin: admin.name, details: theme })
     return NextResponse.json({ theme })

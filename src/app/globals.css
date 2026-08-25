@@ -267,6 +267,105 @@ html[data-site-theme="christmas"] .gold-gradient-text {
     linear-gradient(135deg, #050505, #12251b 52%, #090909);
 }
 
+.halloween-theme-preview {
+  background: radial-gradient(circle at 74% 25%, #ffb341 0 8%, transparent 9%), linear-gradient(135deg, #050505, #25122d 55%, #5b2508);
+}
+
+.black-friday-theme-preview {
+  background: repeating-linear-gradient(120deg, transparent 0 28px, rgb(200 169 81 / 8%) 29px 30px), linear-gradient(135deg, #020202, #191919 55%, #6c531a);
+}
+
+.valentine-theme-preview {
+  background: radial-gradient(circle at 25% 35%, rgb(210 47 80 / 45%), transparent 24%), radial-gradient(circle at 80% 75%, rgb(200 169 81 / 30%), transparent 24%), #080507;
+}
+
+html[data-site-theme="halloween"] body {
+  background-image: radial-gradient(circle at 88% 8%, rgb(238 153 55 / 14%), transparent 16rem), radial-gradient(circle at 7% 55%, rgb(91 37 114 / 12%), transparent 25rem);
+  background-attachment: fixed;
+}
+
+html[data-site-theme="black-friday"] body {
+  background-image: repeating-linear-gradient(125deg, transparent 0 90px, rgb(200 169 81 / 2.5%) 91px 92px);
+  background-attachment: fixed;
+}
+
+html[data-site-theme="valentine"] body {
+  background-image: radial-gradient(circle at 8% 20%, rgb(159 24 53 / 13%), transparent 23rem), radial-gradient(circle at 92% 65%, rgb(200 169 81 / 9%), transparent 25rem);
+  background-attachment: fixed;
+}
+
+html[data-site-theme="halloween"] header { border-bottom-color: rgb(221 126 43 / 55%); box-shadow: 0 5px 22px rgb(75 19 85 / 18%); }
+html[data-site-theme="black-friday"] header { border-bottom-color: rgb(200 169 81 / 70%); box-shadow: 0 5px 22px rgb(200 169 81 / 10%); }
+html[data-site-theme="valentine"] header { border-bottom-color: rgb(184 41 71 / 55%); box-shadow: 0 5px 22px rgb(140 20 48 / 16%); }
+
+html[data-site-theme="halloween"] main h1::after,
+html[data-site-theme="halloween"] main h2::after { content: "☾"; color: #e99a3d; }
+html[data-site-theme="black-friday"] main h1::after,
+html[data-site-theme="black-friday"] main h2::after { content: "%"; color: #c8a951; }
+html[data-site-theme="valentine"] main h1::after,
+html[data-site-theme="valentine"] main h2::after { content: "♥"; color: #c83d5b; }
+
+html[data-site-theme="halloween"] main h1,
+html[data-site-theme="halloween"] main h2,
+html[data-site-theme="black-friday"] main h1,
+html[data-site-theme="black-friday"] main h2,
+html[data-site-theme="valentine"] main h1,
+html[data-site-theme="valentine"] main h2 { position: relative; width: fit-content; }
+
+html[data-site-theme="halloween"] main h1::after,
+html[data-site-theme="halloween"] main h2::after,
+html[data-site-theme="black-friday"] main h1::after,
+html[data-site-theme="black-friday"] main h2::after,
+html[data-site-theme="valentine"] main h1::after,
+html[data-site-theme="valentine"] main h2::after {
+  position: absolute;
+  top: -0.48em;
+  right: -1.25em;
+  font-size: 0.55em;
+  text-shadow: 0 0 9px currentColor;
+}
+
+.seasonal-decorations {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.seasonal-decorations i {
+  position: absolute;
+  top: -30px;
+  font-style: normal;
+  font-size: clamp(12px, 1.6vw, 20px);
+  opacity: 0.46;
+  animation: seasonal-fall linear infinite;
+}
+
+.seasonal-halloween i { color: #e99a3d; text-shadow: 0 0 8px rgb(123 49 143 / 65%); }
+.seasonal-black-friday i { color: #c8a951; text-shadow: 0 0 8px rgb(200 169 81 / 35%); }
+.seasonal-valentine i { color: #cc4967; text-shadow: 0 0 9px rgb(204 73 103 / 45%); }
+
+.seasonal-top-accent {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, currentColor, transparent);
+  box-shadow: 0 0 14px currentColor;
+  opacity: 0.7;
+}
+
+.seasonal-halloween .seasonal-top-accent { color: #d8762d; }
+.seasonal-black-friday .seasonal-top-accent { color: #c8a951; }
+.seasonal-valentine .seasonal-top-accent { color: #bd3453; }
+
+@keyframes seasonal-fall {
+  from { transform: translate3d(0, -4vh, 0) rotate(0deg); }
+  to { transform: translate3d(35px, 108vh, 0) rotate(300deg); }
+}
+
 .christmas-decorations,
 .christmas-snow,
 .christmas-stars {
@@ -421,6 +520,7 @@ html[data-site-theme="christmas"] .gold-gradient-text {
   .christmas-light,
   .christmas-stars i,
   .christmas-ornament { animation: none; }
+  .seasonal-decorations i { animation: none; top: 12%; }
 }
 
 @media (max-width: 640px) {

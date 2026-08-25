@@ -1,6 +1,8 @@
 import { db } from '@/lib/db'
 
-export type SiteTheme = 'standard' | 'christmas'
+export type SiteTheme = 'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'
+
+const SITE_THEMES = new Set<SiteTheme>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])
 
 export async function ensureSiteThemeTable() {
   await db.$executeRawUnsafe(`
@@ -19,7 +21,8 @@ export async function getSiteTheme(): Promise<SiteTheme> {
     'SELECT "value" FROM "SiteSetting" WHERE "key" = $1 LIMIT 1',
     'site-theme',
   )
-  return rows[0]?.value === 'christmas' ? 'christmas' : 'standard'
+  const value = rows[0]?.value as SiteTheme | undefined
+  return value && SITE_THEMES.has(value) ? value : 'standard'
 }
 
 export async function setSiteTheme(theme: SiteTheme) {
