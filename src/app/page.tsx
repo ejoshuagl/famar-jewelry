@@ -1,8 +1,8 @@
 'use client'
 
 import { Suspense, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { useAppStore } from '@/stores/app-store'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { restoreAppFromLocation, useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { SiteHeader } from '@/components/famar/site-header'
 import { SiteFooter } from '@/components/famar/site-footer'
@@ -29,22 +29,30 @@ import { AdminCouponsView } from '@/components/famar/admin-coupons-view'
 import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
 
-function AppContent() {
-  const { currentView, selectedProductId } = useAppStore()
+export function AppContent() {
+  const { currentView, selectedProductId, selectedProductCode } = useAppStore()
   const { isAuthenticated } = useAuthStore()
-  const searchParams = useSearchParams()
   const { selectProduct } = useAppStore()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const searchString = searchParams.toString()
 
-  // Handle shared product URL: ?p=FAM-AR001
+  // Client components can be pre-rendered with the home state. Reconcile the
+  // store with the real address as soon as the browser hydrates a direct URL.
   useEffect(() => {
-    const productCode = searchParams.get('p')
+    restoreAppFromLocation()
+  }, [pathname, searchString])
+
+  // Handle direct product URLs such as /producto/FAM-AR001.
+  useEffect(() => {
+    const productCode = selectedProductCode
     if (currentView === 'product-detail' && productCode && !selectedProductId) {
       const controller = new AbortController()
       fetch(`/api/products?code=${encodeURIComponent(productCode)}`, { signal: controller.signal })
         .then((res) => res.json())
         .then((data) => {
           const product = data.product
-          const activeCode = new URLSearchParams(window.location.search).get('p')
+          const activeCode = useAppStore.getState().selectedProductCode
           if (product && useAppStore.getState().currentView === 'product-detail' && activeCode === productCode) {
             selectProduct(product.id, product.code)
           }
@@ -54,10 +62,10 @@ function AppContent() {
         })
       return () => controller.abort()
     }
-  }, [searchParams, selectProduct, currentView, selectedProductId])
+  }, [selectedProductCode, selectProduct, currentView, selectedProductId])
 
   const restoringProduct = currentView === 'product-detail'
-    && Boolean(searchParams.get('p'))
+    && Boolean(selectedProductCode)
     && !selectedProductId
 
   // Redirect to login if trying to access admin without auth

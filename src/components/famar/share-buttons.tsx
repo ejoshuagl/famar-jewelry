@@ -2,13 +2,12 @@
 
 import { Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { slugify } from '@/lib/utils'
-
 export function getProductUrl(code: string): string {
+  const path = `/producto/${encodeURIComponent(code)}`
   if (typeof window !== 'undefined') {
-    return `${window.location.origin}/?p=${code}`
+    return `${window.location.origin}${path}`
   }
-  return `/?p=${code}`
+  return path
 }
 
 interface ShareButtonsProps {

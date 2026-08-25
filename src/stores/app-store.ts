@@ -1,23 +1,10 @@
 import { create } from 'zustand'
 
 export type AppView =
-  | 'home'
-  | 'catalog'
-  | 'product-detail'
-  | 'cart'
-  | 'out-of-stock'
-  | 'contact'
-  | 'jewelry-care'
-  | 'favorites'
-  | 'admin-login'
-  | 'admin-dashboard'
-  | 'admin-products'
-  | 'admin-orders'
-  | 'admin-categories'
-  | 'admin-campaigns'
-  | 'admin-themes'
-  | 'admin-wholesale'
-  | 'admin-coupons'
+  | 'home' | 'catalog' | 'product-detail' | 'cart' | 'out-of-stock' | 'contact'
+  | 'jewelry-care' | 'favorites' | 'admin-login' | 'admin-dashboard' | 'admin-products'
+  | 'admin-orders' | 'admin-categories' | 'admin-campaigns' | 'admin-themes'
+  | 'admin-wholesale' | 'admin-coupons'
 
 interface AppStore {
   currentView: AppView
@@ -42,126 +29,135 @@ interface AppStore {
   setSidebarOpen: (open: boolean) => void
 }
 
-// Navigation history stack for browser back/forward support
-let historyStack: AppView[] = ['home']
-let historyIndex = 0
-let skipPopState = false
+const viewPaths: Record<Exclude<AppView, 'product-detail'>, string> = {
+  home: '/', catalog: '/catalogo', cart: '/carrito', 'out-of-stock': '/agotados',
+  contact: '/contacto', 'jewelry-care': '/cuidados', favorites: '/favoritos',
+  'admin-login': '/admin', 'admin-dashboard': '/admin/dashboard',
+  'admin-products': '/admin/productos', 'admin-orders': '/admin/pedidos',
+  'admin-categories': '/admin/categorias', 'admin-campaigns': '/admin/campanas',
+  'admin-themes': '/admin/temas', 'admin-wholesale': '/admin/mayoristas',
+  'admin-coupons': '/admin/cupones',
+}
+
+type CatalogState = Pick<AppStore,
+  'selectedCategory' | 'catalogFilter' | 'catalogPage' | 'catalogSort' | 'campaignFilter' | 'searchQuery'
+>
+
+function catalogQuery(state: CatalogState) {
+  const params = new URLSearchParams()
+  if (state.searchQuery) params.set('q', state.searchQuery)
+  if (state.selectedCategory) params.set('categoria', state.selectedCategory)
+  if (state.catalogFilter) params.set('filtro', state.catalogFilter)
+  if (state.campaignFilter) {
+    params.set('campana', state.campaignFilter.id)
+    if (state.campaignFilter.title) params.set('titulo', state.campaignFilter.title)
+  }
+  if (state.catalogPage > 1) params.set('pagina', String(state.catalogPage))
+  if (state.catalogSort !== 'relevance') params.set('orden', state.catalogSort)
+  const query = params.toString()
+  return query ? `?${query}` : ''
+}
+
+function pathForView(view: AppView, state: AppStore) {
+  if (view === 'product-detail') {
+    return state.selectedProductCode
+      ? `/producto/${encodeURIComponent(state.selectedProductCode)}`
+      : '/catalogo'
+  }
+  const path = viewPaths[view]
+  return view === 'catalog' ? `${path}${catalogQuery(state)}` : path
+}
+
+function parseLocation(): Partial<AppStore> & { currentView: AppView } {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+  const params = new URLSearchParams(window.location.search)
+  if (path.startsWith('/producto/')) {
+    const code = decodeURIComponent(path.slice('/producto/'.length))
+    return { currentView: 'product-detail', selectedProductCode: code || null, selectedProductId: null }
+  }
+
+  const matched = Object.entries(viewPaths).find(([, route]) => route === path)
+  const currentView = (matched?.[0] as AppView | undefined) ?? 'home'
+  if (currentView !== 'catalog') return { currentView, selectedProductCode: null }
+
+  const parsedPage = Number.parseInt(params.get('pagina') || '1', 10)
+  const campaignId = params.get('campana')
+  return {
+    currentView,
+    selectedCategory: params.get('categoria'),
+    catalogFilter: params.get('filtro'),
+    catalogPage: Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1,
+    catalogSort: params.get('orden') || 'relevance',
+    campaignFilter: campaignId ? { id: campaignId, title: params.get('titulo') || 'Campaña' } : null,
+    searchQuery: params.get('q') || '',
+    selectedProductCode: null,
+  }
+}
+
+export function restoreAppFromLocation() {
+  if (typeof window === 'undefined') return
+  const locationState = parseLocation()
+  const current = useAppStore.getState()
+  if (
+    locationState.currentView === 'product-detail'
+    && locationState.selectedProductCode === current.selectedProductCode
+    && current.selectedProductId
+  ) {
+    locationState.selectedProductId = current.selectedProductId
+  }
+  useAppStore.setState(locationState)
+}
+
+function syncCatalogUrl(state: AppStore) {
+  if (typeof window === 'undefined' || state.currentView !== 'catalog') return
+  window.history.replaceState({ view: 'catalog' }, '', pathForView('catalog', state))
+}
 
 export const useAppStore = create<AppStore>((set, get) => ({
-  currentView: 'home',
-  selectedProductId: null,
-  selectedProductCode: null,
-  selectedCategory: null,
-  catalogFilter: null,
-  catalogPage: 1,
-  catalogSort: 'relevance',
-  catalogScrollY: 0,
-  campaignFilter: null,
-  searchQuery: '',
-  sidebarOpen: false,
+  currentView: 'home', selectedProductId: null, selectedProductCode: null,
+  selectedCategory: null, catalogFilter: null, catalogPage: 1,
+  catalogSort: 'relevance', catalogScrollY: 0, campaignFilter: null,
+  searchQuery: '', sidebarOpen: false,
   navigate: (view, pushHistory = true) => {
     const prevView = get().currentView
-    if (prevView === 'catalog' && view !== 'catalog') {
-      set({ catalogScrollY: window.scrollY })
-    }
-
-    // Keep catalog state so returning from a product restores the same results and page.
+    if (prevView === 'catalog' && view !== 'catalog') set({ catalogScrollY: window.scrollY })
     set({ currentView: view, sidebarOpen: false })
     const restoreCatalogPosition = view === 'catalog' && prevView === 'product-detail'
     window.scrollTo({ top: restoreCatalogPosition ? get().catalogScrollY : 0, behavior: restoreCatalogPosition ? 'auto' : 'smooth' })
-
-    // Manage browser history
-    if (!pushHistory) return
-
-    skipPopState = true
-
-    // If we went back and then navigate forward, trim the forward history
-    if (historyIndex < historyStack.length - 1) {
-      historyStack = historyStack.slice(0, historyIndex + 1)
-    }
-
-    // Don't push duplicate entries
-    if (historyStack[historyStack.length - 1] !== view) {
-      historyStack.push(view)
-      historyIndex = historyStack.length - 1
-    }
-
-    // Build URL: include ?p=CODE when viewing a product
-    const code = get().selectedProductCode
-    const search = view === 'product-detail' && code ? `?p=${code}` : ''
-    const hash = `#/${view}`
-
-    // Push browser history entry
-    const state = { view, index: historyIndex }
-    window.history.pushState(state, '', `${window.location.pathname}${search}${hash}`)
-
-    // Reset the skipPopState flag after a tick so the pushState event doesn't trigger popState handler
-    requestAnimationFrame(() => {
-      skipPopState = false
-    })
+    if (pushHistory) window.history.pushState({ view }, '', pathForView(view, get()))
   },
   selectProduct: (id, code = null) => set({ selectedProductId: id, selectedProductCode: code }),
-  setCategory: (slug) => set({ selectedCategory: slug, catalogPage: 1 }),
-  setCatalogFilter: (filter) => set({ catalogFilter: filter, catalogPage: 1 }),
-  setCatalogPage: (page) => set({ catalogPage: Math.max(1, page) }),
-  setCatalogSort: (sort) => set({ catalogSort: sort, catalogPage: 1 }),
-  setCampaignFilter: (campaign) => set({ campaignFilter: campaign, catalogPage: 1 }),
-  setSearch: (q) => set({ searchQuery: q, catalogPage: 1 }),
+  setCategory: (slug) => { set({ selectedCategory: slug, catalogPage: 1 }); syncCatalogUrl(get()) },
+  setCatalogFilter: (filter) => { set({ catalogFilter: filter, catalogPage: 1 }); syncCatalogUrl(get()) },
+  setCatalogPage: (page) => { set({ catalogPage: Math.max(1, page) }); syncCatalogUrl(get()) },
+  setCatalogSort: (sort) => { set({ catalogSort: sort, catalogPage: 1 }); syncCatalogUrl(get()) },
+  setCampaignFilter: (campaign) => { set({ campaignFilter: campaign, catalogPage: 1 }); syncCatalogUrl(get()) },
+  setSearch: (q) => { set({ searchQuery: q, catalogPage: 1 }); syncCatalogUrl(get()) },
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }))
 
-// Initialize browser history on first load
 if (typeof window !== 'undefined') {
-  const validViews: AppView[] = [
-    'home', 'catalog', 'product-detail', 'cart', 'out-of-stock', 'contact', 'jewelry-care',
-    'favorites', 'admin-login', 'admin-dashboard', 'admin-products',
-    'admin-orders', 'admin-categories', 'admin-campaigns', 'admin-themes', 'admin-wholesale', 'admin-coupons',
-  ]
-
-  // Restore the view from the URL hash so a reload keeps the user where they were
-  const restoreViewFromHash = (): AppView | null => {
-    const match = window.location.hash.match(/^#\/([a-z-]+)/)
-    if (!match) return null
-    return validViews.includes(match[1] as AppView) ? (match[1] as AppView) : null
-  }
-
-  const sharedProductCode = new URLSearchParams(window.location.search).get('p')
-  const initialView = restoreViewFromHash() || (sharedProductCode ? 'product-detail' : null)
-  if (initialView) {
-    useAppStore.setState({ currentView: initialView })
-    historyStack = [initialView]
-    window.history.replaceState({ view: initialView, index: 0 }, '', `${window.location.pathname}${window.location.search}${window.location.hash}`)
+  const legacyMatch = window.location.hash.match(/^#\/([a-z-]+)/)
+  const legacyCode = new URLSearchParams(window.location.search).get('p')
+  if (legacyMatch || legacyCode) {
+    const legacyView = legacyMatch?.[1] as AppView | undefined
+    const validLegacyView = legacyView && (legacyView === 'product-detail' || legacyView in viewPaths)
+      ? legacyView : legacyCode ? 'product-detail' : 'home'
+    useAppStore.setState({ currentView: validLegacyView, selectedProductCode: legacyCode, selectedProductId: null })
+    window.history.replaceState({ view: validLegacyView }, '', pathForView(validLegacyView, useAppStore.getState()))
   } else {
-    window.history.replaceState({ view: 'home', index: 0 }, '', '#/home')
+    useAppStore.setState(parseLocation())
+    window.history.replaceState({ view: useAppStore.getState().currentView }, '', window.location.href)
   }
 
-  // Handle browser back/forward buttons
-  window.addEventListener('popstate', (event) => {
-    if (skipPopState) return
-
-    const state = event.state as { view: AppView; index: number } | null
-    if (state && typeof state.view === 'string') {
-      historyIndex = state.index
-      const restoreCatalogPosition = state.view === 'catalog'
-      // Update Zustand state without pushing new history
-      skipPopState = true
-      useAppStore.setState({ currentView: state.view, sidebarOpen: false })
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: restoreCatalogPosition ? useAppStore.getState().catalogScrollY : 0, behavior: 'auto' })
-        skipPopState = false
-      })
-    } else {
-      // Fallback: use the URL hash if valid, otherwise go to home
-      const fromHash = restoreViewFromHash()
-      const view = fromHash ?? 'home'
-      historyIndex = 0
-      historyStack = [view]
-      skipPopState = true
-      useAppStore.setState({ currentView: view, sidebarOpen: false })
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      requestAnimationFrame(() => {
-        skipPopState = false
-      })
-    }
+  window.addEventListener('popstate', () => {
+    const previousView = useAppStore.getState().currentView
+    const locationState = parseLocation()
+    useAppStore.setState({ ...locationState, sidebarOpen: false })
+    const restoreCatalogPosition = locationState.currentView === 'catalog' && previousView === 'product-detail'
+    requestAnimationFrame(() => window.scrollTo({
+      top: restoreCatalogPosition ? useAppStore.getState().catalogScrollY : 0,
+      behavior: 'auto',
+    }))
   })
 }
