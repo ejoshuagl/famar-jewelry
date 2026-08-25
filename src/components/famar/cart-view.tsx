@@ -177,13 +177,14 @@ ${productList}
 📝 *Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
-      window.open(`https://wa.me/593988215076?text=${encodedMessage}`, '_blank')
+      const whatsappUrl = `https://wa.me/593988215076?text=${encodedMessage}`
 
       toast.success('¡Pedido creado exitosamente!')
       clearCart()
       setCampaignFilter(null)
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
+      window.location.assign(whatsappUrl)
     } catch {
       toast.error('Error al crear el pedido. Intenta de nuevo.')
     } finally {
