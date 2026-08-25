@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Megaphone,
   Palette,
+  Percent,
+  TicketPercent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -29,6 +31,8 @@ const sidebarItems: { label: string; view: AppView; icon: React.ReactNode }[] = 
   { label: 'Categorías', view: 'admin-categories', icon: <Tags className="h-4 w-4" /> },
   { label: 'Publicidad', view: 'admin-campaigns', icon: <Megaphone className="h-4 w-4" /> },
   { label: 'Temas y estilos', view: 'admin-themes', icon: <Palette className="h-4 w-4" /> },
+  { label: 'Mayoristas', view: 'admin-wholesale', icon: <Percent className="h-4 w-4" /> },
+  { label: 'Cupones', view: 'admin-coupons', icon: <TicketPercent className="h-4 w-4" /> },
 ]
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

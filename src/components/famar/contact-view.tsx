@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Phone, Mail, MapPin, Clock, MessageCircle, Store } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useQuery } from '@tanstack/react-query'
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -15,6 +16,11 @@ const fadeIn = {
 }
 
 export function ContactView() {
+  const { data } = useQuery({ queryKey: ['commerce-settings'], queryFn: () => fetch('/api/commerce-settings').then((response) => response.json()) })
+  const tiers = data?.tiers || [
+    { min: 50, discount: 10, label: '10% OFF automático' },
+    { min: 100, discount: 20, label: '20% OFF + Atención personalizada' },
+  ]
   return (
     <div className="container mx-auto px-4 py-6 space-y-8">
       <motion.div initial="hidden" animate="visible" variants={fadeIn} custom={0}>
@@ -118,9 +124,10 @@ export function ContactView() {
                 </div>
                 <p className="mb-1 text-sm font-medium text-primary-foreground/80">Oportunidad para emprendedores</p>
                 <h3 className="mb-3 text-2xl font-bold">Haz tu propio negocio</h3>
-                <p className="mb-6 text-sm leading-relaxed text-primary-foreground/90">
-                  ¿Quieres revender Famar Jewelry? Compra a partir de $80 USD y recibe un 20% de descuento automático.
-                </p>
+                <div className="mb-6 space-y-3 text-sm leading-relaxed text-primary-foreground/95">
+                  <p>¿Quieres revender Famar Jewelry? Empieza con beneficios automáticos para hacer crecer tu negocio.</p>
+                  {tiers.map((tier: { min: number; discount: number; label: string }) => <div key={`${tier.min}-${tier.discount}`} className="rounded-lg bg-black/10 p-3"><strong>Compra desde ${tier.min} USD</strong> y recibe <strong>{tier.discount}% OFF</strong>{tier.label.replace(new RegExp(`^${tier.discount}% OFF\\s*`, 'i'), ' ')}</div>)}
+                </div>
                 <a
                   href="https://wa.me/593988215076?text=%C2%A1Hola!%20Quiero%20informaci%C3%B3n%20para%20revender%20Famar%20Jewelry%20y%20acceder%20al%20descuento%20para%20emprendedores."
                   target="_blank"

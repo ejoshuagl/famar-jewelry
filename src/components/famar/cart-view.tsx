@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { EmptyState } from './empty-state'
-import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin } from 'lucide-react'
+import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -42,9 +42,27 @@ export function CartView() {
   const [form, setForm] = useState({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
   const [submitting, setSubmitting] = useState(false)
   const [locating, setLocating] = useState(false)
+  const [couponInput, setCouponInput] = useState('')
+  const [couponCode, setCouponCode] = useState('')
   const queryClient = useQueryClient()
 
-  const total = getTotal()
+  const subtotal = getTotal()
+  const { data: pricing, isFetching: pricingLoading } = useQuery({
+    queryKey: ['cart-pricing', subtotal, couponCode],
+    queryFn: async () => {
+      const response = await fetch('/api/discount/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: couponCode }) })
+      if (!response.ok) throw new Error('No se pudo calcular el descuento')
+      return response.json() as Promise<{ subtotal: number; percent: number; amount: number; total: number; source: string | null; coupon: string | null; couponError?: string }>
+    },
+    enabled: subtotal > 0,
+  })
+  const total = pricing?.total ?? subtotal
+
+  const applyCoupon = () => {
+    const code = couponInput.trim().toUpperCase()
+    if (!code) return toast.error('Ingresa un código de cupón')
+    setCouponCode(code)
+  }
 
   const handleQuantityChange = (productId: string, delta: number) => {
     const item = items.find((i) => (i.itemKey || i.productId) === productId)
@@ -109,6 +127,7 @@ export function CartView() {
             variantName: item.variantName,
           })),
           total,
+          couponCode,
         }),
       })
 
@@ -125,6 +144,8 @@ export function CartView() {
         .map((item) => `🔸 ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(item.price * item.quantity)}`)
         .join('\n')
 
+      const finalTotal = Number(order.total)
+      const discountLine = order.discountPercent > 0 ? `\n🏷️ *Descuento:* ${order.discountPercent}% (${order.discountSource})` : ''
       const message = `✨ *NUEVO PEDIDO - FAMAR* ✨
 ━━━━━━━━━━━━━━━
 
@@ -138,7 +159,7 @@ export function CartView() {
 🛍️ *Productos:*
 ${productList}
 ━━━━━━━━━━━━━━━
-💰 *TOTAL:* ${formatPrice(total)}
+💰 *TOTAL:* ${formatPrice(finalTotal)}${discountLine}
 📝 *Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
@@ -310,7 +331,7 @@ ${productList}
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 {items.map((item) => (
-                  <div key={item.productId} className="flex justify-between text-sm">
+                  <div key={item.itemKey || item.productId} className="flex justify-between text-sm">
                     <span className="text-muted-foreground truncate mr-2">
                       {item.quantity}x {item.name}
                     </span>
@@ -320,6 +341,15 @@ ${productList}
               </div>
 
               <Separator />
+
+              <div className="space-y-2">
+                <Label htmlFor="coupon">Cupón de descuento</Label>
+                <div className="flex gap-2"><Input id="coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Ej: FAMAR10" /><Button type="button" variant="outline" onClick={applyCoupon} disabled={pricingLoading}><TicketPercent className="mr-1 h-4 w-4" />Aplicar</Button></div>
+                {couponCode && pricing?.couponError ? <p className="text-xs text-destructive">{pricing.couponError}</p> : null}
+                {pricing?.percent ? <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm"><div className="flex justify-between"><span>{pricing.source}</span><strong>-{pricing.percent}%</strong></div><div className="mt-1 flex justify-between text-muted-foreground"><span>Ahorro</span><span>-{formatPrice(pricing.amount)}</span></div></div> : null}
+              </div>
+
+              <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
 
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold">Total</span>

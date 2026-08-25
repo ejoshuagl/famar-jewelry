@@ -24,6 +24,8 @@ import { AdminOrdersView } from '@/components/famar/admin-orders-view'
 import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
 import { AdminCampaignsView } from '@/components/famar/admin-campaigns-view'
 import { AdminThemesView } from '@/components/famar/admin-themes-view'
+import { AdminWholesaleView } from '@/components/famar/admin-wholesale-view'
+import { AdminCouponsView } from '@/components/famar/admin-coupons-view'
 import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -66,6 +68,8 @@ function AppContent() {
     currentView === 'admin-categories' ||
     currentView === 'admin-campaigns'
     || currentView === 'admin-themes'
+    || currentView === 'admin-wholesale'
+    || currentView === 'admin-coupons'
 
   if (isAdminView && !isAuthenticated) {
     return (
@@ -149,6 +153,10 @@ function AppContent() {
             <AdminThemesView />
           </AdminLayout>
         )
+      case 'admin-wholesale':
+        return <AdminLayout><AdminWholesaleView /></AdminLayout>
+      case 'admin-coupons':
+        return <AdminLayout><AdminCouponsView /></AdminLayout>
       default:
         return <HomeView />
     }

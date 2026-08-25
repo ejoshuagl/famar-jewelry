@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
+import { calculateDiscount } from '@/lib/commerce'
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, total } = body
+    const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode } = body
 
     if (!customerName || !customerCity || !customerPhone || !items || !items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -56,6 +57,31 @@ export async function POST(request: NextRequest) {
     if (!String(customerAddress || '').trim() && !String(customerLocation || '').startsWith('https://maps.google.com/')) {
       return NextResponse.json({ error: 'La dirección o ubicación actual es obligatoria' }, { status: 400 })
     }
+
+    if (!Array.isArray(items) || items.length > 100) return NextResponse.json({ error: 'Pedido inválido' }, { status: 400 })
+    const requestedItems = items as Array<{ productId: string; quantity: number; variantId?: string }>
+    if (requestedItems.some((item) => !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1)) {
+      return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
+    }
+    const productIds = [...new Set(requestedItems.map((item) => item.productId))]
+    const products = await db.product.findMany({ where: { id: { in: productIds }, visible: true }, select: { id: true, name: true, code: true, price: true, stock: true, status: true, variants: true } })
+    const productMap = new Map(products.map((product) => [product.id, product]))
+    const validatedItems = requestedItems.map((item) => {
+      const product = productMap.get(item.productId)
+      if (!product || product.status !== 'available') throw new Error('PRODUCT_UNAVAILABLE')
+      let available = product.stock; let variantName: string | null = null
+      if (item.variantId) {
+        let variants: Array<{ id: string; name: string; stock: number }> = []
+        try { variants = product.variants ? JSON.parse(product.variants) : [] } catch { variants = [] }
+        const variant = variants.find((entry) => entry.id === item.variantId)
+        if (!variant) throw new Error('VARIANT_INVALID')
+        available = Number(variant.stock); variantName = variant.name
+      }
+      if (item.quantity > available) throw new Error('INSUFFICIENT_STOCK')
+      return { productId: product.id, quantity: item.quantity, price: product.price, name: product.name, code: product.code, variantId: item.variantId || null, variantName }
+    })
+    const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const pricing = await calculateDiscount(subtotal, String(couponCode || ''))
 
     // Sequential order number: FAM-000001, FAM-000002...
     const lastSeq = await db.$queryRaw<Array<{ max: bigint | null }>>`
@@ -74,11 +100,11 @@ export async function POST(request: NextRequest) {
         customerPhone,
         customerAddress: String(customerAddress || '').trim() || null,
         customerLocation: String(customerLocation || '').trim() || null,
-        observations: observations || null,
-        total: parseFloat(total),
+        observations: `${String(observations || '').trim()}${pricing.percent ? `${observations ? '\n' : ''}[${pricing.source}: ${pricing.percent}%]` : ''}` || null,
+        total: pricing.total,
         status: 'pending',
         items: {
-          create: items.map((item: { productId: string; quantity: number; price: number; name: string; code: string; variantId?: string; variantName?: string }) => ({
+          create: validatedItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
@@ -92,9 +118,12 @@ export async function POST(request: NextRequest) {
       include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
     })
 
-    return NextResponse.json(order, { status: 201 })
+    return NextResponse.json({ ...order, subtotal: pricing.subtotal, discountPercent: pricing.percent, discountAmount: pricing.amount, discountSource: pricing.source }, { status: 201 })
   } catch (error) {
     console.error('POST /api/orders error:', error)
+    if (error instanceof Error && ['PRODUCT_UNAVAILABLE', 'VARIANT_INVALID', 'INSUFFICIENT_STOCK'].includes(error.message)) {
+      return NextResponse.json({ error: 'Uno de los productos o variantes ya no está disponible en la cantidad solicitada' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
