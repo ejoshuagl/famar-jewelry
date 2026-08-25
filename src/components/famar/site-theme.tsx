@@ -10,6 +10,20 @@ const SNOWFLAKES = Array.from({ length: 24 }, (_, index) => ({
   size: `${5 + (index % 4) * 2}px`,
 }))
 
+const LIGHTS = Array.from({ length: 18 }, (_, index) => ({
+  id: index,
+  left: `${2 + index * 5.6}%`,
+  delay: `${(index % 6) * 0.22}s`,
+  color: ['gold', 'red', 'green', 'warm'][index % 4],
+}))
+
+const STARS = Array.from({ length: 12 }, (_, index) => ({
+  id: index,
+  left: `${4 + ((index * 29) % 91)}%`,
+  top: `${14 + ((index * 17) % 74)}%`,
+  delay: `${(index % 5) * 0.6}s`,
+}))
+
 export function SiteTheme() {
   const [theme, setTheme] = useState<'standard' | 'christmas'>('standard')
 
@@ -32,13 +46,27 @@ export function SiteTheme() {
   if (theme !== 'christmas') return null
 
   return (
-    <div className="christmas-snow" aria-hidden="true">
-      {SNOWFLAKES.map((flake) => (
-        <span
-          key={flake.id}
-          style={{ left: flake.left, animationDelay: flake.delay, animationDuration: flake.duration, width: flake.size, height: flake.size }}
-        />
-      ))}
+    <div className="christmas-decorations" aria-hidden="true">
+      <div className="christmas-light-wire">
+        {LIGHTS.map((light) => (
+          <i key={light.id} className={`christmas-light christmas-light-${light.color}`} style={{ left: light.left, animationDelay: light.delay }} />
+        ))}
+      </div>
+      <div className="christmas-stars">
+        {STARS.map((star) => (
+          <i key={star.id} style={{ left: star.left, top: star.top, animationDelay: star.delay }}>✦</i>
+        ))}
+      </div>
+      <div className="christmas-ornament christmas-ornament-left"><i /><b /></div>
+      <div className="christmas-ornament christmas-ornament-right"><i /><b /></div>
+      <div className="christmas-snow">
+        {SNOWFLAKES.map((flake) => (
+          <span
+            key={flake.id}
+            style={{ left: flake.left, animationDelay: flake.delay, animationDuration: flake.duration, width: flake.size, height: flake.size }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

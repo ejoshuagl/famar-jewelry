@@ -267,13 +267,124 @@ html[data-site-theme="christmas"] .gold-gradient-text {
     linear-gradient(135deg, #050505, #12251b 52%, #090909);
 }
 
-.christmas-snow {
+.christmas-decorations,
+.christmas-snow,
+.christmas-stars {
   position: fixed;
   inset: 0;
   z-index: 45;
   overflow: hidden;
   pointer-events: none;
 }
+
+.christmas-decorations {
+  overflow: visible;
+}
+
+.christmas-light-wire {
+  position: fixed;
+  z-index: 47;
+  top: 2px;
+  left: 0;
+  width: 100%;
+  height: 28px;
+  border-top: 2px solid rgb(52 87 55 / 78%);
+  border-radius: 50%;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 45%));
+}
+
+.christmas-light-wire::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-top: 1px solid rgb(200 169 81 / 35%);
+  transform: translateY(2px);
+}
+
+.christmas-light {
+  --bulb: #f6d66d;
+  --glow: rgb(246 214 109 / 70%);
+  position: absolute;
+  top: 4px;
+  width: 7px;
+  height: 12px;
+  border-radius: 45% 45% 55% 55%;
+  background: var(--bulb);
+  box-shadow: 0 0 5px var(--glow), 0 0 12px var(--glow);
+  transform-origin: 50% -5px;
+  animation: christmas-twinkle 2.1s ease-in-out infinite alternate;
+}
+
+.christmas-light::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 1px;
+  width: 5px;
+  height: 4px;
+  border-radius: 2px 2px 0 0;
+  background: #8b7442;
+}
+
+.christmas-light-red { --bulb: #d74752; --glow: rgb(215 71 82 / 65%); }
+.christmas-light-green { --bulb: #5ca66c; --glow: rgb(92 166 108 / 65%); }
+.christmas-light-warm { --bulb: #fff0b3; --glow: rgb(255 240 179 / 72%); }
+
+.christmas-stars i {
+  position: absolute;
+  color: rgb(232 217 160 / 58%);
+  font-style: normal;
+  font-size: 11px;
+  text-shadow: 0 0 8px rgb(232 217 160 / 55%);
+  animation: christmas-star-pulse 3.2s ease-in-out infinite;
+}
+
+.christmas-ornament {
+  position: fixed;
+  z-index: 46;
+  top: 84px;
+  width: 48px;
+  height: 110px;
+  transform-origin: top center;
+  animation: christmas-ornament-sway 5s ease-in-out infinite;
+}
+
+.christmas-ornament::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 0;
+  width: 1px;
+  height: 38px;
+  background: linear-gradient(#c8a951, #6f5929);
+}
+
+.christmas-ornament i,
+.christmas-ornament b {
+  position: absolute;
+  border-radius: 999px;
+  box-shadow: inset -8px -8px 12px rgb(0 0 0 / 32%), 0 0 12px rgb(200 169 81 / 22%);
+}
+
+.christmas-ornament i {
+  top: 36px;
+  left: 9px;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #dc6673, #8c1228);
+}
+
+.christmas-ornament b {
+  top: 75px;
+  left: 17px;
+  width: 21px;
+  height: 21px;
+  background: linear-gradient(135deg, #e8d9a0, #9f792d);
+}
+
+.christmas-ornament-left { left: 5px; }
+.christmas-ornament-right { right: 5px; animation-delay: -2.5s; }
+.christmas-ornament-right i { background: linear-gradient(135deg, #4f9b68, #174b2a); }
 
 .christmas-snow span {
   position: absolute;
@@ -290,6 +401,29 @@ html[data-site-theme="christmas"] .gold-gradient-text {
   to { transform: translate3d(22px, 105vh, 0); }
 }
 
+@keyframes christmas-twinkle {
+  0%, 28% { opacity: 0.42; transform: rotate(-3deg) scale(0.88); }
+  70%, 100% { opacity: 1; transform: rotate(3deg) scale(1.08); }
+}
+
+@keyframes christmas-star-pulse {
+  0%, 100% { opacity: 0.24; transform: scale(0.72) rotate(0deg); }
+  50% { opacity: 0.8; transform: scale(1.2) rotate(18deg); }
+}
+
+@keyframes christmas-ornament-sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .christmas-snow { display: none; }
+  .christmas-light,
+  .christmas-stars i,
+  .christmas-ornament { animation: none; }
+}
+
+@media (max-width: 640px) {
+  .christmas-light:nth-child(even) { display: none; }
+  .christmas-ornament { opacity: 0.72; transform: scale(0.78); }
 }
