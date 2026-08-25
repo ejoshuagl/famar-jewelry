@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
 import { calculateDiscount } from '@/lib/commerce'
 import { ensureProductRelations } from '@/lib/relations'
+import { ensureCampaignTable } from '@/lib/campaigns'
 
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +35,10 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
-      include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+      include: {
+        campaign: { select: { id: true, title: true } },
+        items: { include: { product: { select: { mainImage: true, stock: true } } } },
+      },
     })
 
     return NextResponse.json({ orders, total, page, limit, totalPages: Math.ceil(total / limit) })
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     await ensureProductRelations()
     const body = await request.json()
-    const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode } = body
+    const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode, campaignId } = body
 
     if (!customerName || !customerCity || !customerPhone || !items || !items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -84,6 +88,21 @@ export async function POST(request: NextRequest) {
     })
     const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
     const pricing = await calculateDiscount(subtotal, String(couponCode || ''))
+    let attributedCampaignId: string | null = null
+    if (typeof campaignId === 'string' && campaignId) {
+      await ensureCampaignTable()
+      const campaign = await db.campaign.findFirst({
+        where: {
+          id: campaignId,
+          active: true,
+          startAt: { lte: new Date() },
+          endAt: { gte: new Date() },
+          products: { some: { productId: { in: productIds } } },
+        },
+        select: { id: true },
+      })
+      attributedCampaignId = campaign?.id || null
+    }
 
     // Sequential order number: FAM-000001, FAM-000002...
     const lastSeq = await db.$queryRaw<Array<{ max: bigint | null }>>`
@@ -115,6 +134,7 @@ export async function POST(request: NextRequest) {
         customerPhone,
         customerAddress: String(customerAddress || '').trim() || null,
         customerLocation: String(customerLocation || '').trim() || null,
+        campaignId: attributedCampaignId,
         observations: `${String(observations || '').trim()}${pricing.percent ? `${observations ? '\n' : ''}[${pricing.source}: ${pricing.percent}%]` : ''}` || null,
         total: pricing.total,
         status: 'pending',

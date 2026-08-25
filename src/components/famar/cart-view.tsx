@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export function CartView() {
-  const { navigate } = useAppStore()
+  const { navigate, campaignFilter, setCampaignFilter } = useAppStore()
   const { items, removeItem, updateQuantity, clearCart, getTotal } = useCartStore()
   const [orderDialogOpen, setOrderDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -128,6 +128,7 @@ export function CartView() {
           })),
           total,
           couponCode,
+          campaignId: campaignFilter?.id || null,
         }),
       })
 
@@ -167,6 +168,7 @@ ${productList}
 
       toast.success('¡Pedido creado exitosamente!')
       clearCart()
+      setCampaignFilter(null)
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
     } catch {

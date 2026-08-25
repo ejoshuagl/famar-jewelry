@@ -71,6 +71,16 @@ async function createCampaignTable() {
     JOIN "Product" ON "Product"."id" = selected."productId"
     ON CONFLICT ("campaignId", "productId") DO NOTHING
   `)
+  await db.$executeRawUnsafe('ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "campaignId" TEXT')
+  await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Order_campaignId_createdAt_idx" ON "Order"("campaignId", "createdAt")')
+  await db.$executeRawUnsafe(`
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Order_campaignId_fkey') THEN
+        ALTER TABLE "Order" ADD CONSTRAINT "Order_campaignId_fkey"
+        FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE SET NULL;
+      END IF;
+    END $$
+  `)
 }
 
 export function ensureCampaignTable() {

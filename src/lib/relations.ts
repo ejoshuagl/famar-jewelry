@@ -66,6 +66,15 @@ async function createProductRelations() {
       END IF;
     END $$
   `)
+  await db.$executeRawUnsafe(`
+    DO $$ BEGIN
+      BEGIN
+        ALTER TABLE "OrderItem" VALIDATE CONSTRAINT "OrderItem_productId_variantId_fkey";
+      EXCEPTION WHEN foreign_key_violation THEN
+        NULL;
+      END;
+    END $$
+  `)
 }
 
 export function ensureProductRelations() {
