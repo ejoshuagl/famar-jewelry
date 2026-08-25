@@ -1,6 +1,7 @@
 'use client'
 
 import { useSyncExternalStore } from 'react'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ShoppingCart } from 'lucide-react'
 import { useCartStore } from '@/stores/cart-store'
@@ -28,8 +29,8 @@ export function WhatsAppButton() {
       data-cart-button
     >
       <ShoppingCart className="standard-cart-icon h-7 w-7" />
-      <span className="seasonal-cart-icon christmas-cart-icon" aria-hidden="true">🧦</span>
-      <span className="seasonal-cart-icon halloween-cart-icon" aria-hidden="true">🎃</span>
+      <Image className="seasonal-cart-icon christmas-cart-icon" src="/themes/christmas-stocking.webp" alt="" width={48} height={48} aria-hidden="true" />
+      <Image className="seasonal-cart-icon halloween-cart-icon" src="/themes/halloween-candy-bucket.webp" alt="" width={48} height={48} aria-hidden="true" />
       <span className="seasonal-cart-icon black-friday-cart-icon" aria-hidden="true">🛍️</span>
       <span className="seasonal-cart-icon valentine-cart-icon" aria-hidden="true">🎁</span>
       {mounted && itemCount > 0 && (
