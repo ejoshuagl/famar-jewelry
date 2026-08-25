@@ -68,6 +68,8 @@ export function AdminCampaignsView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CampaignForm>(initialForm)
   const [productSearch, setProductSearch] = useState('')
+  const [productCategory, setProductCategory] = useState('all')
+  const [productVisibility, setProductVisibility] = useState('all')
 
   const headers = () => ({
     'Content-Type': 'application/json',
@@ -93,10 +95,16 @@ export function AdminCampaignsView() {
     },
   })
   const products = (productsData?.products || []) as Array<{ id: string; name: string; code: string; mainImage?: string; category?: { name: string }; visible: boolean }>
+  const productCategories = Array.from(new Set(products.map((product) => product.category?.name).filter(Boolean) as string[])).sort()
   const normalizedSearch = productSearch.trim().toLowerCase()
-  const filteredProducts = normalizedSearch
-    ? products.filter((product) => `${product.name} ${product.code} ${product.category?.name || ''}`.toLowerCase().includes(normalizedSearch))
-    : products
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = !normalizedSearch || `${product.name} ${product.code} ${product.category?.name || ''}`.toLowerCase().includes(normalizedSearch)
+    const matchesCategory = productCategory === 'all' || product.category?.name === productCategory
+    const matchesVisibility = productVisibility === 'all'
+      || (productVisibility === 'visible' && product.visible)
+      || (productVisibility === 'hidden' && !product.visible)
+    return matchesSearch && matchesCategory && matchesVisibility
+  })
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -137,6 +145,8 @@ export function AdminCampaignsView() {
     setEditingId(null)
     setForm(initialForm())
     setProductSearch('')
+    setProductCategory('all')
+    setProductVisibility('all')
     setDialogOpen(true)
   }
 
@@ -156,6 +166,8 @@ export function AdminCampaignsView() {
       productIds: campaign.productIds || [],
     })
     setProductSearch('')
+    setProductCategory('all')
+    setProductVisibility('all')
     setDialogOpen(true)
   }
 
@@ -229,7 +241,43 @@ export function AdminCampaignsView() {
                 <div><Label>Productos de la campaña</Label><p className="text-xs text-muted-foreground">Al pulsar el anuncio, el catálogo mostrará únicamente los productos seleccionados.</p></div>
                 <Badge variant="outline">{form.productIds.length} seleccionados</Badge>
               </div>
-              <Input placeholder="Buscar por nombre, código o categoría…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Input placeholder="Buscar por nombre o código…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
+                <Select value={productCategory} onValueChange={setProductCategory}>
+                  <SelectTrigger><SelectValue placeholder="Categoría" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">Todas las categorías</SelectItem>{productCategories.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent>
+                </Select>
+                <Select value={productVisibility} onValueChange={setProductVisibility}>
+                  <SelectTrigger><SelectValue placeholder="Visibilidad" /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">Visibles y ocultos</SelectItem><SelectItem value="visible">Solo visibles</SelectItem><SelectItem value="hidden">Solo ocultos</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/50 p-2">
+                <p className="text-xs text-muted-foreground">{filteredProducts.length} resultados filtrados</p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setForm((current) => ({ ...current, productIds: Array.from(new Set([...current.productIds, ...filteredProducts.map((product) => product.id)])) }))}
+                    disabled={filteredProducts.length === 0}
+                  >
+                    Seleccionar todos
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      const filteredIds = new Set(filteredProducts.map((product) => product.id))
+                      setForm((current) => ({ ...current, productIds: current.productIds.filter((id) => !filteredIds.has(id)) }))
+                    }}
+                    disabled={filteredProducts.length === 0}
+                  >
+                    Quitar resultados
+                  </Button>
+                </div>
+              </div>
               <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">
                 {filteredProducts.map((product) => {
                   const checked = form.productIds.includes(product.id)
