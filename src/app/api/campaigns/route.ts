@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
       orderBy: [{ priority: 'desc' }, { startAt: 'desc' }],
     })
 
-    return NextResponse.json(campaigns)
+    return NextResponse.json(campaigns.map((campaign) => ({
+      ...campaign,
+      productIds: campaign.productIds ? JSON.parse(campaign.productIds) : [],
+    })))
   } catch (error) {
     console.error('GET /api/campaigns error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
         placement: body.placement === 'banner' ? 'banner' : 'popup',
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
         ctaView: body.ctaView || null,
+        productIds: Array.isArray(body.productIds) ? JSON.stringify(body.productIds) : null,
         startAt,
         endAt,
         active: body.active !== false,

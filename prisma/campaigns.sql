@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS "Campaign" (
   "placement" TEXT NOT NULL DEFAULT 'popup',
   "ctaLabel" TEXT,
   "ctaView" TEXT,
+  "productIds" TEXT,
   "startAt" TIMESTAMP(3) NOT NULL,
   "endAt" TIMESTAMP(3) NOT NULL,
   "active" BOOLEAN NOT NULL DEFAULT true,
@@ -17,3 +18,5 @@ CREATE TABLE IF NOT EXISTS "Campaign" (
 
 CREATE INDEX IF NOT EXISTS "Campaign_active_startAt_endAt_idx"
   ON "Campaign"("active", "startAt", "endAt");
+
+ALTER TABLE "Campaign" ADD COLUMN IF NOT EXISTS "productIds" TEXT;

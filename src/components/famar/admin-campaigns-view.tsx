@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageUploader } from './image-uploader'
+import { convertDriveUrl } from '@/lib/utils'
 
 interface Campaign {
   id: string
@@ -28,6 +30,7 @@ interface Campaign {
   endAt: string
   active: boolean
   priority: number
+  productIds: string[]
 }
 
 interface CampaignForm {
@@ -41,6 +44,7 @@ interface CampaignForm {
   endAt: string
   active: boolean
   priority: string
+  productIds: string[]
 }
 
 const toEcuadorInput = (value: string | Date) => {
@@ -53,7 +57,7 @@ const initialForm = (): CampaignForm => {
   const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000)
   return {
     title: '', message: '', image: '', placement: 'popup', ctaLabel: 'Ver catálogo',
-    ctaView: 'catalog', startAt: toEcuadorInput(start), endAt: toEcuadorInput(end), active: true, priority: '0',
+    ctaView: 'catalog', startAt: toEcuadorInput(start), endAt: toEcuadorInput(end), active: true, priority: '0', productIds: [],
   }
 }
 
@@ -63,6 +67,7 @@ export function AdminCampaignsView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<CampaignForm>(initialForm)
+  const [productSearch, setProductSearch] = useState('')
 
   const headers = () => ({
     'Content-Type': 'application/json',
@@ -78,6 +83,20 @@ export function AdminCampaignsView() {
       return response.json() as Promise<Campaign[]>
     },
   })
+
+  const { data: productsData } = useQuery({
+    queryKey: ['campaign-products'],
+    queryFn: async () => {
+      const response = await fetch('/api/products?all=true&limit=500', { headers: headers() })
+      if (!response.ok) throw new Error('No se pudieron cargar los productos')
+      return response.json()
+    },
+  })
+  const products = (productsData?.products || []) as Array<{ id: string; name: string; code: string; mainImage?: string; category?: { name: string }; visible: boolean }>
+  const normalizedSearch = productSearch.trim().toLowerCase()
+  const filteredProducts = normalizedSearch
+    ? products.filter((product) => `${product.name} ${product.code} ${product.category?.name || ''}`.toLowerCase().includes(normalizedSearch))
+    : products
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -117,6 +136,7 @@ export function AdminCampaignsView() {
   const openCreate = () => {
     setEditingId(null)
     setForm(initialForm())
+    setProductSearch('')
     setDialogOpen(true)
   }
 
@@ -133,7 +153,9 @@ export function AdminCampaignsView() {
       endAt: toEcuadorInput(campaign.endAt),
       active: campaign.active,
       priority: String(campaign.priority),
+      productIds: campaign.productIds || [],
     })
+    setProductSearch('')
     setDialogOpen(true)
   }
 
@@ -202,6 +224,33 @@ export function AdminCampaignsView() {
             <div><Label>Termina *</Label><Input type="datetime-local" value={form.endAt} onChange={(e) => setForm({ ...form, endAt: e.target.value })} /></div>
             <div><Label>Texto del botón</Label><Input value={form.ctaLabel} onChange={(e) => setForm({ ...form, ctaLabel: e.target.value })} /></div>
             <div><Label>Destino del botón</Label><Select value={form.ctaView} onValueChange={(value) => setForm({ ...form, ctaView: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="catalog">Catálogo</SelectItem><SelectItem value="contact">Contacto</SelectItem><SelectItem value="out-of-stock">Agotados</SelectItem><SelectItem value="jewelry-care">Cuidados</SelectItem><SelectItem value="home">Inicio</SelectItem></SelectContent></Select></div>
+            <div className="sm:col-span-2 space-y-2">
+              <div className="flex items-end justify-between gap-3">
+                <div><Label>Productos de la campaña</Label><p className="text-xs text-muted-foreground">Al pulsar el anuncio, el catálogo mostrará únicamente los productos seleccionados.</p></div>
+                <Badge variant="outline">{form.productIds.length} seleccionados</Badge>
+              </div>
+              <Input placeholder="Buscar por nombre, código o categoría…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
+              <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto rounded-lg border p-2 sm:grid-cols-2">
+                {filteredProducts.map((product) => {
+                  const checked = form.productIds.includes(product.id)
+                  return (
+                    <label key={product.id} className="flex cursor-pointer items-center gap-2 rounded-md border p-2 hover:bg-muted/60">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => setForm((current) => ({
+                          ...current,
+                          productIds: checked
+                            ? current.productIds.filter((id) => id !== product.id)
+                            : [...current.productIds, product.id],
+                        }))}
+                      />
+                      {product.mainImage ? <img src={convertDriveUrl(product.mainImage)} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-muted" />}
+                      <span className="min-w-0"><span className="block truncate text-sm font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.code} · {product.category?.name}{product.visible ? '' : ' · Oculto'}</span></span>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
             <div className="sm:col-span-2 flex items-center justify-between rounded-lg border p-3"><div><p className="text-sm font-medium">Publicidad activa</p><p className="text-xs text-muted-foreground">Además de las fechas, este interruptor debe estar encendido.</p></div><Switch checked={form.active} onCheckedChange={(active) => setForm({ ...form, active })} /></div>
             <div className="sm:col-span-2 flex justify-end gap-2"><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button><Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>{saveMutation.isPending ? 'Guardando…' : 'Guardar'}</Button></div>
           </div>

@@ -22,12 +22,14 @@ interface AppStore {
   selectedProductCode: string | null
   selectedCategory: string | null
   catalogFilter: string | null
+  campaignFilter: { id: string; title: string } | null
   searchQuery: string
   sidebarOpen: boolean
   navigate: (view: AppView, pushHistory?: boolean) => void
   selectProduct: (id: string | null, code?: string | null) => void
   setCategory: (slug: string | null) => void
   setCatalogFilter: (filter: string | null) => void
+  setCampaignFilter: (campaign: { id: string; title: string } | null) => void
   setSearch: (q: string) => void
   setSidebarOpen: (open: boolean) => void
 }
@@ -43,6 +45,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   selectedProductCode: null,
   selectedCategory: null,
   catalogFilter: null,
+  campaignFilter: null,
   searchQuery: '',
   sidebarOpen: false,
   navigate: (view, pushHistory = true) => {
@@ -85,6 +88,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   selectProduct: (id, code = null) => set({ selectedProductId: id, selectedProductCode: code }),
   setCategory: (slug) => set({ selectedCategory: slug }),
   setCatalogFilter: (filter) => set({ catalogFilter: filter }),
+  setCampaignFilter: (campaign) => set({ campaignFilter: campaign }),
   setSearch: (q) => set({ searchQuery: q }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }))

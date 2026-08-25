@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { SlidersHorizontal, X } from 'lucide-react'
 
 export function CatalogView() {
-  const { searchQuery, selectedCategory, catalogFilter, setCategory, setCatalogFilter, setSearch } = useAppStore()
+  const { searchQuery, selectedCategory, catalogFilter, campaignFilter, setCategory, setCatalogFilter, setCampaignFilter, setSearch } = useAppStore()
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState('relevance')
   const [localSearch, setLocalSearch] = useState(searchQuery)
@@ -43,14 +43,15 @@ export function CatalogView() {
     if (catalogFilter === 'featured') params.set('featured', 'true')
     if (catalogFilter === 'new') params.set('new', 'true')
     if (catalogFilter === 'sale') params.set('sale', 'true')
+    if (campaignFilter) params.set('campaign', campaignFilter.id)
     params.set('sort', catalogFilter === 'best-selling' ? 'best-selling' : sort)
     params.set('page', page.toString())
     params.set('limit', '12')
     return params.toString()
-  }, [localSearch, selectedCategory, catalogFilter, sort, page])
+  }, [localSearch, selectedCategory, catalogFilter, campaignFilter, sort, page])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, sort, page],
+    queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, campaignFilter?.id, sort, page],
     queryFn: async () => {
       const res = await fetch(`/api/products?${buildQuery()}`)
       return res.json()
@@ -70,7 +71,7 @@ export function CatalogView() {
 
   useEffect(() => {
     setPage(1)
-  }, [localSearch, selectedCategory, catalogFilter, sort])
+  }, [localSearch, selectedCategory, catalogFilter, campaignFilter, sort])
 
   const handleCategorySelect = (slug: string | null) => {
     setCategory(slug)
@@ -86,11 +87,12 @@ export function CatalogView() {
     setSearch('')
     setCategory(null)
     setCatalogFilter(null)
+    setCampaignFilter(null)
     setSort('relevance')
     setPage(1)
   }
 
-  const hasFilters = localSearch || selectedCategory || catalogFilter || sort !== 'relevance'
+  const hasFilters = localSearch || selectedCategory || catalogFilter || campaignFilter || sort !== 'relevance'
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -130,6 +132,17 @@ export function CatalogView() {
       )}
 
       {/* Quick filters */}
+      {campaignFilter && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <p className="text-xs text-muted-foreground">Colección de campaña</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-semibold text-primary">{campaignFilter.title}</p>
+            <Button size="sm" variant="ghost" onClick={() => setCampaignFilter(null)}>
+              <X className="mr-1 h-3.5 w-3.5" />Quitar
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 flex-wrap">
         {([
           ['featured', 'Destacados'],
@@ -141,7 +154,7 @@ export function CatalogView() {
             variant={catalogFilter === value ? 'default' : 'outline'}
             size="sm"
             className={catalogFilter === value ? 'bg-primary text-primary-foreground' : 'border-primary/40 text-primary hover:bg-primary/10'}
-            onClick={() => setCatalogFilter(catalogFilter === value ? null : value)}
+            onClick={() => { setCampaignFilter(null); setCatalogFilter(catalogFilter === value ? null : value) }}
           >
             {label}
           </Button>

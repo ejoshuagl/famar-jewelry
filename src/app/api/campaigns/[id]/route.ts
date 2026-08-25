@@ -31,6 +31,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         placement: body.placement === 'banner' ? 'banner' : 'popup',
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
         ctaView: body.ctaView || null,
+        productIds: Array.isArray(body.productIds) ? JSON.stringify(body.productIds) : null,
         startAt,
         endAt,
         active: body.active !== false,

@@ -16,7 +16,7 @@ import { useAppStore, type AppView } from '@/stores/app-store'
 import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
 import { SearchBar } from './search-bar'
-import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, TrendingUp } from 'lucide-react'
+import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, TrendingUp, X } from 'lucide-react'
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
@@ -35,12 +35,14 @@ interface Campaign {
   placement: 'popup' | 'banner'
   ctaLabel: string | null
   ctaView: AppView | null
+  productIds: string[]
 }
 
 export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setCategory = useAppStore((s) => s.setCategory)
   const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
+  const setCampaignFilter = useAppStore((s) => s.setCampaignFilter)
   const [newArrivalsOpen, setNewArrivalsOpen] = useState(false)
 
   const goToCollection = (filter: string) => {
@@ -78,7 +80,10 @@ export function HomeView() {
 
   const followCampaign = (campaign: Campaign) => {
     setNewArrivalsOpen(false)
-    if (campaign.ctaView === 'catalog') setCatalogFilter(null)
+    if (campaign.ctaView === 'catalog') {
+      setCatalogFilter(null)
+      setCampaignFilter(campaign.productIds.length ? { id: campaign.id, title: campaign.title } : null)
+    }
     if (campaign.ctaView) navigate(campaign.ctaView)
   }
 
@@ -136,6 +141,15 @@ export function HomeView() {
     <div className="flex flex-col">
       <Dialog open={Boolean(popupCampaign) && newArrivalsOpen} onOpenChange={setNewArrivalsOpen}>
         <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl gap-0 overflow-hidden border-primary/40 bg-black p-0 text-white shadow-2xl sm:rounded-2xl">
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="absolute right-3 top-3 z-20 shadow-lg"
+            onClick={() => setNewArrivalsOpen(false)}
+          >
+            <X className="mr-1 h-4 w-4" />Cerrar
+          </Button>
           {popupCampaign?.image && <div className="relative">
             <img
               src={popupCampaign.image}

@@ -10,6 +10,7 @@ export async function ensureCampaignTable() {
       "placement" TEXT NOT NULL DEFAULT 'popup',
       "ctaLabel" TEXT,
       "ctaView" TEXT,
+      "productIds" TEXT,
       "startAt" TIMESTAMP(3) NOT NULL,
       "endAt" TIMESTAMP(3) NOT NULL,
       "active" BOOLEAN NOT NULL DEFAULT true,
@@ -19,6 +20,7 @@ export async function ensureCampaignTable() {
       CONSTRAINT "Campaign_pkey" PRIMARY KEY ("id")
     )
   `)
+  await db.$executeRawUnsafe('ALTER TABLE "Campaign" ADD COLUMN IF NOT EXISTS "productIds" TEXT')
   await db.$executeRawUnsafe(`
     CREATE INDEX IF NOT EXISTS "Campaign_active_startAt_endAt_idx"
     ON "Campaign"("active", "startAt", "endAt")

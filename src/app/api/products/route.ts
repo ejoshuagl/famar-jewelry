@@ -4,6 +4,7 @@ import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
+import { ensureCampaignTable } from '@/lib/campaigns'
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,10 +34,26 @@ export async function GET(request: NextRequest) {
     const sort = searchParams.get('sort') || 'relevance'
     const includeHidden = searchParams.get('all') === 'true'
     const flag = searchParams.get('flag') || ''
+    const campaignId = searchParams.get('campaign') || ''
 
     const where: Record<string, unknown> = {}
     if (!includeHidden) {
       where.visible = true
+    }
+    if (campaignId) {
+      await ensureCampaignTable()
+      const now = new Date()
+      const campaign = await db.campaign.findFirst({
+        where: { id: campaignId, active: true, startAt: { lte: now }, endAt: { gte: now } },
+        select: { productIds: true },
+      })
+      let productIds: string[] = []
+      try {
+        productIds = campaign?.productIds ? JSON.parse(campaign.productIds) : []
+      } catch {
+        productIds = []
+      }
+      where.id = { in: productIds }
     }
     if (flag === 'featured') where.isFeatured = true
     if (flag === 'new') where.isNew = true

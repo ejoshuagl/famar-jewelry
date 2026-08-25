@@ -119,6 +119,7 @@ model Campaign {
   placement   String   @default("popup") // popup, banner
   ctaLabel    String?
   ctaView     String?
+  productIds  String?  // JSON array of associated product IDs
   startAt     DateTime
   endAt       DateTime
   active      Boolean  @default(true)
