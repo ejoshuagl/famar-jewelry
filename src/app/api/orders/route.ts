@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
-import { calculateDiscount } from '@/lib/commerce'
+import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
 import { ensureProductRelations } from '@/lib/relations'
 import { ensureCampaignTable } from '@/lib/campaigns'
+import { salePrice } from '@/lib/pricing'
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,7 +71,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
     }
     const productIds = [...new Set(requestedItems.map((item) => item.productId))]
-    const products = await db.product.findMany({ where: { id: { in: productIds }, visible: true }, select: { id: true, name: true, code: true, price: true, stock: true, status: true, variants: true } })
+    const [products, saleDiscount] = await Promise.all([
+      db.product.findMany({ where: { id: { in: productIds }, visible: true }, select: { id: true, name: true, code: true, price: true, stock: true, status: true, variants: true, isOnSale: true } }),
+      getSaleDiscount(),
+    ])
     const productMap = new Map(products.map((product) => [product.id, product]))
     const validatedItems = requestedItems.map((item) => {
       const product = productMap.get(item.productId)
@@ -84,10 +88,11 @@ export async function POST(request: NextRequest) {
         available = Number(variant.stock); variantName = variant.name
       }
       if (item.quantity > available) throw new Error('INSUFFICIENT_STOCK')
-      return { productId: product.id, quantity: item.quantity, price: product.price, name: product.name, code: product.code, variantId: item.variantId || null, variantName }
+      return { productId: product.id, quantity: item.quantity, price: salePrice(product.price, product.isOnSale, saleDiscount), isOnSale: product.isOnSale, name: product.name, code: product.code, variantId: item.variantId || null, variantName }
     })
-    const subtotal = validatedItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const pricing = await calculateDiscount(subtotal, String(couponCode || ''))
+    const eligibleSubtotal = validatedItems.filter((item) => !item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const saleSubtotal = validatedItems.filter((item) => item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const pricing = await calculateDiscount(eligibleSubtotal, String(couponCode || ''), saleSubtotal)
     let attributedCampaignId: string | null = null
     if (typeof campaignId === 'string' && campaignId) {
       await ensureCampaignTable()

@@ -14,6 +14,8 @@ import { Separator } from '@/components/ui/separator'
 import { EmptyState } from './empty-state'
 import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent } from 'lucide-react'
 import { toast } from 'sonner'
+import { salePrice } from '@/lib/pricing'
+import { usePricingSettings } from '@/hooks/use-pricing-settings'
 import {
   Dialog,
   DialogContent,
@@ -34,7 +36,7 @@ import {
 
 export function CartView() {
   const { navigate, campaignFilter, setCampaignFilter } = useAppStore()
-  const { items, removeItem, updateQuantity, clearCart, getTotal } = useCartStore()
+  const { items, removeItem, updateQuantity, clearCart } = useCartStore()
   const [orderDialogOpen, setOrderDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
@@ -45,14 +47,25 @@ export function CartView() {
   const [couponInput, setCouponInput] = useState('')
   const [couponCode, setCouponCode] = useState('')
   const queryClient = useQueryClient()
+  const { saleDiscount } = usePricingSettings()
 
-  const subtotal = getTotal()
+  const priceForItem = (item: (typeof items)[number]) => salePrice(item.price, Boolean(item.isOnSale), saleDiscount)
+  const { eligibleSubtotal, saleBaseSubtotal, saleSubtotal } = items.reduce((totals, item) => {
+    if (item.isOnSale) {
+      totals.saleBaseSubtotal += item.price * item.quantity
+      totals.saleSubtotal += priceForItem(item) * item.quantity
+    } else {
+      totals.eligibleSubtotal += item.price * item.quantity
+    }
+    return totals
+  }, { eligibleSubtotal: 0, saleBaseSubtotal: 0, saleSubtotal: 0 })
+  const subtotal = eligibleSubtotal + saleSubtotal
   const { data: pricing, isFetching: pricingLoading } = useQuery({
-    queryKey: ['cart-pricing', subtotal, couponCode],
+    queryKey: ['cart-pricing', eligibleSubtotal, saleSubtotal, couponCode, saleDiscount],
     queryFn: async () => {
-      const response = await fetch('/api/discount/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subtotal, code: couponCode }) })
+      const response = await fetch('/api/discount/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eligibleSubtotal, saleBaseSubtotal, saleSubtotal, code: couponCode }) })
       if (!response.ok) throw new Error('No se pudo calcular el descuento')
-      return response.json() as Promise<{ subtotal: number; percent: number; amount: number; total: number; source: string | null; coupon: string | null; couponError?: string }>
+      return response.json() as Promise<{ subtotal: number; eligibleSubtotal: number; saleSubtotal: number; percent: number; amount: number; total: number; source: string | null; coupon: string | null; couponError?: string }>
     },
     enabled: subtotal > 0,
   })
@@ -120,7 +133,7 @@ export function CartView() {
           items: items.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
-            price: item.price,
+            price: priceForItem(item),
             name: item.name,
             code: item.code,
             variantId: item.variantId,
@@ -142,7 +155,7 @@ export function CartView() {
       // Build WhatsApp message
       const date = new Date().toLocaleDateString('es-EC')
       const productList = items
-        .map((item) => `🔸 ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(item.price * item.quantity)}`)
+        .map((item) => `🔸 ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(priceForItem(item) * item.quantity)}`)
         .join('\n')
 
       const finalTotal = Number(order.total)
@@ -274,7 +287,8 @@ ${productList}
                       <p className="text-xs text-muted-foreground">{item.code}</p>
                       {item.variantName && <p className="text-xs font-medium text-primary">Color: {item.variantName}</p>}
                       <p className="text-lg font-bold text-primary mt-1">
-                        {formatPrice(item.price)}
+                        {item.isOnSale && <span className="mr-1 text-xs font-normal text-muted-foreground line-through">{formatPrice(item.price)}</span>}
+                        {formatPrice(priceForItem(item))}
                       </p>
 
                       <div className="flex items-center justify-between mt-2">
@@ -303,7 +317,7 @@ ${productList}
 
                         <div className="flex items-center gap-3">
                           <span className="text-sm font-medium">
-                            {formatPrice(item.price * item.quantity)}
+                            {formatPrice(priceForItem(item) * item.quantity)}
                           </span>
                           <Button
                             variant="outline"
@@ -337,7 +351,7 @@ ${productList}
                     <span className="text-muted-foreground truncate mr-2">
                       {item.quantity}x {item.name}
                     </span>
-                    <span className="shrink-0">{formatPrice(item.price * item.quantity)}</span>
+                    <span className="shrink-0">{formatPrice(priceForItem(item) * item.quantity)}</span>
                   </div>
                 ))}
               </div>
@@ -351,6 +365,7 @@ ${productList}
                 {pricing?.percent ? <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm"><div className="flex justify-between"><span>{pricing.source}</span><strong>-{pricing.percent}%</strong></div><div className="mt-1 flex justify-between text-muted-foreground"><span>Ahorro</span><span>-{formatPrice(pricing.amount)}</span></div></div> : null}
               </div>
 
+              {saleSubtotal > 0 && <div className="space-y-1 rounded-lg bg-destructive/5 p-3 text-sm"><div className="flex justify-between"><span>Productos normales</span><span>{formatPrice(eligibleSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Productos en oferta (-{saleDiscount}%)</span><span>{formatPrice(saleSubtotal)}</span></div><p className="text-xs text-muted-foreground">Las ofertas no cuentan para mínimos ni reciben cupones adicionales.</p></div>}
               <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
 
               <div className="flex justify-between items-center">

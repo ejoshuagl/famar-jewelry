@@ -29,6 +29,8 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { parseVariants } from '@/lib/product-variants'
+import { salePrice } from '@/lib/pricing'
+import { usePricingSettings } from '@/hooks/use-pricing-settings'
 
 export function ProductDetailView() {
   const { selectedProductId, navigate, selectProduct } = useAppStore()
@@ -37,6 +39,7 @@ export function ProductDetailView() {
   const [quantity, setQuantity] = useState(1)
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const favorite = selectedProductId ? isFavorite(selectedProductId) : false
+  const { saleDiscount } = usePricingSettings()
 
   useEffect(() => {
     if (selectedProductId) {
@@ -131,6 +134,7 @@ export function ProductDetailView() {
   }
 
   const isOutOfStock = product.status === 'out_of_stock' || availableStock <= 0
+  const currentPrice = salePrice(product.price, Boolean(product.isOnSale), saleDiscount)
   const tags: string[] = []
   if (product.isNew) tags.push('Nuevo')
   if (product.isOnSale) tags.push('Oferta')
@@ -144,6 +148,7 @@ export function ProductDetailView() {
       code: product.code,
       name: product.name,
       price: product.price,
+      isOnSale: Boolean(product.isOnSale),
       mainImage: selectedVariant?.image || product.mainImage || '',
       maxStock: availableStock,
       variantId: selectedVariant?.id,
@@ -160,7 +165,7 @@ export function ProductDetailView() {
   }
 
   const handleRequestImport = () => {
-    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(product.price)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
+    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(currentPrice)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
     window.open(`https://wa.me/593988215076?text=${encodeURIComponent(message)}`, '_blank')
   }
 
@@ -214,7 +219,7 @@ export function ProductDetailView() {
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
                 <Badge key={tag} variant={tag === 'Nuevo' ? 'default' : tag === 'Oferta' ? 'destructive' : 'outline'}>
-                  {tag}
+                  {tag === 'Oferta' ? `Oferta -${saleDiscount}%` : tag}
                 </Badge>
               ))}
             </div>
@@ -222,9 +227,10 @@ export function ProductDetailView() {
 
           <h1 className="allow-text-selection text-2xl sm:text-3xl font-bold">{product.name}</h1>
           <p className="allow-text-selection text-sm text-muted-foreground">Código: {product.code}</p>
-          <p className="text-3xl font-bold text-primary">
-            {formatPrice(product.price)}
-          </p>
+          <div className="flex items-baseline gap-3">
+            <p className="text-3xl font-bold text-primary">{formatPrice(currentPrice)}</p>
+            {product.isOnSale && <p className="text-base text-muted-foreground line-through">{formatPrice(product.price)}</p>}
+          </div>
 
           {product.category && (
             <p className="text-sm">
@@ -382,7 +388,7 @@ export function ProductDetailView() {
           <ShareButtons
             productName={product.name}
             productCode={product.code}
-            productPrice={product.price}
+            productPrice={currentPrice}
             productUrl={getProductUrl(product.code)}
           />
         </motion.div>

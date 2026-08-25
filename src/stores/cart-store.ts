@@ -7,6 +7,7 @@ export interface CartItem {
   code: string
   name: string
   price: number
+  isOnSale?: boolean
   quantity: number
   mainImage: string
   maxStock: number

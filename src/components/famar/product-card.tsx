@@ -13,6 +13,8 @@ import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ProductVariant } from '@/lib/product-variants'
 import { parseVariants } from '@/lib/product-variants'
+import { salePrice } from '@/lib/pricing'
+import { usePricingSettings } from '@/hooks/use-pricing-settings'
 
 
 export interface ProductData {
@@ -120,6 +122,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const isOutOfStock = product.status === 'out_of_stock'
   const imageUrl = product.mainImage ? convertDriveUrl(product.mainImage) : null
   const hasVariants = parseVariants(product.variants).length > 0
+  const { saleDiscount } = usePricingSettings()
+  const currentPrice = salePrice(product.price, Boolean(product.isOnSale), saleDiscount)
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -136,6 +140,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       code: product.code,
       name: product.name,
       price: product.price,
+      isOnSale: Boolean(product.isOnSale),
       mainImage: product.mainImage || '',
       maxStock: product.stock,
     })
@@ -144,7 +149,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
   const handleRequestImport = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(product.price)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
+    const message = `*SOLICITUD DE IMPORTACION - FAMAR*\n-------------------\nMe interesa el producto:\n*${product.name}* (Codigo: ${product.code})\n*Precio:* ${formatPrice(currentPrice)}\nMe gustaria que lo incluyan en la proxima importacion.\nGracias!`
     const encoded = encodeURIComponent(message)
     window.open(`https://wa.me/593988215076?text=${encoded}`, '_blank')
   }
@@ -196,7 +201,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           <div className="absolute top-2 left-2 flex flex-wrap gap-1">
             {tags.map((tag) => (
               <Badge key={tag} variant={getTagVariant(tag)} className="text-[10px] px-1.5 py-0">
-                {tag}
+                {tag === 'Oferta' ? `Oferta -${saleDiscount}%` : tag}
               </Badge>
             ))}
           </div>
@@ -237,7 +242,8 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           </h3>
           <div className="mt-auto pt-2 flex items-end justify-between gap-2">
             <span className="text-base font-bold text-primary leading-none">
-              {formatPrice(product.price)}
+              {product.isOnSale && <span className="mr-1.5 text-xs font-normal text-muted-foreground line-through">{formatPrice(product.price)}</span>}
+              {formatPrice(currentPrice)}
             </span>
             {isOutOfStock ? (
               <Button

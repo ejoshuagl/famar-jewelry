@@ -14,15 +14,16 @@ interface Tier { min: number; discount: number; label: string }
 export function AdminWholesaleView() {
   const token = useAuthStore((state) => state.token)
   const [tiers, setTiers] = useState<Tier[]>([])
+  const [saleDiscount, setSaleDiscount] = useState(25)
   const [saving, setSaving] = useState(false)
-  useEffect(() => { fetch('/api/commerce-settings').then((r) => r.json()).then((data) => setTiers(data.tiers || [])) }, [])
+  useEffect(() => { fetch('/api/commerce-settings').then((r) => r.json()).then((data) => { setTiers(data.tiers || []); setSaleDiscount(Number(data.saleDiscount ?? 25)) }) }, [])
 
   const save = async () => {
     setSaving(true)
-    const response = await fetch('/api/commerce-settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' }, body: JSON.stringify({ tiers }) })
+    const response = await fetch('/api/commerce-settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' }, body: JSON.stringify({ tiers, saleDiscount }) })
     setSaving(false)
     if (!response.ok) return toast.error('No se pudo guardar la configuración')
-    toast.success('Descuentos mayoristas actualizados')
+    toast.success('Configuración de descuentos actualizada')
   }
 
   return <section className="mx-auto max-w-4xl space-y-6">
@@ -36,6 +37,11 @@ export function AdminWholesaleView() {
       </div>)}
       <div className="flex flex-wrap gap-3"><Button variant="outline" onClick={() => setTiers((current) => [...current, { min: 0, discount: 5, label: 'Beneficio mayorista' }])}><Plus className="mr-2 h-4 w-4" />Agregar nivel</Button><Button onClick={save} disabled={saving || !tiers.length}><Save className="mr-2 h-4 w-4" />{saving ? 'Guardando...' : 'Guardar cambios'}</Button></div>
       <p className="text-xs text-muted-foreground">Si el cliente también usa un cupón, la tienda aplicará automáticamente el porcentaje más conveniente.</p>
+    </CardContent></Card>
+    <Card><CardHeader><CardTitle className="text-lg">Productos en oferta</CardTitle></CardHeader><CardContent className="space-y-4">
+      <div className="max-w-xs"><Label>Descuento automático %</Label><Input type="number" min="0" max="90" value={saleDiscount} onChange={(event) => setSaleDiscount(Math.min(90, Math.max(0, Number(event.target.value))))} /></div>
+      <p className="text-sm text-muted-foreground">Se aplica automáticamente a los productos marcados “En oferta”. Estos productos no cuentan para alcanzar el mínimo mayorista o de un cupón y no reciben un segundo descuento.</p>
+      <Button onClick={save} disabled={saving || !tiers.length}><Save className="mr-2 h-4 w-4" />{saving ? 'Guardando...' : 'Guardar configuración'}</Button>
     </CardContent></Card>
   </section>
 }
