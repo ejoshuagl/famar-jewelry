@@ -15,6 +15,7 @@ import {
   Menu,
   ArrowLeft,
   ShieldCheck,
+  Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +26,7 @@ const sidebarItems: { label: string; view: AppView; icon: React.ReactNode }[] = 
   { label: 'Productos', view: 'admin-products', icon: <Package className="h-4 w-4" /> },
   { label: 'Pedidos', view: 'admin-orders', icon: <ShoppingBag className="h-4 w-4" /> },
   { label: 'Categorías', view: 'admin-categories', icon: <Tags className="h-4 w-4" /> },
+  { label: 'Publicidad', view: 'admin-campaigns', icon: <Megaphone className="h-4 w-4" /> },
 ]
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {

@@ -22,6 +22,7 @@ import { AdminDashboardView } from '@/components/famar/admin-dashboard-view'
 import { AdminProductsView } from '@/components/famar/admin-products-view'
 import { AdminOrdersView } from '@/components/famar/admin-orders-view'
 import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
+import { AdminCampaignsView } from '@/components/famar/admin-campaigns-view'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function AppContent() {
@@ -60,7 +61,8 @@ function AppContent() {
     currentView === 'admin-dashboard' ||
     currentView === 'admin-products' ||
     currentView === 'admin-orders' ||
-    currentView === 'admin-categories'
+    currentView === 'admin-categories' ||
+    currentView === 'admin-campaigns'
 
   if (isAdminView && !isAuthenticated) {
     return (
@@ -130,6 +132,12 @@ function AppContent() {
         return (
           <AdminLayout>
             <AdminCategoriesView />
+          </AdminLayout>
+        )
+      case 'admin-campaigns':
+        return (
+          <AdminLayout>
+            <AdminCampaignsView />
           </AdminLayout>
         )
       default:

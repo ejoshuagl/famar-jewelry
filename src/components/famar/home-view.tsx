@@ -12,7 +12,7 @@ const playfair = Playfair_Display({
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { useAppStore } from '@/stores/app-store'
+import { useAppStore, type AppView } from '@/stores/app-store'
 import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
 import { SearchBar } from './search-bar'
@@ -27,16 +27,21 @@ const fadeInUp = {
   }),
 }
 
+interface Campaign {
+  id: string
+  title: string
+  message: string | null
+  image: string | null
+  placement: 'popup' | 'banner'
+  ctaLabel: string | null
+  ctaView: AppView | null
+}
+
 export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setCategory = useAppStore((s) => s.setCategory)
   const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
   const [newArrivalsOpen, setNewArrivalsOpen] = useState(false)
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setNewArrivalsOpen(true), 900)
-    return () => window.clearTimeout(timer)
-  }, [])
 
   const goToCollection = (filter: string) => {
     setCatalogFilter(filter)
@@ -51,6 +56,31 @@ export function HomeView() {
       return data.products as ProductData[]
     },
   })
+
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: async () => {
+      const response = await fetch('/api/campaigns')
+      if (!response.ok) return []
+      return response.json() as Promise<Campaign[]>
+    },
+    staleTime: 60_000,
+  })
+
+  const popupCampaign = campaigns.find((campaign) => campaign.placement === 'popup')
+  const bannerCampaigns = campaigns.filter((campaign) => campaign.placement === 'banner')
+
+  useEffect(() => {
+    if (!popupCampaign) return
+    const timer = window.setTimeout(() => setNewArrivalsOpen(true), 900)
+    return () => window.clearTimeout(timer)
+  }, [popupCampaign?.id])
+
+  const followCampaign = (campaign: Campaign) => {
+    setNewArrivalsOpen(false)
+    if (campaign.ctaView === 'catalog') setCatalogFilter(null)
+    if (campaign.ctaView) navigate(campaign.ctaView)
+  }
 
   const { data: newProducts, isLoading: loadingNew } = useQuery({
     queryKey: ['products', 'new'],
@@ -104,36 +134,45 @@ export function HomeView() {
 
   return (
     <div className="flex flex-col">
-      <Dialog open={newArrivalsOpen} onOpenChange={setNewArrivalsOpen}>
+      <Dialog open={Boolean(popupCampaign) && newArrivalsOpen} onOpenChange={setNewArrivalsOpen}>
         <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl gap-0 overflow-hidden border-primary/40 bg-black p-0 text-white shadow-2xl sm:rounded-2xl">
-          <div className="relative">
+          {popupCampaign?.image && <div className="relative">
             <img
-              src="/campaigns/new-arrivals-collage.webp"
-              alt="Mosaico de la nueva mercadería de FAMAR Jewelry"
+              src={popupCampaign.image}
+              alt={popupCampaign.title}
               className="aspect-square max-h-[58dvh] w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent" />
-          </div>
+          </div>}
           <div className="space-y-3 px-5 pb-5 pt-3 text-center sm:px-8 sm:pb-7">
             <DialogTitle className={`${playfair.className} text-2xl font-bold text-primary sm:text-3xl`}>
-              ¡Nueva mercadería este fin de semana!
+              {popupCampaign?.title}
             </DialogTitle>
-            <DialogDescription className="mx-auto max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
-              Muy pronto llegan nuevas piezas para renovar tu estilo. Mantente atenta a nuestras promociones y descuentos especiales.
-            </DialogDescription>
-            <Button
+            {popupCampaign?.message && <DialogDescription className="mx-auto max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
+              {popupCampaign.message}
+            </DialogDescription>}
+            {popupCampaign?.ctaLabel && popupCampaign.ctaView && <Button
               className="w-full sm:w-auto sm:px-8"
-              onClick={() => {
-                setNewArrivalsOpen(false)
-                setCatalogFilter(null)
-                navigate('catalog')
-              }}
+              onClick={() => followCampaign(popupCampaign)}
             >
-              Explorar el catálogo
-            </Button>
+              {popupCampaign.ctaLabel}
+            </Button>}
           </div>
         </DialogContent>
       </Dialog>
+
+      {bannerCampaigns.map((campaign) => (
+        <section key={campaign.id} className="border-b border-primary/30 bg-black text-white">
+          <div className="container mx-auto flex flex-col items-center gap-3 px-4 py-3 text-center sm:flex-row sm:text-left">
+            {campaign.image && <img src={campaign.image} alt="" className="h-16 w-24 shrink-0 rounded-md object-cover" />}
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-primary">{campaign.title}</p>
+              {campaign.message && <p className="text-sm text-white/70">{campaign.message}</p>}
+            </div>
+            {campaign.ctaLabel && campaign.ctaView && <Button size="sm" onClick={() => followCampaign(campaign)}>{campaign.ctaLabel}</Button>}
+          </div>
+        </section>
+      ))}
 
       {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
