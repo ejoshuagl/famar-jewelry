@@ -395,7 +395,7 @@ html[data-site-theme="valentine"] .bg-card {
   top: 0;
   font-size: 25px;
   filter: grayscale(1) brightness(0.75) drop-shadow(0 0 5px #e78331);
-  animation: spider-roam 22s ease-in-out infinite;
+  animation: spider-roam 38s ease-in-out infinite;
 }
 
 .spider-one { left: -35px; }
@@ -404,9 +404,31 @@ html[data-site-theme="valentine"] .bg-card {
   left: auto;
   right: -35px;
   animation-name: spider-roam-alt;
-  animation-delay: -10s;
-  animation-duration: 26s;
+  animation-delay: -17s;
+  animation-duration: 44s;
 }
+
+.seasonal-cart-icon {
+  display: none;
+  font-size: 29px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgb(0 0 0 / 28%));
+}
+
+html[data-site-theme="christmas"] [data-cart-button] .standard-cart-icon,
+html[data-site-theme="halloween"] [data-cart-button] .standard-cart-icon,
+html[data-site-theme="black-friday"] [data-cart-button] .standard-cart-icon,
+html[data-site-theme="valentine"] [data-cart-button] .standard-cart-icon { display: none; }
+
+html[data-site-theme="christmas"] [data-cart-button] .christmas-cart-icon,
+html[data-site-theme="halloween"] [data-cart-button] .halloween-cart-icon,
+html[data-site-theme="black-friday"] [data-cart-button] .black-friday-cart-icon,
+html[data-site-theme="valentine"] [data-cart-button] .valentine-cart-icon { display: inline-block; }
+
+html[data-site-theme="christmas"] [data-cart-button] { background: linear-gradient(145deg, #d8b957, #a88a3a); }
+html[data-site-theme="halloween"] [data-cart-button] { background: linear-gradient(145deg, #e9892f, #8b3911); }
+html[data-site-theme="black-friday"] [data-cart-button] { background: linear-gradient(145deg, #d42b49, #720d20); color: white; }
+html[data-site-theme="valentine"] [data-cart-button] { background: linear-gradient(145deg, #d95b76, #a52445); color: white; }
 
 .halloween-ghost {
   color: rgb(255 255 255 / 68%);

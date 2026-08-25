@@ -27,7 +27,11 @@ export function WhatsAppButton() {
       aria-label="Ir al carrito de compras"
       data-cart-button
     >
-      <ShoppingCart className="h-7 w-7" />
+      <ShoppingCart className="standard-cart-icon h-7 w-7" />
+      <span className="seasonal-cart-icon christmas-cart-icon" aria-hidden="true">🧦</span>
+      <span className="seasonal-cart-icon halloween-cart-icon" aria-hidden="true">🎃</span>
+      <span className="seasonal-cart-icon black-friday-cart-icon" aria-hidden="true">🛍️</span>
+      <span className="seasonal-cart-icon valentine-cart-icon" aria-hidden="true">🎁</span>
       {mounted && itemCount > 0 && (
         <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[11px] font-bold border-2 border-background bg-destructive text-destructive-foreground">
           {itemCount > 99 ? '99+' : itemCount}
