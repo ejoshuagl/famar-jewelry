@@ -361,17 +361,18 @@ ${productList}
               <div className="space-y-2">
                 <Label htmlFor="coupon">Cupón de descuento</Label>
                 <div className="flex gap-2"><Input id="coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Ej: FAMAR10" /><Button type="button" variant="outline" onClick={applyCoupon} disabled={pricingLoading}><TicketPercent className="mr-1 h-4 w-4" />Aplicar</Button></div>
-                {couponCode && pricing?.couponError ? <p className="text-xs text-destructive">{pricing.couponError}</p> : null}
-                {pricing?.percent ? <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm"><div className="flex justify-between"><span>{pricing.source}</span><strong>-{pricing.percent}%</strong></div><div className="mt-1 flex justify-between text-muted-foreground"><span>Ahorro</span><span>-{formatPrice(pricing.amount)}</span></div></div> : null}
+                {couponCode && pricing?.couponError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"><strong>El cupón no se aplicó.</strong><p className="mt-1">{pricing.couponError}</p></div> : null}
+                {pricing?.percent ? <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm"><div className="flex justify-between font-medium"><span>{pricing.source}</span><strong>-{pricing.percent}%</strong></div><p className="text-xs text-muted-foreground">Este descuento se calcula únicamente sobre los productos sin oferta: <strong className="text-foreground">{formatPrice(eligibleSubtotal)}</strong>.</p><div className="flex justify-between border-t border-primary/15 pt-2"><span>Ahorro aplicado</span><strong className="text-primary">-{formatPrice(pricing.amount)}</strong></div></div> : null}
               </div>
 
-              {saleSubtotal > 0 && <div className="space-y-1 rounded-lg bg-destructive/5 p-3 text-sm"><div className="flex justify-between"><span>Productos normales</span><span>{formatPrice(eligibleSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Productos en oferta (-{saleDiscount}%)</span><span>{formatPrice(saleSubtotal)}</span></div><p className="text-xs text-muted-foreground">Las ofertas no cuentan para mínimos ni reciben cupones adicionales.</p></div>}
-              <div className="flex justify-between text-sm text-muted-foreground"><span>Subtotal</span><span>{formatPrice(subtotal)}</span></div>
+              {saleSubtotal > 0 && <div className="space-y-2 rounded-lg bg-destructive/5 p-3 text-sm"><div className="flex justify-between"><span>Productos sin oferta</span><span>{formatPrice(eligibleSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Productos en oferta</span><span>{formatPrice(saleSubtotal)}</span></div><p className="text-xs leading-relaxed text-muted-foreground">El valor de oferta ya incluye {saleDiscount}% de descuento. Por eso estos productos no reciben otro cupón ni cuentan para alcanzar la compra mínima.</p></div>}
+              <div className="flex justify-between text-sm text-muted-foreground"><span>{pricing?.percent ? 'Subtotal antes del cupón' : 'Subtotal'}</span><span>{formatPrice(subtotal)}</span></div>
 
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold">Total</span>
                 <span className="text-xl font-bold text-primary">{formatPrice(total)}</span>
               </div>
+              {pricing?.percent ? <p className="text-right text-xs text-muted-foreground">{formatPrice(eligibleSubtotal)} − {formatPrice(pricing.amount)}{saleSubtotal > 0 ? ` + ${formatPrice(saleSubtotal)} en ofertas` : ''} = {formatPrice(total)}</p> : null}
 
               <Button
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
