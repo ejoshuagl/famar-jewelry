@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Playfair_Display } from 'next/font/google'
@@ -10,6 +11,7 @@ const playfair = Playfair_Display({
 })
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { useAppStore } from '@/stores/app-store'
 import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
@@ -29,6 +31,12 @@ export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setCategory = useAppStore((s) => s.setCategory)
   const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
+  const [newArrivalsOpen, setNewArrivalsOpen] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setNewArrivalsOpen(true), 900)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   const goToCollection = (filter: string) => {
     setCatalogFilter(filter)
@@ -96,6 +104,37 @@ export function HomeView() {
 
   return (
     <div className="flex flex-col">
+      <Dialog open={newArrivalsOpen} onOpenChange={setNewArrivalsOpen}>
+        <DialogContent className="max-h-[92dvh] w-[calc(100%-1.5rem)] max-w-3xl gap-0 overflow-hidden border-primary/40 bg-black p-0 text-white shadow-2xl sm:rounded-2xl">
+          <div className="relative">
+            <img
+              src="/campaigns/new-arrivals-collage.webp"
+              alt="Mosaico de la nueva mercadería de FAMAR Jewelry"
+              className="aspect-square max-h-[58dvh] w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black to-transparent" />
+          </div>
+          <div className="space-y-3 px-5 pb-5 pt-3 text-center sm:px-8 sm:pb-7">
+            <DialogTitle className={`${playfair.className} text-2xl font-bold text-primary sm:text-3xl`}>
+              ¡Nueva mercadería este fin de semana!
+            </DialogTitle>
+            <DialogDescription className="mx-auto max-w-xl text-sm leading-relaxed text-white/75 sm:text-base">
+              Muy pronto llegan nuevas piezas para renovar tu estilo. Mantente atenta a nuestras promociones y descuentos especiales.
+            </DialogDescription>
+            <Button
+              className="w-full sm:w-auto sm:px-8"
+              onClick={() => {
+                setNewArrivalsOpen(false)
+                setCatalogFilter(null)
+                navigate('catalog')
+              }}
+            >
+              Explorar el catálogo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('/hero-bg.png')] bg-cover bg-center max-md:hidden" />
