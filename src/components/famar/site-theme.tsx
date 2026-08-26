@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 
 const SNOWFLAKES = Array.from({ length: 24 }, (_, index) => ({
   id: index,
@@ -25,6 +25,25 @@ const STARS = Array.from({ length: 12 }, (_, index) => ({
 }))
 
 type SeasonalTheme = 'christmas' | 'halloween' | 'black-friday' | 'valentine'
+type SiteThemeName = 'standard' | SeasonalTheme
+
+const VALID_THEMES = new Set<SiteThemeName>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])
+const THEME_STORAGE_KEY = 'famar-site-theme'
+const THEME_CHANGE_EVENT = 'famar-site-theme-change'
+
+function readStoredTheme(): SiteThemeName {
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as SiteThemeName | null
+  return stored && VALID_THEMES.has(stored) ? stored : 'standard'
+}
+
+function subscribeToTheme(onChange: () => void) {
+  window.addEventListener('storage', onChange)
+  window.addEventListener(THEME_CHANGE_EVENT, onChange)
+  return () => {
+    window.removeEventListener('storage', onChange)
+    window.removeEventListener(THEME_CHANGE_EVENT, onChange)
+  }
+}
 
 const CLICK_SYMBOLS: Record<SeasonalTheme, string[]> = {
   christmas: ['✦', '❄', '✧'],
@@ -60,13 +79,17 @@ function ThemeClickEffects({ theme }: { theme: SeasonalTheme }) {
 }
 
 export function SiteTheme() {
-  const [theme, setTheme] = useState<'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'>('standard')
+  const theme = useSyncExternalStore(subscribeToTheme, readStoredTheme, () => 'standard')
 
   useEffect(() => {
     const controller = new AbortController()
     fetch('/api/theme', { signal: controller.signal })
       .then((response) => response.json())
-      .then((data) => setTheme(['christmas', 'halloween', 'black-friday', 'valentine'].includes(data.theme) ? data.theme : 'standard'))
+      .then((data) => {
+        const nextTheme: SiteThemeName = VALID_THEMES.has(data.theme) ? data.theme : 'standard'
+        window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+        window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
+      })
       .catch((error) => {
         if (error?.name !== 'AbortError') console.error('Error loading theme:', error)
       })

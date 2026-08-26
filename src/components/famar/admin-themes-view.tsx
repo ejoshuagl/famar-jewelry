@@ -46,6 +46,8 @@ export function AdminThemesView() {
       })
       if (!response.ok) throw new Error('No se pudo guardar')
       setActiveTheme(theme)
+      window.localStorage.setItem('famar-site-theme', theme)
+      window.dispatchEvent(new Event('famar-site-theme-change'))
       toast.success(`Tema ${THEMES.find((item) => item.id === theme)?.name} activado`)
     } catch {
       toast.error('No se pudo cambiar el tema')

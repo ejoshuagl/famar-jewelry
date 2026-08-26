@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { auditLog, requireAdmin } from '@/lib/admin-auth'
-import { getSiteTheme, setSiteTheme, type SiteTheme } from '@/lib/site-theme'
+import { getCachedSiteTheme, setSiteTheme, type SiteTheme } from '@/lib/site-theme'
 
 export async function GET() {
   try {
-    return NextResponse.json({ theme: await getSiteTheme() }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    return NextResponse.json({ theme: await getCachedSiteTheme() }, {
+      headers: { 'Cache-Control': 'no-store' },
     })
   } catch (error) {
     console.error('GET /api/theme error:', error)
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest) {
     const allowed = new Set<SiteTheme>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])
     const theme: SiteTheme = allowed.has(body.theme) ? body.theme : 'standard'
     await setSiteTheme(theme)
+    revalidateTag('site-theme', { expire: 0 })
     await auditLog({ action: 'update', entity: 'theme', admin: admin.name, details: theme })
     return NextResponse.json({ theme })
   } catch (error) {

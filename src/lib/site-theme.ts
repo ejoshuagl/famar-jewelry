@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { unstable_cache } from 'next/cache'
 
 export type SiteTheme = 'standard' | 'christmas' | 'halloween' | 'black-friday' | 'valentine'
 
@@ -23,6 +24,12 @@ export async function getSiteTheme(): Promise<SiteTheme> {
   const value = rows[0]?.value as SiteTheme | undefined
   return value && SITE_THEMES.has(value) ? value : 'standard'
 }
+
+export const getCachedSiteTheme = unstable_cache(
+  getSiteTheme,
+  ['site-theme'],
+  { tags: ['site-theme'], revalidate: 3600 },
+)
 
 export async function setSiteTheme(theme: SiteTheme) {
   await ensureSiteThemeTable()
