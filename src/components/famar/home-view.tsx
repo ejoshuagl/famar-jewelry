@@ -71,7 +71,7 @@ export function HomeView() {
   const newProducts = homeProducts?.newProducts
   const bestSelling = homeProducts?.bestSelling
 
-  const { data: campaigns = [], isLoading: loadingCampaigns } = useQuery({
+  const { data: campaigns = [] } = useQuery({
     queryKey: ['campaigns'],
     queryFn: async () => {
       const response = await fetch('/api/campaigns')
@@ -177,9 +177,7 @@ export function HomeView() {
         </DialogContent>
       </Dialog>
 
-      {loadingCampaigns ? (
-        <div className="h-44 w-full animate-pulse border-b border-primary/20 bg-muted/35 sm:h-52" aria-hidden="true" />
-      ) : bannerCampaign ? <div className="relative w-full">
+      {bannerCampaign ? <div className="relative w-full">
         <button
           key={bannerCampaign.id}
           type="button"
