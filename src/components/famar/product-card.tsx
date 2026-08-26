@@ -40,7 +40,6 @@ export interface ProductData {
 interface ProductCardProps {
   product: ProductData
   index?: number
-  prioritizeImage?: boolean
 }
 
 // Animación: una copia circular de la imagen vuela hasta el botón del carrito
@@ -116,7 +115,7 @@ function getTagVariant(tag: string): 'default' | 'secondary' | 'destructive' | '
   return 'outline'
 }
 
-export function ProductCard({ product, index = 0, prioritizeImage = false }: ProductCardProps) {
+export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { navigate, selectProduct } = useAppStore()
   const addItem = useCartStore((s) => s.addItem)
   const { toggleFavorite, isFavorite } = useFavoritesStore()
@@ -220,8 +219,7 @@ export function ProductCard({ product, index = 0, prioritizeImage = false }: Pro
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading={prioritizeImage ? 'eager' : 'lazy'}
-              fetchPriority={prioritizeImage ? 'high' : 'auto'}
+              loading="lazy"
               onError={(e) => {
                 ;(e.target as HTMLImageElement).style.display = 'none'
                 ;(e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden')

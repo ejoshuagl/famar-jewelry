@@ -177,7 +177,7 @@ export function HomeView() {
         </DialogContent>
       </Dialog>
 
-      {bannerCampaign ? <div className="relative w-full">
+      {bannerCampaign && <div className="relative w-full">
         <button
           key={bannerCampaign.id}
           type="button"
@@ -185,7 +185,7 @@ export function HomeView() {
           onClick={() => followCampaign(bannerCampaign)}
           aria-label={`Abrir campaña ${bannerCampaign.title}`}
         >
-          <img src={bannerCampaign.bannerImage || bannerCampaign.image || ''} alt="" fetchPriority="high" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
+          <img src={bannerCampaign.bannerImage || bannerCampaign.image || ''} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 to-black/25" />
           <div className="container relative mx-auto flex h-full items-center px-14 py-5 sm:px-16 sm:py-7">
             <div className="max-w-xl space-y-2">
@@ -196,20 +196,12 @@ export function HomeView() {
           </div>
         </button>
         {bannerCampaigns.length > 1 && <><Button type="button" size="icon" variant="secondary" className="absolute left-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={previousBanner} aria-label="Banner anterior"><ChevronLeft className="h-5 w-5" /></Button><Button type="button" size="icon" variant="secondary" className="absolute right-3 top-1/2 z-20 -translate-y-1/2 rounded-full shadow-lg" onClick={nextBanner} aria-label="Banner siguiente"><ChevronRight className="h-5 w-5" /></Button><div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">{bannerCampaigns.map((campaign, index) => <button key={campaign.id} type="button" className={`h-1.5 rounded-full transition-all ${index === bannerIndex % bannerCampaigns.length ? 'w-6 bg-primary' : 'w-1.5 bg-white/45'}`} onClick={() => setBannerIndex(index)} aria-label={`Ver banner ${index + 1}`} />)}</div></>}
-      </div> : null}
+      </div>}
 
       {/* Hero */}
       <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
-        <picture className="absolute inset-0">
-          <source media="(max-width: 767px)" srcSet="/hero-bg-mobile.jpg" />
-          <img
-            src="/hero-bg.png"
-            alt=""
-            fetchPriority="high"
-            decoding="async"
-            className="h-full w-full object-cover object-center"
-          />
-        </picture>
+        <div className="absolute inset-0 bg-[url('/hero-bg.png')] bg-cover bg-center max-md:hidden" />
+        <div className="absolute inset-0 bg-[url('/hero-bg-mobile.jpg')] bg-cover bg-center md:hidden" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/25 to-black/60" />
         <div className="relative z-10 text-center px-4 max-w-3xl mx-auto">
           <motion.h1

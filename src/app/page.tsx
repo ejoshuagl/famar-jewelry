@@ -11,20 +11,20 @@ import { FloatingCartButton } from '@/components/famar/floating-cart-button'
 import { ScrollToTop } from '@/components/famar/scroll-to-top'
 import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
-import { HomeView } from '@/components/famar/home-view'
-import { CatalogView } from '@/components/famar/catalog-view'
-import { ProductDetailView } from '@/components/famar/product-detail-view'
-import { CartView } from '@/components/famar/cart-view'
-import { OutOfStockView } from '@/components/famar/out-of-stock-view'
-import { ContactView } from '@/components/famar/contact-view'
-import { JewelryCareView } from '@/components/famar/jewelry-care-section'
-import { PoliciesView } from '@/components/famar/policies-view'
-import { FavoritesView } from '@/components/famar/favorites-view'
 
 const loadView = () => <div className="container mx-auto px-4 py-10"><Skeleton className="h-96 w-full rounded-lg" /></div>
 const dynamicView = <T extends object>(loader: () => Promise<T>, name: keyof T) =>
   dynamic(async () => (await loader())[name] as ComponentType, { loading: loadView })
 
+const HomeView = dynamicView(() => import('@/components/famar/home-view'), 'HomeView')
+const CatalogView = dynamicView(() => import('@/components/famar/catalog-view'), 'CatalogView')
+const ProductDetailView = dynamicView(() => import('@/components/famar/product-detail-view'), 'ProductDetailView')
+const CartView = dynamicView(() => import('@/components/famar/cart-view'), 'CartView')
+const OutOfStockView = dynamicView(() => import('@/components/famar/out-of-stock-view'), 'OutOfStockView')
+const ContactView = dynamicView(() => import('@/components/famar/contact-view'), 'ContactView')
+const JewelryCareView = dynamicView(() => import('@/components/famar/jewelry-care-section'), 'JewelryCareView')
+const PoliciesView = dynamicView(() => import('@/components/famar/policies-view'), 'PoliciesView')
+const FavoritesView = dynamicView(() => import('@/components/famar/favorites-view'), 'FavoritesView')
 const AdminLoginView = dynamicView(() => import('@/components/famar/admin-login-view'), 'AdminLoginView')
 const AdminLayout = dynamic(() => import('@/components/famar/admin-layout').then((module) => module.AdminLayout), { loading: loadView })
 const AdminDashboardView = dynamicView(() => import('@/components/famar/admin-dashboard-view'), 'AdminDashboardView')
