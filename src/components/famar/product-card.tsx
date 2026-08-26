@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useMemo, useRef, useState } from 'react'
+
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -120,10 +122,38 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const favorite = isFavorite(product.id)
   const tags = getTags(product)
   const isOutOfStock = product.status === 'out_of_stock'
-  const imageUrl = product.mainImage ? convertDriveUrl(product.mainImage) : null
-  const hasVariants = parseVariants(product.variants).length > 0
+  const variants = useMemo(() => parseVariants(product.variants), [product.variants])
+  const hasVariants = variants.length > 0
+  const variantImages = useMemo(() => Array.from(new Set([
+    product.mainImage || '',
+    ...variants.map((variant) => variant.image),
+  ].filter(Boolean))).map(convertDriveUrl), [product.mainImage, variants])
+  const [activeImage, setActiveImage] = useState(0)
+  const [rotationPaused, setRotationPaused] = useState(false)
+  const [cardVisible, setCardVisible] = useState(false)
+  const [variantDemoEnabled, setVariantDemoEnabled] = useState(false)
+  const imageAreaRef = useRef<HTMLDivElement>(null)
+  const imageUrl = variantImages[activeImage] || null
   const { saleDiscount } = usePricingSettings()
   const currentPrice = salePrice(product.price, Boolean(product.isOnSale), saleDiscount)
+
+  useEffect(() => {
+    setVariantDemoEnabled(new URLSearchParams(window.location.search).get('demoVariantes') === '1')
+  }, [])
+
+  useEffect(() => {
+    const element = imageAreaRef.current
+    if (!element || variantImages.length < 2 || !variantDemoEnabled) return
+    const observer = new IntersectionObserver(([entry]) => setCardVisible(entry.isIntersecting), { threshold: 0.35 })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [variantDemoEnabled, variantImages.length])
+
+  useEffect(() => {
+    if (!variantDemoEnabled || variantImages.length < 2 || rotationPaused || !cardVisible || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => setActiveImage((current) => (current + 1) % variantImages.length), 4_000)
+    return () => window.clearInterval(timer)
+  }, [cardVisible, rotationPaused, variantDemoEnabled, variantImages.length])
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -178,12 +208,22 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         onClick={handleViewDetail}
       >
         {/* Image - fixed aspect ratio, largest possible */}
-        <div className="relative aspect-square shrink-0">
+        <div
+          ref={imageAreaRef}
+          className="relative aspect-square shrink-0"
+          onPointerEnter={() => setRotationPaused(true)}
+          onPointerLeave={() => setRotationPaused(false)}
+          onTouchStart={() => setRotationPaused(true)}
+        >
           {imageUrl ? (
-            <img
+            <motion.img
+              key={imageUrl}
               src={imageUrl}
               alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              initial={{ opacity: 0.35 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
               onError={(e) => {
                 ;(e.target as HTMLImageElement).style.display = 'none'
@@ -205,6 +245,29 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               </Badge>
             ))}
           </div>
+
+          {variantDemoEnabled && variantImages.length > 1 && !isOutOfStock && (
+            <div className="absolute inset-x-0 bottom-2 flex flex-col items-center gap-1.5">
+              <span className="rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
+                {variants.length} {variants.length === 1 ? 'variante' : 'variantes'}
+              </span>
+              <div className="flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 backdrop-blur-sm">
+                {variantImages.slice(0, 6).map((image, imageIndex) => (
+                  <button
+                    key={image}
+                    type="button"
+                    className={cn('h-1.5 rounded-full transition-all', activeImage === imageIndex ? 'w-4 bg-primary' : 'w-1.5 bg-white/70 hover:bg-white')}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setRotationPaused(true)
+                      setActiveImage(imageIndex)
+                    }}
+                    aria-label={`Ver imagen ${imageIndex + 1} de ${product.name}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Actions overlay */}
           <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
