@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Uno de los productos o variantes ya no está disponible en la cantidad solicitada' }, { status: 409 })
     }
     if (error instanceof Error && error.message === 'COUPON_EXHAUSTED') return NextResponse.json({ error: 'Este cupón acaba de alcanzar su límite de reclamaciones' }, { status: 409 })
-    if (error instanceof Error && error.message === 'COUPON_ALREADY_USED') return NextResponse.json({ error: 'Este número ya reclamó el cupón' }, { status: 409 })
+    if (error instanceof Error && error.message === 'COUPON_ALREADY_USED') return NextResponse.json({ error: 'Ya reclamaste este cupón. Compártelo con otra persona para que también pueda aprovecharlo.' }, { status: 409 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
