@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -131,15 +131,18 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [activeImage, setActiveImage] = useState(0)
   const [rotationPaused, setRotationPaused] = useState(false)
   const [cardVisible, setCardVisible] = useState(false)
-  const [variantDemoEnabled, setVariantDemoEnabled] = useState(false)
+  const variantDemoEnabled = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener('popstate', onChange)
+      return () => window.removeEventListener('popstate', onChange)
+    },
+    () => new URLSearchParams(window.location.search).get('demoVariantes') === '1',
+    () => false,
+  )
   const imageAreaRef = useRef<HTMLDivElement>(null)
   const imageUrl = variantImages[activeImage] || null
   const { saleDiscount } = usePricingSettings()
   const currentPrice = salePrice(product.price, Boolean(product.isOnSale), saleDiscount)
-
-  useEffect(() => {
-    setVariantDemoEnabled(new URLSearchParams(window.location.search).get('demoVariantes') === '1')
-  }, [])
 
   useEffect(() => {
     const element = imageAreaRef.current
