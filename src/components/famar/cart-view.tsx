@@ -399,14 +399,10 @@ ${productList}
           <DialogHeader>
             <DialogTitle>Completar Pedido</DialogTitle>
             <DialogDescription>
-              Usa tus datos reales para que podamos contactarte y coordinar correctamente la entrega.
+              Ingresa tus datos reales para confirmar el pedido y coordinar la entrega.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-lg border border-amber-300/60 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
-              <p className="font-semibold">Ingresa información real y verificable</p>
-              <p className="mt-1 text-xs leading-relaxed">Usaremos estos datos únicamente para contactarte, confirmar el pedido y coordinar la entrega.</p>
-            </div>
             <div>
               <Label htmlFor="name">Nombre completo *</Label>
               <Input
