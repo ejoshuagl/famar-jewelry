@@ -23,6 +23,7 @@ const CartView = dynamicView(() => import('@/components/famar/cart-view'), 'Cart
 const OutOfStockView = dynamicView(() => import('@/components/famar/out-of-stock-view'), 'OutOfStockView')
 const ContactView = dynamicView(() => import('@/components/famar/contact-view'), 'ContactView')
 const JewelryCareView = dynamicView(() => import('@/components/famar/jewelry-care-section'), 'JewelryCareView')
+const PoliciesView = dynamicView(() => import('@/components/famar/policies-view'), 'PoliciesView')
 const FavoritesView = dynamicView(() => import('@/components/famar/favorites-view'), 'FavoritesView')
 const AdminLoginView = dynamicView(() => import('@/components/famar/admin-login-view'), 'AdminLoginView')
 const AdminLayout = dynamic(() => import('@/components/famar/admin-layout').then((module) => module.AdminLayout), { loading: loadView })
@@ -127,6 +128,8 @@ export function AppContent() {
         return <ContactView />
       case 'jewelry-care':
         return <JewelryCareView />
+      case 'policies':
+        return <PoliciesView />
       case 'favorites':
         return <FavoritesView />
       case 'admin-login':

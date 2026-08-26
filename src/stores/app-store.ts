@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type AppView =
   | 'home' | 'catalog' | 'product-detail' | 'cart' | 'out-of-stock' | 'contact'
-  | 'jewelry-care' | 'favorites' | 'admin-login' | 'admin-dashboard' | 'admin-products'
+  | 'jewelry-care' | 'policies' | 'favorites' | 'admin-login' | 'admin-dashboard' | 'admin-products'
   | 'admin-orders' | 'admin-categories' | 'admin-campaigns' | 'admin-themes'
   | 'admin-wholesale' | 'admin-coupons'
 
@@ -31,7 +31,7 @@ interface AppStore {
 
 const viewPaths: Record<Exclude<AppView, 'product-detail'>, string> = {
   home: '/', catalog: '/catalogo', cart: '/carrito', 'out-of-stock': '/agotados',
-  contact: '/contacto', 'jewelry-care': '/cuidados', favorites: '/favoritos',
+  contact: '/contacto', 'jewelry-care': '/cuidados', policies: '/politicas', favorites: '/favoritos',
   'admin-login': '/admin', 'admin-dashboard': '/admin/dashboard',
   'admin-products': '/admin/productos', 'admin-orders': '/admin/pedidos',
   'admin-categories': '/admin/categorias', 'admin-campaigns': '/admin/campanas',

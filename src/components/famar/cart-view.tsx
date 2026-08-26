@@ -386,7 +386,7 @@ ${productList}
                 Solicitar Pedido
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                Al solicitar, se abrirá WhatsApp para confirmar tu pedido
+                Al solicitar, se abrirá WhatsApp para confirmar tu pedido. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
               </p>
             </CardContent>
           </Card>
@@ -486,6 +486,7 @@ ${productList}
                 )}
               </Button>
             </div>
+            <p className="text-center text-[11px] leading-5 text-muted-foreground">Al confirmar declaras que revisaste los productos y aceptas las <button type="button" onClick={() => { setOrderDialogOpen(false); navigate('policies') }} className="text-primary hover:underline">políticas de compra y privacidad</button>.</p>
           </div>
         </DialogContent>
       </Dialog>

@@ -17,7 +17,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t bg-background mt-auto">
       <div className="container mx-auto px-4 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Brand */}
           <div>
             <h3 className={`${playfair.className} text-xl font-semibold gold-gradient-text mb-3`}>FAMAR</h3>
@@ -25,6 +25,16 @@ export function SiteFooter() {
               Joyería y accesorios de moda con la mejor calidad. Encuentra el
               estilo perfecto para cada ocasión.
             </p>
+          </div>
+
+          <div>
+            <h4 className="mb-3 text-sm font-semibold uppercase tracking-wider">Compra Segura</h4>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => navigate('policies')} className="text-left text-sm text-muted-foreground transition-colors hover:text-primary">Envíos y entregas</button>
+              <button onClick={() => navigate('policies')} className="text-left text-sm text-muted-foreground transition-colors hover:text-primary">Cambios y devoluciones</button>
+              <button onClick={() => navigate('policies')} className="text-left text-sm text-muted-foreground transition-colors hover:text-primary">Privacidad y datos</button>
+              <button onClick={() => navigate('policies')} className="text-left text-sm text-muted-foreground transition-colors hover:text-primary">Condiciones de compra</button>
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -112,13 +122,10 @@ export function SiteFooter() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} FAMAR. Todos los derechos reservados.</p>
-          <button
-            onClick={() => navigate('admin-login')}
-            className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ShieldCheck className="h-3 w-3" />
-            Admin
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate('policies')} className="hover:text-primary hover:underline">Políticas de compra y privacidad</button>
+            <button onClick={() => navigate('admin-login')} className="inline-flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-primary"><ShieldCheck className="h-3 w-3" />Admin</button>
+          </div>
         </div>
       </div>
     </footer>
