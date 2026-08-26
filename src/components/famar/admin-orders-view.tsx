@@ -74,6 +74,11 @@ interface EditableOrderItem {
   baseQty?: number
 }
 
+interface OrderCouponRedemption {
+  discount: number
+  coupon: { code: string; description?: string | null }
+}
+
 export function AdminOrdersView() {
   const { adminName } = useAuthStore()
   const queryClient = useQueryClient()
@@ -236,6 +241,14 @@ export function AdminOrdersView() {
 
   const orders = data?.orders || []
   const totalPages = data?.totalPages || 1
+  const selectedItems = (selectedOrder?.items || []) as Array<Record<string, unknown>>
+  const selectedSubtotal = selectedItems.reduce(
+    (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
+    0,
+  )
+  const selectedCoupon = (selectedOrder?.couponRedemption || null) as OrderCouponRedemption | null
+  const selectedTotal = Number(selectedOrder?.total || 0)
+  const selectedSavings = Math.max(0, selectedSubtotal - selectedTotal)
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
@@ -636,7 +649,7 @@ export function AdminOrdersView() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(selectedOrder.items as Array<Record<string, unknown>>).map((item) => (
+                          {selectedItems.map((item) => (
                             <tr key={item.id} className="border-t">
                               <td className="px-3 py-2">
                                 <div className="flex items-center gap-2">
@@ -671,10 +684,22 @@ export function AdminOrdersView() {
                           ))}
                         </tbody>
                         <tfoot>
+                          <tr className="border-t bg-muted/30">
+                            <td colSpan={3} className="text-right px-3 py-2">Subtotal</td>
+                            <td className="text-right px-3 py-2 whitespace-nowrap">{formatPrice(selectedSubtotal)}</td>
+                          </tr>
+                          {selectedCoupon ? (
+                            <tr className="text-emerald-600 dark:text-emerald-400">
+                              <td colSpan={3} className="text-right px-3 py-2">
+                                Cupón {selectedCoupon.coupon.code} (-{Number(selectedCoupon.discount)}%)
+                              </td>
+                              <td className="text-right px-3 py-2 whitespace-nowrap">-{formatPrice(selectedSavings)}</td>
+                            </tr>
+                          ) : null}
                           <tr className="border-t bg-muted/50">
-                            <td colSpan={3} className="text-right px-3 py-2 font-bold">Total</td>
+                            <td colSpan={3} className="text-right px-3 py-2 font-bold">Total final</td>
                             <td className="text-right px-3 py-2 font-bold text-primary whitespace-nowrap">
-                              {formatPrice(selectedOrder.total as number)}
+                              {formatPrice(selectedTotal)}
                             </td>
                           </tr>
                         </tfoot>

@@ -38,6 +38,12 @@ export async function GET(request: NextRequest) {
       take: limit,
       include: {
         campaign: { select: { id: true, title: true } },
+        couponRedemption: {
+          select: {
+            discount: true,
+            coupon: { select: { code: true, description: true } },
+          },
+        },
         items: { include: { product: { select: { mainImage: true, stock: true } } } },
       },
     })
