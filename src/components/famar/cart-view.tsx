@@ -159,7 +159,15 @@ export function CartView() {
         .join('\n')
 
       const finalTotal = Number(order.total)
-      const discountLine = order.discountPercent > 0 ? `\n🏷️ *Descuento:* ${order.discountPercent}% (${order.discountSource})` : ''
+      const orderSubtotal = Number(order.subtotal ?? finalTotal)
+      const discountAmount = Number(order.discountAmount || 0)
+      const discountPercent = Number(order.discountPercent || 0)
+      const discountSource = String(order.discountSource || '')
+      const discountDetails = discountPercent > 0
+        ? discountSource.startsWith('Cupón ')
+          ? `\n🎟️ *Cupón aplicado:* ${discountSource.slice(6)} (-${discountPercent}%)\n💚 *Ahorro:* -${formatPrice(discountAmount)}`
+          : `\n🏷️ *${discountSource || 'Descuento'}:* -${discountPercent}%\n💚 *Ahorro:* -${formatPrice(discountAmount)}`
+        : ''
       const message = `✨ *NUEVO PEDIDO - FAMAR* ✨
 ━━━━━━━━━━━━━━━
 
@@ -173,7 +181,8 @@ export function CartView() {
 🛍️ *Productos:*
 ${productList}
 ━━━━━━━━━━━━━━━
-💰 *TOTAL:* ${formatPrice(finalTotal)}${discountLine}
+💵 *Subtotal:* ${formatPrice(orderSubtotal)}${discountDetails}
+💰 *TOTAL FINAL:* ${formatPrice(finalTotal)}
 📝 *Observaciones:* ${form.observations || 'Ninguna'}`
 
       const encodedMessage = encodeURIComponent(message)
