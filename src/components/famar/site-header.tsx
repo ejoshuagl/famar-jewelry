@@ -12,6 +12,13 @@ import {
   Menu,
   ShoppingCart,
   Heart,
+  Home,
+  Grid2X2,
+  PackageX,
+  Sparkles,
+  ShieldCheck,
+  MessageCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +33,15 @@ const navItems: { label: string; view: AppView }[] = [
   { label: 'Agotados', view: 'out-of-stock' },
   { label: 'Cuidados', view: 'jewelry-care' },
   { label: 'Contacto', view: 'contact' },
+]
+
+const mobileNavItems: { label: string; view: AppView; icon: LucideIcon }[] = [
+  { label: 'Inicio', view: 'home', icon: Home },
+  { label: 'Catálogo', view: 'catalog', icon: Grid2X2 },
+  { label: 'Agotados', view: 'out-of-stock', icon: PackageX },
+  { label: 'Cuidados', view: 'jewelry-care', icon: Sparkles },
+  { label: 'Compra segura', view: 'policies', icon: ShieldCheck },
+  { label: 'Contacto', view: 'contact', icon: MessageCircle },
 ]
 
 export function SiteHeader() {
@@ -113,7 +129,9 @@ export function SiteHeader() {
             <SheetContent side="right" className="w-72">
               <SheetTitle className="sr-only">Menú</SheetTitle>
               <div className="flex flex-col gap-1 mt-8">
-                {navItems.map((item) => (
+                {mobileNavItems.map((item) => {
+                  const Icon = item.icon
+                  return (
                   <button
                     key={item.view}
                     onClick={() => {
@@ -127,16 +145,19 @@ export function SiteHeader() {
                         : 'text-foreground hover:bg-muted'
                     )}
                   >
+                    <Icon className="h-4 w-4 shrink-0 text-primary" />
                     {item.label}
                     {currentView === item.view && (
                       <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
                     )}
                   </button>
-                ))}
+                  )
+                })}
                 <button
                   onClick={() => navigate('favorites')}
                   className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors text-left text-foreground hover:bg-muted"
                 >
+                  <Heart className="h-4 w-4 shrink-0 text-primary" />
                   Favoritos
                   {mounted && favCount > 0 && (
                     <Badge variant="secondary" className="ml-auto text-xs">
