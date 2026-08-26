@@ -5,6 +5,22 @@ import { requireAdmin } from '@/lib/admin-auth'
 const ECUADOR_TIME_ZONE = 'America/Guayaquil'
 const ECUADOR_UTC_OFFSET_HOURS = 5
 const DAY_MS = 86_400_000
+const STATS_CACHE_MS = 30_000
+const statsCache = new Map<string, { expiresAt: number; value: unknown }>()
+
+type StatsSummary = {
+  totalProducts: number
+  totalOrders: number
+  pendingOrders: number
+  confirmedOrders: number
+  totalRevenue: number
+  oneUnitCount: number
+  twoUnitsCount: number
+  threePlusCount: number
+  outOfStockCount: number
+  hiddenCount: number
+  availableUnits: number
+}
 
 function getEcuadorDateParts(date = new Date()) {
   const shifted = new Date(date.getTime() - ECUADOR_UTC_OFFSET_HOURS * 60 * 60 * 1000)
@@ -32,6 +48,10 @@ export async function GET(request: NextRequest) {
     // Sales series, selectable period: 7 | 30 | 90 days or all (grouped by month)
     const { searchParams } = new URL(request.url)
     const period = searchParams.get('period') || '7'
+    const cached = statsCache.get(period)
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.value, { headers: { 'Cache-Control': 'private, max-age=15' } })
+    }
     const today = getEcuadorDateParts()
     let start = ecuadorMidnightUtc(today.year, today.month, today.day)
     if (period === '7' || period === '30' || period === '90') {
@@ -40,51 +60,49 @@ export async function GET(request: NextRequest) {
       start = ecuadorMidnightUtc(today.year, today.month - 23, 1)
     }
 
-    const [
-      totalProducts,
-      totalOrders,
-      pendingOrders,
-      confirmedOrders,
-      revenueResult,
-      orders,
-      oneUnitCount,
-      twoUnitsCount,
-      threePlusCount,
-      outOfStockCount,
-      hiddenCount,
-      availableStock,
-      soldItems,
-      recentOrders,
-    ] = await Promise.all([
-      db.product.count(),
-      db.order.count(),
-      db.order.count({ where: { status: 'pending' } }),
-      db.order.count({ where: { status: 'confirmed' } }),
-      db.order.aggregate({ where: { status: 'confirmed' }, _sum: { total: true } }),
+    const startedAt = performance.now()
+    const [summaryRows, orders, salesByCategory, recentOrders] = await Promise.all([
+      db.$queryRaw<StatsSummary[]>`
+        SELECT
+          (SELECT COUNT(*)::int FROM "Product") AS "totalProducts",
+          (SELECT COUNT(*)::int FROM "Order") AS "totalOrders",
+          (SELECT COUNT(*)::int FROM "Order" WHERE status = 'pending') AS "pendingOrders",
+          (SELECT COUNT(*)::int FROM "Order" WHERE status = 'confirmed') AS "confirmedOrders",
+          COALESCE((SELECT SUM(total) FROM "Order" WHERE status = 'confirmed'), 0)::float8 AS "totalRevenue",
+          (SELECT COUNT(*)::int FROM "Product" WHERE visible = true AND stock = 1) AS "oneUnitCount",
+          (SELECT COUNT(*)::int FROM "Product" WHERE visible = true AND stock = 2) AS "twoUnitsCount",
+          (SELECT COUNT(*)::int FROM "Product" WHERE visible = true AND stock >= 3) AS "threePlusCount",
+          (SELECT COUNT(*)::int FROM "Product" WHERE visible = true AND stock <= 0) AS "outOfStockCount",
+          (SELECT COUNT(*)::int FROM "Product" WHERE visible = false) AS "hiddenCount",
+          COALESCE((SELECT SUM(stock) FROM "Product" WHERE visible = true AND stock > 0), 0)::int AS "availableUnits"
+      `,
       db.order.findMany({
         where: { status: 'confirmed', createdAt: { gte: start } },
         select: { createdAt: true, total: true },
         orderBy: { createdAt: 'asc' },
       }),
-      db.product.count({ where: { visible: true, stock: 1 } }),
-      db.product.count({ where: { visible: true, stock: 2 } }),
-      db.product.count({ where: { visible: true, stock: { gte: 3 } } }),
-      db.product.count({ where: { visible: true, stock: { lte: 0 } } }),
-      db.product.count({ where: { visible: false } }),
-      db.product.aggregate({ where: { visible: true, stock: { gt: 0 } }, _sum: { stock: true } }),
-      db.orderItem.findMany({
-        where: { order: { status: 'confirmed' } },
-        select: { quantity: true, product: { select: { category: { select: { name: true } } } } },
-      }),
+      db.$queryRaw<Array<{ name: string; sales: number }>>`
+        SELECT COALESCE(c.name, 'Sin categoría') AS name, SUM(oi.quantity)::int AS sales
+        FROM "OrderItem" oi
+        INNER JOIN "Order" o ON o.id = oi."orderId"
+        INNER JOIN "Product" p ON p.id = oi."productId"
+        LEFT JOIN "Category" c ON c.id = p."categoryId"
+        WHERE o.status = 'confirmed'
+        GROUP BY COALESCE(c.name, 'Sin categoría')
+        ORDER BY sales DESC
+        LIMIT 6
+      `,
       db.order.findMany({
         orderBy: { createdAt: 'desc' },
         take: 5,
         select: { id: true, orderNumber: true, customerName: true, total: true, status: true, createdAt: true },
       }),
     ])
-    const totalRevenue = revenueResult._sum.total || 0
-    const avgOrderValue = confirmedOrders > 0 ? totalRevenue / confirmedOrders : 0
-    const availableUnits = availableStock._sum.stock || 0
+    const summary = summaryRows[0] || {
+      totalProducts: 0, totalOrders: 0, pendingOrders: 0, confirmedOrders: 0, totalRevenue: 0,
+      oneUnitCount: 0, twoUnitsCount: 0, threePlusCount: 0, outOfStockCount: 0, hiddenCount: 0, availableUnits: 0,
+    }
+    const avgOrderValue = summary.confirmedOrders > 0 ? summary.totalRevenue / summary.confirmedOrders : 0
     const inRange = orders
     const salesLast7Days: { day: string; total: number; count: number }[] = []
 
@@ -129,29 +147,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Sales by category, from real order items (non-cancelled orders)
-    const byCat = new Map<string, number>()
-    for (const item of soldItems) {
-      const name = item.product?.category?.name || 'Sin categoría'
-      byCat.set(name, (byCat.get(name) || 0) + item.quantity)
-    }
-    const salesByCategory = Array.from(byCat.entries())
-      .map(([name, sales]) => ({ name, sales }))
-      .sort((a, b) => b.sales - a.sales)
-      .slice(0, 6)
-
-    return NextResponse.json({
-      totalProducts,
-      totalOrders,
-      pendingOrders,
-      confirmedOrders,
-      totalRevenue,
+    const result = {
+      totalProducts: summary.totalProducts,
+      totalOrders: summary.totalOrders,
+      pendingOrders: summary.pendingOrders,
+      confirmedOrders: summary.confirmedOrders,
+      totalRevenue: summary.totalRevenue,
       avgOrderValue,
       salesLast7Days,
-      availability: { availableUnits, oneUnitCount, twoUnitsCount, threePlusCount, outOfStockCount, hiddenCount },
+      availability: {
+        availableUnits: summary.availableUnits,
+        oneUnitCount: summary.oneUnitCount,
+        twoUnitsCount: summary.twoUnitsCount,
+        threePlusCount: summary.threePlusCount,
+        outOfStockCount: summary.outOfStockCount,
+        hiddenCount: summary.hiddenCount,
+      },
       salesByCategory,
       recentOrders,
-    })
+    }
+    statsCache.set(period, { expiresAt: Date.now() + STATS_CACHE_MS, value: result })
+    console.info(JSON.stringify({ event: 'stats.loaded', period, durationMs: Math.round(performance.now() - startedAt) }))
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=15' } })
   } catch (error) {
     console.error('GET /api/stats error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

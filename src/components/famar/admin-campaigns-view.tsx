@@ -94,7 +94,7 @@ export function AdminCampaignsView() {
   const { data: productsData } = useQuery({
     queryKey: ['campaign-products'],
     queryFn: async () => {
-      const response = await fetch('/api/products?all=true&limit=500', { headers: headers() })
+      const response = await fetch('/api/products?all=true&compact=true&limit=500', { headers: headers() })
       if (!response.ok) throw new Error('No se pudieron cargar los productos')
       return response.json()
     },
@@ -314,7 +314,7 @@ export function AdminCampaignsView() {
                             : [...current.productIds, product.id],
                         }))}
                       />
-                      {product.mainImage ? <img src={convertDriveUrl(product.mainImage)} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-muted" />}
+                      {product.mainImage ? <img src={convertDriveUrl(product.mainImage)} alt="" loading="lazy" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-muted" />}
                       <span className="min-w-0"><span className="block truncate text-sm font-medium">{product.name}</span><span className="block text-xs text-muted-foreground">{product.code} · {product.category?.name}{product.visible ? '' : ' · Oculto'}</span></span>
                     </label>
                   )

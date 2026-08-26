@@ -16,7 +16,6 @@ export async function ensureSiteThemeTable() {
 }
 
 export async function getSiteTheme(): Promise<SiteTheme> {
-  await ensureSiteThemeTable()
   const rows = await db.$queryRawUnsafe<Array<{ value: string }>>(
     'SELECT "value" FROM "SiteSetting" WHERE "key" = $1 LIMIT 1',
     'site-theme',

@@ -33,8 +33,13 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '12')
     const sort = searchParams.get('sort') || 'relevance'
     const includeHidden = searchParams.get('all') === 'true'
+    const compact = searchParams.get('compact') === 'true'
     const flag = searchParams.get('flag') || ''
     const campaignId = searchParams.get('campaign') || ''
+
+    if (includeHidden && !requireAdmin(request)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
 
     const where: Record<string, unknown> = {}
     if (!includeHidden) {
@@ -102,6 +107,37 @@ export async function GET(request: NextRequest) {
       : { createdAt: 'desc' }
 
     const orderBy = [{ status: 'asc' }, baseOrderBy]
+
+    if (compact) {
+      const [total, products, eligibleIds] = await Promise.all([
+        db.product.count({ where }),
+        db.product.findMany({
+          where,
+          orderBy,
+          skip: (page - 1) * limit,
+          take: limit,
+          select: {
+            id: true, code: true, name: true, categoryId: true, price: true,
+            stock: true, status: true, isFeatured: true, featuredExcluded: true,
+            isNew: true, isOnSale: true, visible: true, updatedAt: true,
+            category: { select: { name: true, slug: true } },
+          },
+        }),
+        includeHidden ? db.product.findMany({
+          where: { visible: true, status: 'available', stock: { gt: 0 } },
+          select: { id: true, isFeatured: true, featuredExcluded: true },
+        }) : Promise.resolve([]),
+      ])
+      const dailyIds = new Set(selectDailyFeatured(eligibleIds).map((product) => product.id))
+      return NextResponse.json({
+        products: products.map((product) => ({
+          ...product,
+          mainImage: `/api/products/${product.id}/thumbnail?v=${product.updatedAt.getTime()}`,
+          isDailyFeatured: dailyIds.has(product.id),
+        })),
+        total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)),
+      })
+    }
 
     if (featured || flag === 'daily-featured') {
       // Calculate today's rotation from the complete eligible catalog first.

@@ -4,7 +4,9 @@ import { getSaleDiscount, getWholesaleTiers, saveSaleDiscount, saveWholesaleTier
 
 export async function GET() {
   const [tiers, saleDiscount] = await Promise.all([getWholesaleTiers(), getSaleDiscount()])
-  return NextResponse.json({ tiers, saleDiscount })
+  return NextResponse.json({ tiers, saleDiscount }, {
+    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+  })
 }
 
 export async function POST(request: NextRequest) {

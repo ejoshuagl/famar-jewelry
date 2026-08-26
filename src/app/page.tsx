@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, type ComponentType } from 'react'
+import dynamic from 'next/dynamic'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { restoreAppFromLocation, useAppStore } from '@/stores/app-store'
 import { useAuthStore } from '@/stores/auth-store'
@@ -8,26 +9,31 @@ import { SiteHeader } from '@/components/famar/site-header'
 import { SiteFooter } from '@/components/famar/site-footer'
 import { FloatingCartButton } from '@/components/famar/floating-cart-button'
 import { ScrollToTop } from '@/components/famar/scroll-to-top'
-import { HomeView } from '@/components/famar/home-view'
-import { CatalogView } from '@/components/famar/catalog-view'
-import { ProductDetailView } from '@/components/famar/product-detail-view'
-import { CartView } from '@/components/famar/cart-view'
-import { OutOfStockView } from '@/components/famar/out-of-stock-view'
-import { ContactView } from '@/components/famar/contact-view'
-import { JewelryCareView } from '@/components/famar/jewelry-care-section'
-import { FavoritesView } from '@/components/famar/favorites-view'
-import { AdminLoginView } from '@/components/famar/admin-login-view'
-import { AdminLayout } from '@/components/famar/admin-layout'
-import { AdminDashboardView } from '@/components/famar/admin-dashboard-view'
-import { AdminProductsView } from '@/components/famar/admin-products-view'
-import { AdminOrdersView } from '@/components/famar/admin-orders-view'
-import { AdminCategoriesView } from '@/components/famar/admin-categories-view'
-import { AdminCampaignsView } from '@/components/famar/admin-campaigns-view'
-import { AdminThemesView } from '@/components/famar/admin-themes-view'
-import { AdminWholesaleView } from '@/components/famar/admin-wholesale-view'
-import { AdminCouponsView } from '@/components/famar/admin-coupons-view'
 import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
+
+const loadView = () => <div className="container mx-auto px-4 py-10"><Skeleton className="h-96 w-full rounded-lg" /></div>
+const dynamicView = <T extends object>(loader: () => Promise<T>, name: keyof T) =>
+  dynamic(async () => (await loader())[name] as ComponentType, { loading: loadView })
+
+const HomeView = dynamicView(() => import('@/components/famar/home-view'), 'HomeView')
+const CatalogView = dynamicView(() => import('@/components/famar/catalog-view'), 'CatalogView')
+const ProductDetailView = dynamicView(() => import('@/components/famar/product-detail-view'), 'ProductDetailView')
+const CartView = dynamicView(() => import('@/components/famar/cart-view'), 'CartView')
+const OutOfStockView = dynamicView(() => import('@/components/famar/out-of-stock-view'), 'OutOfStockView')
+const ContactView = dynamicView(() => import('@/components/famar/contact-view'), 'ContactView')
+const JewelryCareView = dynamicView(() => import('@/components/famar/jewelry-care-section'), 'JewelryCareView')
+const FavoritesView = dynamicView(() => import('@/components/famar/favorites-view'), 'FavoritesView')
+const AdminLoginView = dynamicView(() => import('@/components/famar/admin-login-view'), 'AdminLoginView')
+const AdminLayout = dynamic(() => import('@/components/famar/admin-layout').then((module) => module.AdminLayout), { loading: loadView })
+const AdminDashboardView = dynamicView(() => import('@/components/famar/admin-dashboard-view'), 'AdminDashboardView')
+const AdminProductsView = dynamicView(() => import('@/components/famar/admin-products-view'), 'AdminProductsView')
+const AdminOrdersView = dynamicView(() => import('@/components/famar/admin-orders-view'), 'AdminOrdersView')
+const AdminCategoriesView = dynamicView(() => import('@/components/famar/admin-categories-view'), 'AdminCategoriesView')
+const AdminCampaignsView = dynamicView(() => import('@/components/famar/admin-campaigns-view'), 'AdminCampaignsView')
+const AdminThemesView = dynamicView(() => import('@/components/famar/admin-themes-view'), 'AdminThemesView')
+const AdminWholesaleView = dynamicView(() => import('@/components/famar/admin-wholesale-view'), 'AdminWholesaleView')
+const AdminCouponsView = dynamicView(() => import('@/components/famar/admin-coupons-view'), 'AdminCouponsView')
 
 export function AppContent() {
   const { currentView, selectedProductId, selectedProductCode } = useAppStore()

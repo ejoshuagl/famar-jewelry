@@ -4,7 +4,9 @@ import { getSiteTheme, setSiteTheme, type SiteTheme } from '@/lib/site-theme'
 
 export async function GET() {
   try {
-    return NextResponse.json({ theme: await getSiteTheme() })
+    return NextResponse.json({ theme: await getSiteTheme() }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    })
   } catch (error) {
     console.error('GET /api/theme error:', error)
     return NextResponse.json({ theme: 'standard' })

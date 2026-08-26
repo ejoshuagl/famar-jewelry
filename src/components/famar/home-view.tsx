@@ -41,15 +41,6 @@ interface Campaign {
   productIds: string[]
 }
 
-function pickRandomProducts(products: ProductData[], count = 4) {
-  const shuffled = [...products]
-  for (let index = shuffled.length - 1; index > 0; index--) {
-    const target = Math.floor(Math.random() * (index + 1))
-    ;[shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]]
-  }
-  return shuffled.slice(0, count)
-}
-
 export function HomeView() {
   const navigate = useAppStore((s) => s.navigate)
   const setCategory = useAppStore((s) => s.setCategory)
@@ -64,14 +55,21 @@ export function HomeView() {
     navigate('catalog')
   }
 
-  const { data: featuredProducts, isLoading: loadingFeatured } = useQuery({
-    queryKey: ['products', 'featured'],
+  const { data: homeProducts, isLoading: loadingHomeProducts } = useQuery({
+    queryKey: ['home-products'],
     queryFn: async () => {
-      const res = await fetch('/api/products?featured=true&limit=25')
-      const data = await res.json()
-      return pickRandomProducts(data.products as ProductData[])
+      const response = await fetch('/api/home-products')
+      if (!response.ok) throw new Error('No se pudieron cargar los productos del inicio')
+      return response.json() as Promise<{
+        featuredProducts: ProductData[]
+        newProducts: ProductData[]
+        bestSelling: ProductData[]
+      }>
     },
   })
+  const featuredProducts = homeProducts?.featuredProducts
+  const newProducts = homeProducts?.newProducts
+  const bestSelling = homeProducts?.bestSelling
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ['campaigns'],
@@ -107,25 +105,6 @@ export function HomeView() {
     }
     if (campaign.ctaView) navigate(campaign.ctaView)
   }
-
-  const { data: newProducts, isLoading: loadingNew } = useQuery({
-    queryKey: ['products', 'new'],
-    queryFn: async () => {
-      const res = await fetch('/api/products?new=true&limit=25')
-      const data = await res.json()
-      return pickRandomProducts(data.products as ProductData[])
-    },
-  })
-
-  const { data: bestSelling, isLoading: loadingBest } = useQuery({
-    queryKey: ['products', 'best-selling'],
-    queryFn: async () => {
-      const res = await fetch('/api/products?sort=best-selling&limit=20')
-      const data = await res.json()
-      return pickRandomProducts(data.products as ProductData[])
-    },
-  })
-
 
   const { data: reviews } = useQuery({
     queryKey: ['reviews'],
@@ -302,7 +281,7 @@ export function HomeView() {
               Productos Destacados
             </h2>
           </motion.div>
-          {loadingFeatured ? (
+          {loadingHomeProducts ? (
             <SkeletonGrid count={4} />
           ) : featuredProducts && featuredProducts.length > 0 ? (
             <>
@@ -343,7 +322,7 @@ export function HomeView() {
                 Nuevos Ingresos
               </h2>
             </motion.div>
-            {loadingNew ? (
+            {loadingHomeProducts ? (
               <SkeletonGrid count={4} />
             ) : newProducts && newProducts.length > 0 ? (
               <>
@@ -386,7 +365,7 @@ export function HomeView() {
                   Más Vendidos
                 </h2>
               </motion.div>
-              {loadingBest ? (
+              {loadingHomeProducts ? (
                 <SkeletonGrid count={4} />
               ) : (
                 <>

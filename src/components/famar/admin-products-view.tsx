@@ -209,7 +209,14 @@ export function AdminProductsView() {
       if (search) params.set('search', search)
       if (flagFilter) params.set('flag', flagFilter)
       if (categoryFilter) params.set('category', categoryFilter)
-      const res = await fetch(`/api/products?${params}`, { cache: 'no-store' })
+      params.set('compact', 'true')
+      const res = await fetch(`/api/products?${params}`, {
+        cache: 'no-store',
+        headers: {
+          'x-admin-name': adminName || '',
+          'x-admin-token': useAuthStore.getState().token || '',
+        },
+      })
       return res.json()
     },
   })
@@ -384,8 +391,14 @@ export function AdminProductsView() {
     setEditDialogOpen(true)
   }
 
-  const openEdit = (product: Record<string, unknown>) => {
-    setEditingId(product.id as string)
+  const openEdit = async (summary: Record<string, unknown>) => {
+    try {
+      const response = await fetch(`/api/products/${summary.id}`, {
+        headers: { 'x-admin-token': useAuthStore.getState().token || '' },
+      })
+      if (!response.ok) throw new Error('No se pudo cargar')
+      const product = await response.json() as Record<string, unknown>
+      setEditingId(product.id as string)
     let imagesStr = ''
     if (product.images) {
       try {
@@ -416,7 +429,22 @@ export function AdminProductsView() {
       visible: product.visible !== false,
       variants: parseVariants(product.variants),
     })
-    setEditDialogOpen(true)
+      setEditDialogOpen(true)
+    } catch {
+      toast.error('No se pudieron cargar los detalles del producto')
+    }
+  }
+
+  const openZoom = async (productId: string, thumbnail: string) => {
+    setZoomImage(convertDriveUrl(thumbnail))
+    try {
+      const response = await fetch(`/api/products/${productId}`)
+      if (!response.ok) return
+      const product = await response.json() as { mainImage?: string | null }
+      if (product.mainImage) setZoomImage(convertDriveUrl(product.mainImage))
+    } catch {
+      // La miniatura permanece visible si la imagen original no responde.
+    }
   }
 
   const openDuplicateProduct = async (productId: string) => {
@@ -622,7 +650,7 @@ export function AdminProductsView() {
                             <button
                               type="button"
                               className="h-10 w-10 overflow-hidden rounded-md border bg-muted transition hover:border-primary/60"
-                              onClick={() => setZoomImage(convertDriveUrl(product.mainImage as string))}
+                              onClick={() => openZoom(product.id as string, product.mainImage as string)}
                               aria-label={`Ampliar imagen de ${product.name as string}`}
                             >
                               <img
