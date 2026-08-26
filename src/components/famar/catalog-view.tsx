@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useSyncExternalStore } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/app-store'
 import { ProductCard, type ProductData, ProductCardSkeleton } from './product-card'
@@ -22,14 +22,6 @@ import { SlidersHorizontal, X } from 'lucide-react'
 export function CatalogView() {
   const { searchQuery, selectedCategory, catalogFilter, campaignFilter, catalogPage: page, catalogSort: sort, setCategory, setCatalogFilter, setCampaignFilter, setCatalogPage: setPage, setCatalogSort: setSort, setSearch } = useAppStore()
   const [localSearch, setLocalSearch] = useState(searchQuery)
-  const demoProductCode = useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener('popstate', onChange)
-      return () => window.removeEventListener('popstate', onChange)
-    },
-    () => new URLSearchParams(window.location.search).get('demoProducto') || '',
-    () => '',
-  )
 
   const filterLabels: Record<string, string> = {
     featured: 'Destacados',
@@ -53,13 +45,8 @@ export function CatalogView() {
   }, [localSearch, selectedCategory, catalogFilter, campaignFilter, sort, page])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, campaignFilter?.id, sort, page, demoProductCode],
+    queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, campaignFilter?.id, sort, page],
     queryFn: async () => {
-      if (demoProductCode) {
-        const response = await fetch(`/api/products?code=${encodeURIComponent(demoProductCode)}`)
-        const result = await response.json()
-        return { products: result.product ? [result.product] : [], total: result.product ? 1 : 0, totalPages: 1 }
-      }
       const res = await fetch(`/api/products?${buildQuery()}`)
       return res.json()
     },
@@ -115,13 +102,6 @@ export function CatalogView() {
           Explora nuestra colección completa
         </p>
       </div>
-
-      {demoProductCode && (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-          <p className="font-semibold text-primary">Vista de prueba de variantes</p>
-          <p className="mt-1 text-xs text-muted-foreground">Solo tú ves el producto {demoProductCode} mediante este enlace especial. Su visibilidad administrativa no cambió.</p>
-        </div>
-      )}
 
       {/* Search */}
       <SearchBar onSearch={handleSearch} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -131,14 +131,6 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [activeImage, setActiveImage] = useState(0)
   const [rotationPaused, setRotationPaused] = useState(false)
   const [cardVisible, setCardVisible] = useState(false)
-  const variantDemoEnabled = useSyncExternalStore(
-    (onChange) => {
-      window.addEventListener('popstate', onChange)
-      return () => window.removeEventListener('popstate', onChange)
-    },
-    () => new URLSearchParams(window.location.search).get('demoVariantes') === '1',
-    () => false,
-  )
   const imageAreaRef = useRef<HTMLDivElement>(null)
   const imageUrl = variantImages[activeImage] || null
   const { saleDiscount } = usePricingSettings()
@@ -146,17 +138,17 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
 
   useEffect(() => {
     const element = imageAreaRef.current
-    if (!element || variantImages.length < 2 || !variantDemoEnabled) return
+    if (!element || variantImages.length < 2) return
     const observer = new IntersectionObserver(([entry]) => setCardVisible(entry.isIntersecting), { threshold: 0.35 })
     observer.observe(element)
     return () => observer.disconnect()
-  }, [variantDemoEnabled, variantImages.length])
+  }, [variantImages.length])
 
   useEffect(() => {
-    if (!variantDemoEnabled || variantImages.length < 2 || rotationPaused || !cardVisible || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (variantImages.length < 2 || rotationPaused || !cardVisible || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const timer = window.setInterval(() => setActiveImage((current) => (current + 1) % variantImages.length), 4_000)
     return () => window.clearInterval(timer)
-  }, [cardVisible, rotationPaused, variantDemoEnabled, variantImages.length])
+  }, [cardVisible, rotationPaused, variantImages.length])
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -249,7 +241,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             ))}
           </div>
 
-          {variantDemoEnabled && variantImages.length > 1 && !isOutOfStock && (
+          {variantImages.length > 1 && !isOutOfStock && (
             <div className="absolute inset-x-0 bottom-2 flex flex-col items-center gap-1.5">
               <span className="rounded-full bg-black/65 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm backdrop-blur-sm">
                 {variants.length} {variants.length === 1 ? 'variante' : 'variantes'}
@@ -330,7 +322,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
                 aria-label={hasVariants ? `Elegir color de ${product.name}` : `Agregar ${product.name} al carrito`}
               >
                 <ShoppingCart className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                {hasVariants ? <><span className="sm:hidden">Elegir</span><span className="hidden sm:inline">Elegir color</span></> : <span>Agregar</span>}
+                <span>Agregar</span>
               </Button>
             )}
           </div>
