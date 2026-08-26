@@ -11,12 +11,12 @@ import { FloatingCartButton } from '@/components/famar/floating-cart-button'
 import { ScrollToTop } from '@/components/famar/scroll-to-top'
 import { SiteTheme } from '@/components/famar/site-theme'
 import { Skeleton } from '@/components/ui/skeleton'
+import { HomeView } from '@/components/famar/home-view'
 
 const loadView = () => <div className="container mx-auto px-4 py-10"><Skeleton className="h-96 w-full rounded-lg" /></div>
 const dynamicView = <T extends object>(loader: () => Promise<T>, name: keyof T) =>
   dynamic(async () => (await loader())[name] as ComponentType, { loading: loadView })
 
-const HomeView = dynamicView(() => import('@/components/famar/home-view'), 'HomeView')
 const CatalogView = dynamicView(() => import('@/components/famar/catalog-view'), 'CatalogView')
 const ProductDetailView = dynamicView(() => import('@/components/famar/product-detail-view'), 'ProductDetailView')
 const CartView = dynamicView(() => import('@/components/famar/cart-view'), 'CartView')
