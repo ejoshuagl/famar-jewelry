@@ -146,7 +146,8 @@ export function CartView() {
       })
 
       if (!res.ok) {
-        throw new Error('Error al crear pedido')
+        const errorData = await res.json().catch(() => null)
+        throw new Error(errorData?.error || 'Error al crear el pedido')
       }
 
       const order = await res.json()
@@ -194,8 +195,8 @@ ${productList}
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
       window.location.assign(whatsappUrl)
-    } catch {
-      toast.error('Error al crear el pedido. Intenta de nuevo.')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al crear el pedido. Intenta de nuevo.')
     } finally {
       setSubmitting(false)
     }
