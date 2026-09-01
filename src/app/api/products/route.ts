@@ -57,6 +57,10 @@ export async function GET(request: NextRequest) {
     if (flag === 'featured') where.isFeatured = true
     if (flag === 'new') where.isNew = true
     if (flag === 'sale') where.isOnSale = true
+    if (flag === 'available') {
+      where.status = 'available'
+      where.stock = { gt: 0 }
+    }
     if (flag === 'out_of_stock') where.status = 'out_of_stock'
     if (flag === 'hidden') where.visible = false
     // Palabras clave en la búsqueda que equivalen a una etiqueta
@@ -64,6 +68,7 @@ export async function GET(request: NextRequest) {
       nuevo: 'new', nuevos: 'new', nueva: 'new',
       destacado: 'featured', destacados: 'featured',
       oferta: 'sale', ofertas: 'sale',
+      disponible: 'available', disponibles: 'available',
       agotado: 'out_of_stock', agotados: 'out_of_stock',
       oculto: 'hidden', ocultos: 'hidden',
     }
@@ -71,6 +76,10 @@ export async function GET(request: NextRequest) {
     if (searchFlag === 'new') where.isNew = true
     if (searchFlag === 'featured') where.isFeatured = true
     if (searchFlag === 'sale') where.isOnSale = true
+    if (searchFlag === 'available') {
+      where.status = 'available'
+      where.stock = { gt: 0 }
+    }
     if (searchFlag === 'out_of_stock') where.status = 'out_of_stock'
     if (searchFlag === 'hidden') where.visible = false
     if (search && !searchFlag) {

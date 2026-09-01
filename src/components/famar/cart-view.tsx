@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/app-store'
 import { useCartStore } from '@/stores/cart-store'
@@ -36,7 +36,7 @@ import {
 
 export function CartView() {
   const { navigate, campaignFilter, setCampaignFilter } = useAppStore()
-  const { items, removeItem, updateQuantity, clearCart } = useCartStore()
+  const { items, replaceItems, removeItem, updateQuantity, clearCart } = useCartStore()
   const [orderDialogOpen, setOrderDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingProductId, setDeletingProductId] = useState<string | null>(null)
@@ -49,8 +49,63 @@ export function CartView() {
   const queryClient = useQueryClient()
   const { saleDiscount } = usePricingSettings()
 
+  const cartIdentity = items.map((item) => `${item.productId}:${item.variantId || ''}`).join('|')
+  const { data: cartValidation, isFetching: cartUpdating } = useQuery({
+    queryKey: ['cart-validation', cartIdentity],
+    queryFn: async () => {
+      const response = await fetch('/api/cart/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items.map((item) => ({ productId: item.productId, variantId: item.variantId })),
+        }),
+      })
+      if (!response.ok) throw new Error('No se pudo actualizar el carrito')
+      return response.json() as Promise<{ items: Array<{ productId: string; variantId: string | null; available: boolean; code?: string; name?: string; price?: number; isOnSale?: boolean; mainImage?: string; maxStock?: number; variantName?: string | null }> }>
+    },
+    enabled: items.length > 0,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  })
+
+  useEffect(() => {
+    if (!cartValidation) return
+    let unavailable = 0
+    let adjusted = 0
+    let pricingChanged = 0
+    const validated = new Map(cartValidation.items.map((item) => [`${item.productId}:${item.variantId || ''}`, item]))
+    const nextItems = items.flatMap((item) => {
+      const current = validated.get(`${item.productId}:${item.variantId || ''}`)
+      if (!current) return [{ ...item, unavailable: true, maxStock: 0 }]
+      const isUnavailable = !current.available || !current.maxStock
+      const quantity = isUnavailable ? item.quantity : Math.min(item.quantity, current.maxStock)
+      if (isUnavailable && !item.unavailable) unavailable += 1
+      if (quantity !== item.quantity) adjusted += 1
+      if (item.price !== current.price || Boolean(item.isOnSale) !== Boolean(current.isOnSale)) pricingChanged += 1
+      return [{
+        ...item,
+        code: current.code || item.code,
+        name: current.name || item.name,
+        price: Number(current.price),
+        isOnSale: Boolean(current.isOnSale),
+        unavailable: isUnavailable,
+        mainImage: current.mainImage || item.mainImage,
+        maxStock: current.maxStock,
+        quantity,
+        variantName: current.variantName || item.variantName,
+      }]
+    })
+    const availabilityChanged = nextItems.some((item, index) => item.unavailable !== items[index]?.unavailable)
+    if (!availabilityChanged && !adjusted && !pricingChanged) return
+    replaceItems(nextItems)
+    if (unavailable) toast.warning(`${unavailable} producto${unavailable === 1 ? '' : 's'} de tu carrito ya está${unavailable === 1 ? '' : 'n'} agotado${unavailable === 1 ? '' : 's'}`)
+    if (adjusted) toast.info('Actualizamos cantidades según el stock disponible')
+    if (pricingChanged) toast.info('Actualizamos los precios y promociones del carrito')
+  }, [cartValidation, items, replaceItems])
+
   const priceForItem = (item: (typeof items)[number]) => salePrice(item.price, Boolean(item.isOnSale), saleDiscount)
   const { eligibleSubtotal, saleBaseSubtotal, saleSubtotal } = items.reduce((totals, item) => {
+    if (item.unavailable) return totals
     if (item.isOnSale) {
       totals.saleBaseSubtotal += item.price * item.quantity
       totals.saleSubtotal += priceForItem(item) * item.quantity
@@ -85,6 +140,8 @@ export function CartView() {
 
   const openOrderDialog = () => {
     if (items.length === 0) return
+    if (cartUpdating) return toast.info('Estamos actualizando precios y disponibilidad. Espera un momento.')
+    if (items.some((item) => item.unavailable)) return toast.error('Retira los productos agotados antes de solicitar el pedido.')
     setOrderDialogOpen(true)
   }
 
@@ -297,6 +354,7 @@ ${productList}
                       </h3>
                       <p className="text-xs text-muted-foreground">{item.code}</p>
                       {item.variantName && <p className="text-xs font-medium text-primary">Color: {item.variantName}</p>}
+                      {item.unavailable && <p className="mt-1 text-xs font-semibold text-destructive">Agotado · Retíralo para continuar con el pedido</p>}
                       <p className="text-lg font-bold text-primary mt-1">
                         {item.isOnSale && <span className="mr-1 text-xs font-normal text-muted-foreground line-through">{formatPrice(item.price)}</span>}
                         {formatPrice(priceForItem(item))}
@@ -309,6 +367,7 @@ ${productList}
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleQuantityChange(itemKey, -1)}
+                            disabled={item.unavailable}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
@@ -320,7 +379,7 @@ ${productList}
                             size="icon"
                             className="h-8 w-8"
                             onClick={() => handleQuantityChange(itemKey, 1)}
-                            disabled={item.quantity >= item.maxStock}
+                            disabled={item.unavailable || item.quantity >= item.maxStock}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -362,7 +421,9 @@ ${productList}
                     <span className="text-muted-foreground truncate mr-2">
                       {item.quantity}x {item.name}
                     </span>
-                    <span className="shrink-0">{formatPrice(priceForItem(item) * item.quantity)}</span>
+                    <span className={item.unavailable ? 'shrink-0 font-medium text-destructive' : 'shrink-0'}>
+                      {item.unavailable ? 'Agotado' : formatPrice(priceForItem(item) * item.quantity)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -392,8 +453,9 @@ ${productList}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 size="lg"
                 onClick={openOrderDialog}
+                disabled={cartUpdating || items.some((item) => item.unavailable)}
               >
-                Solicitar Pedido
+                {cartUpdating ? 'Actualizando carrito…' : items.some((item) => item.unavailable) ? 'Retira los productos agotados' : 'Solicitar Pedido'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
                 Al solicitar, se abrirá WhatsApp para confirmar tu pedido. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.

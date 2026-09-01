@@ -510,6 +510,7 @@ export function AdminProductsView() {
             </SelectTrigger>
             <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
               <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="available">Disponibles</SelectItem>
               <SelectItem value="daily-featured">Destacados de hoy</SelectItem>
               <SelectItem value="new">Nuevos</SelectItem>
               <SelectItem value="sale">En Oferta</SelectItem>

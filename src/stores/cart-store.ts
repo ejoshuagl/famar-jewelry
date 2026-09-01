@@ -8,6 +8,7 @@ export interface CartItem {
   name: string
   price: number
   isOnSale?: boolean
+  unavailable?: boolean
   quantity: number
   mainImage: string
   maxStock: number
@@ -17,6 +18,7 @@ export interface CartItem {
 
 interface CartStore {
   items: CartItem[]
+  replaceItems: (items: CartItem[]) => void
   addItem: (item: CartItem) => void
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, qty: number) => void
@@ -29,6 +31,7 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      replaceItems: (items) => set({ items }),
       addItem: (item) => {
         const items = get().items
         const itemKey = item.itemKey || item.productId
