@@ -5,7 +5,11 @@ import { db } from '@/lib/db'
 // Usa ADMIN_SESSION_SECRET si está definida; si no, deriva una clave estable
 // de la URL de la base de datos (no se expone al cliente).
 function sessionSecret(): string {
-  return process.env.ADMIN_SESSION_SECRET || process.env.DATABASE_URL || 'famar-dev-secret'
+  const secret = process.env.ADMIN_SESSION_SECRET || process.env.DATABASE_URL
+  if (!secret) {
+    throw new Error('ADMIN_SESSION_SECRET debe estar configurado')
+  }
+  return secret
 }
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12 // 12 horas

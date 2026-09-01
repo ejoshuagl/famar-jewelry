@@ -5,6 +5,7 @@ import { ensureCampaignTable } from '@/lib/campaigns'
 import { ensureStoreEventsTable } from '@/lib/store-events'
 
 const ECUADOR_OFFSET = '-05:00'
+const ALLOWED_CTA_VIEWS = new Set(['home', 'catalog', 'out-of-stock', 'jewelry-care', 'contact', 'favorites', 'cart', 'policies'])
 
 function parseEcuadorDate(value: unknown) {
   if (typeof value !== 'string' || !value) return null
@@ -83,6 +84,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Título o fechas inválidas' }, { status: 400 })
     }
     const displayMode = ['banner', 'popup', 'both'].includes(body.displayMode) ? body.displayMode : 'both'
+    const ctaView = body.ctaView == null || body.ctaView === '' ? null : String(body.ctaView)
+    if (ctaView && !ALLOWED_CTA_VIEWS.has(ctaView)) {
+      return NextResponse.json({ error: 'Destino de campaña inválido' }, { status: 400 })
+    }
     if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
     if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
 
@@ -99,7 +104,7 @@ export async function POST(request: NextRequest) {
         popupImage: body.popupImage || null,
         displayMode,
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
-        ctaView: body.ctaView || null,
+        ctaView,
         productIds: productIds.length ? JSON.stringify(productIds) : null,
         startAt,
         endAt,

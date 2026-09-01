@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { requireAdmin } from '@/lib/admin-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    if (!requireAdmin(request)) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
     const { searchParams } = new URL(request.url)
     const categoryId = searchParams.get('categoryId')
 
@@ -23,24 +27,13 @@ export async function GET(request: NextRequest) {
     const prefix = category.slug.substring(0, 2).toUpperCase()
     const codePrefix = `FAM-${prefix}`
 
-    // Find the highest existing number for this prefix
-    const lastProduct = await db.product.findFirst({
-      where: {
-        code: { startsWith: codePrefix },
-      },
-      orderBy: { code: 'desc' },
-      select: { code: true },
-    })
-
-    let nextNum = 1
-    if (lastProduct) {
-      // Extract the numeric part (last 3 digits)
-      const numericPart = lastProduct.code.slice(-3)
-      const currentNum = parseInt(numericPart, 10)
-      if (!isNaN(currentNum)) {
-        nextNum = currentNum + 1
-      }
-    }
+    const rows = await db.$queryRaw<Array<{ max: bigint | null }>>`
+      SELECT MAX(SUBSTRING("code" FROM '[0-9]+$')::bigint) AS max
+      FROM "Product"
+      WHERE "code" LIKE ${`${codePrefix}%`}
+        AND "code" ~ ${`^${codePrefix}[0-9]+$`}
+    `
+    const nextNum = Number(rows[0]?.max || 0) + 1
 
     const nextCode = `${codePrefix}${String(nextNum).padStart(3, '0')}`
 

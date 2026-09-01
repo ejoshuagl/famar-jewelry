@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { formatPrice } from '@/lib/utils'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
-import { parseVariants, variantsStock } from '@/lib/product-variants'
+import { adjustOrderStock } from '@/lib/order-stock'
+import { ensureOrderStockReservationColumn } from '@/lib/orders'
 
 // PUT - Update order status OR modify order items
 export async function PUT(
@@ -10,6 +11,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureOrderStockReservationColumn()
     const admin = requireAdmin(request)
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -39,37 +41,22 @@ export async function PUT(
         return NextResponse.json({ error: 'Solo se pueden modificar pedidos pendientes' }, { status: 400 })
       }
 
-      if (status === 'confirmed') {
-        // Verificar stock disponible ANTES de cambiar el estado del pedido
-        const insufficient: string[] = []
-        for (const item of order.items) {
-          const product = await db.product.findUnique({ where: { id: item.productId } })
-          if (!product) continue
-          const variants = parseVariants(product.variants)
-          const variant = item.variantId ? variants.find((entry) => entry.id === item.variantId) : null
-          const available = variant ? variant.stock : product.stock
-          if (available < item.quantity) {
-            insufficient.push(
-              available === 0
-                ? `${product.name}${item.variantName ? ` - ${item.variantName}` : ''} (${product.code}) está AGOTADO`
-                : `${product.name}${item.variantName ? ` - ${item.variantName}` : ''} (${product.code}): stock ${available}, pedido ${item.quantity}`
-            )
+      const updatedOrder = await db.$transaction(async (tx) => {
+        if (status === 'confirmed') {
+          if (!order.stockReserved) await adjustOrderStock(tx, order.items, 'reserve')
+          for (const item of order.items) {
+            await tx.product.update({ where: { id: item.productId }, data: { salesCount: { increment: item.quantity } } })
           }
         }
-        if (insufficient.length > 0) {
-          return NextResponse.json({
-            error: `No se puede confirmar. Artículos sin stock suficiente: ${insufficient.join('; ')}`,
-          }, { status: 400 })
-        }
-      }
-
-      const updatedOrder = await db.order.update({
-        where: { id },
-        data: {
-          status,
-          ...(status === 'cancelled' && cancelReason !== undefined && { cancelReason: cancelReason || null }),
-        },
-        include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+        return tx.order.update({
+          where: { id },
+          data: {
+            status,
+            stockReserved: status === 'confirmed',
+            ...(status === 'cancelled' && cancelReason !== undefined && { cancelReason: cancelReason || null }),
+          },
+          include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+        })
       })
 
       await auditLog({
@@ -79,30 +66,6 @@ export async function PUT(
         admin: adminName,
         details: `#${order.orderNumber} (${formatPrice(order.total)})${cancelReason ? ' — motivo: ' + cancelReason : ''}`,
       })
-
-      if (status === 'confirmed') {
-        for (const item of order.items) {
-          const product = await db.product.findUnique({ where: { id: item.productId } })
-          if (product) {
-            const variants = parseVariants(product.variants)
-            const updatedVariants = item.variantId
-              ? variants.map((variant) => variant.id === item.variantId
-                ? { ...variant, stock: Math.max(0, variant.stock - item.quantity) }
-                : variant)
-              : variants
-            const newStock = updatedVariants.length ? variantsStock(updatedVariants) : product.stock - item.quantity
-            await db.product.update({
-              where: { id: item.productId },
-              data: {
-                stock: Math.max(0, newStock),
-                ...(updatedVariants.length && { variants: JSON.stringify(updatedVariants) }),
-                status: newStock <= 0 ? 'out_of_stock' : product.status,
-                salesCount: { increment: item.quantity },
-              },
-            })
-          }
-        }
-      }
 
       return NextResponse.json(updatedOrder)
     }
@@ -117,14 +80,11 @@ export async function PUT(
       ? parseFloat(total)
       : (items || []).reduce((sum: number, item: { quantity: number; price: number }) => sum + item.quantity * item.price, 0)
 
-    // Delete existing items
-    await db.orderItem.deleteMany({ where: { orderId: id } })
-
-    // Create updated items
-    const updatedOrder = await db.order.update({
-      where: { id },
-      data: {
+    const updatedOrder = await db.$transaction(async (tx) => {
+      await tx.orderItem.deleteMany({ where: { orderId: id } })
+      return tx.order.update({ where: { id }, data: {
         total: newTotal,
+        stockReserved: false,
         ...(observations !== undefined ? { observations: observations || null } : {}),
         ...(customerName ? { customerName } : {}),
         ...(customerCity ? { customerCity } : {}),
@@ -142,6 +102,7 @@ export async function PUT(
         },
       },
       include: { items: { include: { product: { select: { mainImage: true, stock: true } } } } },
+      })
     })
 
     return NextResponse.json(updatedOrder)
@@ -157,6 +118,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureOrderStockReservationColumn()
     const admin = requireAdmin(request)
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -165,42 +127,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    const order = await db.order.findUnique({
-      where: { id },
-    })
+    const order = await db.order.findUnique({ where: { id }, include: { items: true } })
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 })
     }
 
-    // If confirmed order, restore stock
-    if (order.status === 'confirmed') {
-      const orderItems = await db.orderItem.findMany({ where: { orderId: id } })
-      for (const item of orderItems) {
-        const product = await db.product.findUnique({ where: { id: item.productId } })
-        if (product) {
-          const variants = parseVariants(product.variants)
-          const updatedVariants = item.variantId
-            ? variants.map((variant) => variant.id === item.variantId
-              ? { ...variant, stock: variant.stock + item.quantity }
-              : variant)
-            : variants
-          const newStock = updatedVariants.length ? variantsStock(updatedVariants) : product.stock + item.quantity
-          await db.product.update({
+    await db.$transaction(async (tx) => {
+      if (order.stockReserved) await adjustOrderStock(tx, order.items, 'restore')
+      if (order.status === 'confirmed') {
+        for (const item of order.items) {
+          await tx.product.update({
             where: { id: item.productId },
-            data: {
-              stock: newStock,
-              ...(updatedVariants.length && { variants: JSON.stringify(updatedVariants) }),
-              status: newStock > 0 ? 'available' : product.status,
-            },
+            data: { salesCount: { decrement: item.quantity } },
           })
         }
       }
-    }
-
-    // Delete order (cascade will delete order items)
-    await db.order.delete({
-      where: { id },
+      await tx.order.delete({ where: { id } })
     })
 
     return NextResponse.json({ success: true })

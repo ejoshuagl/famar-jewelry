@@ -814,7 +814,9 @@ export function AdminProductsView() {
                         className="shrink-0"
                         onClick={async () => {
                           try {
-                            const res = await fetch(`/api/products/next-code?categoryId=${form.categoryId}`)
+                            const res = await fetch(`/api/products/next-code?categoryId=${form.categoryId}`, {
+                              headers: { 'x-admin-token': useAuthStore.getState().token || '' },
+                            })
                             const data = await res.json()
                             if (data.code) {
                               updateForm('code', data.code)
@@ -839,7 +841,9 @@ export function AdminProductsView() {
                     updateForm('categoryId', v)
                     // Auto-generate code when creating new product and category changes
                     if (!editingId) {
-                      fetch(`/api/products/next-code?categoryId=${v}`)
+                      fetch(`/api/products/next-code?categoryId=${v}`, {
+                        headers: { 'x-admin-token': useAuthStore.getState().token || '' },
+                      })
                         .then((res) => res.json())
                         .then((data) => {
                           if (data.code) {

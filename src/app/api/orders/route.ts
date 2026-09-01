@@ -5,9 +5,12 @@ import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
 import { ensureProductRelations } from '@/lib/relations'
 import { ensureCampaignTable } from '@/lib/campaigns'
 import { salePrice } from '@/lib/pricing'
+import { boundedPositiveInt } from '@/lib/pagination'
+import { ensureOrderStockReservationColumn } from '@/lib/orders'
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureOrderStockReservationColumn()
     const admin = requireAdmin(request)
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -17,8 +20,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status') || ''
     const search = searchParams.get('search') || ''
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const page = boundedPositiveInt(searchParams.get('page'), 1, 100000)
+    const limit = boundedPositiveInt(searchParams.get('limit'), 20, 100)
 
     const where: Record<string, unknown> = {}
     if (status) where.status = status
@@ -58,6 +61,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureProductRelations()
+    await ensureOrderStockReservationColumn()
     const body = await request.json()
     const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode, campaignId } = body
 
@@ -72,8 +76,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (!Array.isArray(items) || items.length > 100) return NextResponse.json({ error: 'Pedido inválido' }, { status: 400 })
-    const requestedItems = items as Array<{ productId: string; quantity: number; variantId?: string }>
-    if (requestedItems.some((item) => !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1)) {
+    const rawItems = items as Array<{ productId: string; quantity: number; variantId?: string }>
+    if (rawItems.some((item) => !item || typeof item.productId !== 'string' || !item.productId || !Number.isInteger(item.quantity) || item.quantity < 1)) {
+      return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
+    }
+    const groupedItems = new Map<string, { productId: string; quantity: number; variantId?: string }>()
+    for (const item of rawItems) {
+      const key = `${item.productId}:${item.variantId || ''}`
+      const existing = groupedItems.get(key)
+      groupedItems.set(key, { ...item, quantity: (existing?.quantity || 0) + item.quantity })
+    }
+    const requestedItems = [...groupedItems.values()]
+    if (requestedItems.some((item) => !Number.isSafeInteger(item.quantity) || item.quantity < 1 || item.quantity > 100000)) {
       return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
     }
     const productIds = [...new Set(requestedItems.map((item) => item.productId))]
@@ -115,16 +129,21 @@ export async function POST(request: NextRequest) {
       attributedCampaignId = campaign?.id || null
     }
 
-    // Sequential order number: FAM-000001, FAM-000002...
-    const lastSeq = await db.$queryRaw<Array<{ max: bigint | null }>>`
-      SELECT MAX(NULLIF(regexp_replace("orderNumber", '\\D', '', 'g'), '')::bigint) AS max
-      FROM "Order"
-      WHERE "orderNumber" ~ '^FAM-\\d{1,6}$'
-    `
-    const totalCount = await db.order.count()
-    const lastNumber = Math.max(Number(lastSeq[0]?.max || 0), totalCount)
-    const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
     const order = await db.$transaction(async (tx) => {
+      // Serialize order numbering. Pending orders do not reserve inventory;
+      // stock is validated and deducted atomically when an admin confirms.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('famar-order-number'))`
+
+      const [lastSeq, totalCount] = await Promise.all([
+        tx.$queryRaw<Array<{ max: bigint | null }>>`
+          SELECT MAX(NULLIF(regexp_replace("orderNumber", '\\D', '', 'g'), '')::bigint) AS max
+          FROM "Order" WHERE "orderNumber" ~ '^FAM-\\d+$'
+        `,
+        tx.order.count(),
+      ])
+      const lastNumber = Math.max(Number(lastSeq[0]?.max || 0), totalCount)
+      const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
+
       if (pricing.coupon) {
         const previousClaim = await tx.couponRedemption.findFirst({
           where: { couponId: pricing.couponId || '', customerPhone: String(customerPhone).trim() },
@@ -148,6 +167,7 @@ export async function POST(request: NextRequest) {
         campaignId: attributedCampaignId,
         observations: `${String(observations || '').trim()}${pricing.percent ? `${observations ? '\n' : ''}[${pricing.source}: ${pricing.percent}%]` : ''}` || null,
         total: pricing.total,
+        stockReserved: false,
         status: 'pending',
         items: {
           create: validatedItems.map((item) => ({

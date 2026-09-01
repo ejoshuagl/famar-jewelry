@@ -3,6 +3,8 @@ import { db } from '@/lib/db'
 import { auditLog, requireAdmin } from '@/lib/admin-auth'
 import { ensureCampaignTable } from '@/lib/campaigns'
 
+const ALLOWED_CTA_VIEWS = new Set(['home', 'catalog', 'out-of-stock', 'jewelry-care', 'contact', 'favorites', 'cart', 'policies'])
+
 function parseEcuadorDate(value: unknown) {
   if (typeof value !== 'string' || !value) return null
   const normalized = value.includes('T') && !/[zZ]|[+-]\d\d:\d\d$/.test(value) ? `${value}:00-05:00` : value
@@ -23,9 +25,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Título o fechas inválidas' }, { status: 400 })
     }
     const displayMode = ['banner', 'popup', 'both'].includes(body.displayMode) ? body.displayMode : 'both'
+    const ctaView = body.ctaView == null || body.ctaView === '' ? null : String(body.ctaView)
+    if (ctaView && !ALLOWED_CTA_VIEWS.has(ctaView)) {
+      return NextResponse.json({ error: 'Destino de campaña inválido' }, { status: 400 })
+    }
     if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
     if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
-    const productIds = Array.isArray(body.productIds)
+    const productIds: string[] = Array.isArray(body.productIds)
       ? Array.from(new Set(body.productIds.filter((productId: unknown): productId is string => typeof productId === 'string' && productId.length > 0)))
       : []
     const campaign = await db.campaign.update({
@@ -39,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         popupImage: body.popupImage || null,
         displayMode,
         ctaLabel: body.ctaLabel ? String(body.ctaLabel).slice(0, 40) : null,
-        ctaView: body.ctaView || null,
+        ctaView,
         productIds: productIds.length ? JSON.stringify(productIds) : null,
         startAt,
         endAt,

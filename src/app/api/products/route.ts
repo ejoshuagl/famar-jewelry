@@ -5,6 +5,7 @@ import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/d
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { ensureProductRelations } from '@/lib/relations'
+import { boundedPositiveInt } from '@/lib/pagination'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,13 +13,15 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
 
-    // Exact code lookup (admin use)
+    const admin = requireAdmin(request)
+
+    // Exact code lookup. Hidden records are only returned to administrators.
     if (code) {
       const product = await db.product.findUnique({
         where: { code: code.toUpperCase() },
         include: { category: { select: { name: true, slug: true } } },
       })
-      if (!product) {
+      if (!product || (!product.visible && !admin)) {
         return NextResponse.json({ product: null })
       }
       return NextResponse.json({ product })
@@ -29,15 +32,16 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get('featured') === 'true'
     const isNew = searchParams.get('new') === 'true'
     const isOnSale = searchParams.get('sale') === 'true'
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '12')
+    const page = boundedPositiveInt(searchParams.get('page'), 1, 100000)
+    const limit = boundedPositiveInt(searchParams.get('limit'), 12, admin ? 500 : 100)
     const sort = searchParams.get('sort') || 'relevance'
     const includeHidden = searchParams.get('all') === 'true'
     const compact = searchParams.get('compact') === 'true'
     const flag = searchParams.get('flag') || ''
     const campaignId = searchParams.get('campaign') || ''
 
-    if (includeHidden && !requireAdmin(request)) {
+    const requestsHidden = includeHidden || flag === 'hidden' || search.toLowerCase() === 'hidden' || search.toLowerCase() === 'oculto' || search.toLowerCase() === 'ocultos'
+    if (requestsHidden && !admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest) {
       where.stock = { gt: 0 }
     }
     if (flag === 'out_of_stock') where.status = 'out_of_stock'
-    if (flag === 'hidden') where.visible = false
+    if (flag === 'hidden' && admin) where.visible = false
     // Palabras clave en la búsqueda que equivalen a una etiqueta
     const flagWords: Record<string, string> = {
       nuevo: 'new', nuevos: 'new', nueva: 'new',
@@ -81,7 +85,7 @@ export async function GET(request: NextRequest) {
       where.stock = { gt: 0 }
     }
     if (searchFlag === 'out_of_stock') where.status = 'out_of_stock'
-    if (searchFlag === 'hidden') where.visible = false
+    if (searchFlag === 'hidden' && admin) where.visible = false
     if (search && !searchFlag) {
       const q = { contains: search, mode: 'insensitive' }
       where.OR = [
@@ -226,12 +230,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      name, code, description, categoryId, material, weight, dimensions,
+      name, description, categoryId, material, weight, dimensions,
       color, price, stock, mainImage, images, variants, isFeatured,
       isNew, isOnSale, visible, featuredExcluded,
     } = body
 
-    if (!name || !code || !categoryId || price == null) {
+    if (!name || !categoryId || price == null) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -240,8 +244,8 @@ export async function POST(request: NextRequest) {
     if (!Number.isFinite(priceValue) || priceValue < 0 || priceValue > 100000) {
       return NextResponse.json({ error: 'Precio inválido' }, { status: 400 })
     }
-    if (String(name).length > 120 || String(code).length > 30) {
-      return NextResponse.json({ error: 'Nombre o código demasiado largo' }, { status: 400 })
+    if (String(name).length > 120) {
+      return NextResponse.json({ error: 'Nombre demasiado largo' }, { status: 400 })
     }
     const parsedVariants = parseVariants(variants)
     const stockCount = parsedVariants.length
@@ -249,19 +253,33 @@ export async function POST(request: NextRequest) {
       : Math.max(0, Math.min(parseInt(stock) || 0, 100000))
 
     const imageHash = await tryCreatePerceptualHash(mainImage)
-    const product = await db.product.create({
-      data: {
-        name, code, description, categoryId, material, weight, dimensions,
-        color, price: priceValue, stock: stockCount,
-        status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
-        imageHash,
-        images: images ? JSON.stringify(images) : null,
-        variants: parsedVariants.length ? JSON.stringify(parsedVariants) : null,
-        isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
-        featuredExcluded: !!featuredExcluded,
-        visible: visible === undefined ? true : !!visible,
-      },
-      include: { category: { select: { name: true, slug: true } } },
+    const product = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
+      const category = await tx.category.findUnique({ where: { id: categoryId }, select: { slug: true } })
+      if (!category) throw new Error('CATEGORY_NOT_FOUND')
+      const prefix = category.slug.substring(0, 2).toUpperCase()
+      const codePrefix = `FAM-${prefix}`
+      const rows = await tx.$queryRaw<Array<{ max: bigint | null }>>`
+        SELECT MAX(SUBSTRING("code" FROM '[0-9]+$')::bigint) AS max
+        FROM "Product"
+        WHERE "code" LIKE ${`${codePrefix}%`}
+          AND "code" ~ ${`^${codePrefix}[0-9]+$`}
+      `
+      const generatedCode = `${codePrefix}${String(Number(rows[0]?.max || 0) + 1).padStart(3, '0')}`
+      return tx.product.create({
+        data: {
+          name, code: generatedCode, description, categoryId, material, weight, dimensions,
+          color, price: priceValue, stock: stockCount,
+          status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
+          imageHash,
+          images: images ? JSON.stringify(images) : null,
+          variants: parsedVariants.length ? JSON.stringify(parsedVariants) : null,
+          isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
+          featuredExcluded: !!featuredExcluded,
+          visible: visible === undefined ? true : !!visible,
+        },
+        include: { category: { select: { name: true, slug: true } } },
+      })
     })
 
     await auditLog({
@@ -275,6 +293,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(product, { status: 201 })
   } catch (error) {
     console.error('POST /api/products error:', error)
+    if (error instanceof Error && error.message === 'CATEGORY_NOT_FOUND') {
+      return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

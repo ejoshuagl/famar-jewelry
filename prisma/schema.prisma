@@ -80,6 +80,7 @@ model Order {
   campaignId    String?
   observations  String?
   total         Float
+  stockReserved Boolean  @default(false)
   status        String   @default("pending") // pending, confirmed, cancelled
   cancelReason  String?
   createdAt     DateTime @default(now())

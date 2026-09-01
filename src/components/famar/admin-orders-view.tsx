@@ -347,7 +347,9 @@ export function AdminOrdersView() {
     setFoundProduct(null)
     setSearchingCode(true)
     try {
-      const res = await fetch(`/api/products?code=${encodeURIComponent(trimmed)}`)
+      const res = await fetch(`/api/products?code=${encodeURIComponent(trimmed)}`, {
+        headers: { 'x-admin-token': useAuthStore.getState().token || '' },
+      })
       const data = await res.json()
       if (data.product) {
         setFoundProduct(data.product)
