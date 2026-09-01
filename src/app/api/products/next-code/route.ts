@@ -4,7 +4,7 @@ import { requireAdmin } from '@/lib/admin-auth'
 
 export async function GET(request: NextRequest) {
   try {
-    if (!requireAdmin(request)) {
+    if (!requireAdmin(request, 'products')) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
     const { searchParams } = new URL(request.url)

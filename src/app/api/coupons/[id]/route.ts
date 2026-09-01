@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { ensureCommerceTables } from '@/lib/commerce'
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = requireAdmin(request); if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const admin = requireAdmin(request, 'coupons'); if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   await ensureCommerceTables(); const { id } = await params; const body = await request.json()
   const code = String(body.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30)
   const discount = Number(body.discount); const minPurchase = Number(body.minPurchase || 0)
@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const admin = requireAdmin(request); if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const admin = requireAdmin(request, 'coupons'); if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   await ensureCommerceTables(); const { id } = await params
   const claims = await db.couponRedemption.count({ where: { couponId: id } })
   if (claims > 0) return NextResponse.json({ error: 'Este cupón tiene pedidos asociados. Desactívalo para conservar el historial.' }, { status: 409 })

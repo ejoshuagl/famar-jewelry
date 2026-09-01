@@ -12,7 +12,7 @@ export async function PUT(
 ) {
   try {
     await ensureOrderStockReservationColumn()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'orders')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -119,7 +119,7 @@ export async function DELETE(
 ) {
   try {
     await ensureOrderStockReservationColumn()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'orders')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

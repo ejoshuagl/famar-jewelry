@@ -11,7 +11,7 @@ import { ensureOrderStockReservationColumn } from '@/lib/orders'
 export async function GET(request: NextRequest) {
   try {
     await ensureOrderStockReservationColumn()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'orders')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

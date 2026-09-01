@@ -16,7 +16,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'themes')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const body = await request.json()
     const allowed = new Set<SiteTheme>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])

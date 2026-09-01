@@ -36,6 +36,7 @@ const AdminCampaignsView = dynamicView(() => import('@/components/famar/admin-ca
 const AdminThemesView = dynamicView(() => import('@/components/famar/admin-themes-view'), 'AdminThemesView')
 const AdminWholesaleView = dynamicView(() => import('@/components/famar/admin-wholesale-view'), 'AdminWholesaleView')
 const AdminCouponsView = dynamicView(() => import('@/components/famar/admin-coupons-view'), 'AdminCouponsView')
+const AdminUsersView = dynamicView(() => import('@/components/famar/admin-users-view'), 'AdminUsersView')
 
 export function AppContent() {
   const { currentView, selectedProductId, selectedProductCode } = useAppStore()
@@ -86,6 +87,7 @@ export function AppContent() {
     || currentView === 'admin-themes'
     || currentView === 'admin-wholesale'
     || currentView === 'admin-coupons'
+    || currentView === 'admin-users'
 
   if (isAdminView && !isAuthenticated) {
     return (
@@ -175,6 +177,8 @@ export function AppContent() {
         return <AdminLayout><AdminWholesaleView /></AdminLayout>
       case 'admin-coupons':
         return <AdminLayout><AdminCouponsView /></AdminLayout>
+      case 'admin-users':
+        return <AdminLayout><AdminUsersView /></AdminLayout>
       default:
         return <HomeView />
     }

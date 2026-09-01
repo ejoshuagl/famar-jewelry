@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const includeAll = searchParams.get('all') === 'true'
 
-    if (includeAll && !requireAdmin(request)) {
+    if (includeAll && !requireAdmin(request, 'campaigns')) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureCampaignTable()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'campaigns')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
     const body = await request.json()

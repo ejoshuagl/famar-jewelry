@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

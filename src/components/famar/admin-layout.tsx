@@ -19,26 +19,28 @@ import {
   Palette,
   Percent,
   TicketPercent,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AdminOrderNotifier } from './admin-order-notifier'
 
 const WHATSAPP_NUMBER = '593988215076'
 
-const sidebarItems: { label: string; view: AppView; icon: React.ReactNode }[] = [
-  { label: 'Dashboard', view: 'admin-dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-  { label: 'Productos', view: 'admin-products', icon: <Package className="h-4 w-4" /> },
-  { label: 'Pedidos', view: 'admin-orders', icon: <ShoppingBag className="h-4 w-4" /> },
-  { label: 'Categorías', view: 'admin-categories', icon: <Tags className="h-4 w-4" /> },
-  { label: 'Publicidad', view: 'admin-campaigns', icon: <Megaphone className="h-4 w-4" /> },
-  { label: 'Temas y estilos', view: 'admin-themes', icon: <Palette className="h-4 w-4" /> },
-  { label: 'Mayoristas', view: 'admin-wholesale', icon: <Percent className="h-4 w-4" /> },
-  { label: 'Cupones', view: 'admin-coupons', icon: <TicketPercent className="h-4 w-4" /> },
+const sidebarItems: { label: string; view: AppView; permission: string; icon: React.ReactNode }[] = [
+  { label: 'Dashboard', view: 'admin-dashboard', permission: 'dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { label: 'Productos', view: 'admin-products', permission: 'products', icon: <Package className="h-4 w-4" /> },
+  { label: 'Pedidos', view: 'admin-orders', permission: 'orders', icon: <ShoppingBag className="h-4 w-4" /> },
+  { label: 'Categorías', view: 'admin-categories', permission: 'categories', icon: <Tags className="h-4 w-4" /> },
+  { label: 'Publicidad', view: 'admin-campaigns', permission: 'campaigns', icon: <Megaphone className="h-4 w-4" /> },
+  { label: 'Temas y estilos', view: 'admin-themes', permission: 'themes', icon: <Palette className="h-4 w-4" /> },
+  { label: 'Mayoristas', view: 'admin-wholesale', permission: 'wholesale', icon: <Percent className="h-4 w-4" /> },
+  { label: 'Cupones', view: 'admin-coupons', permission: 'coupons', icon: <TicketPercent className="h-4 w-4" /> },
+  { label: 'Usuarios', view: 'admin-users', permission: 'users', icon: <Users className="h-4 w-4" /> },
 ]
 
 function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { currentView, navigate } = useAppStore()
-  const { logout } = useAuthStore()
+  const { logout, can } = useAuthStore()
 
   return (
     <div className="flex flex-col h-full">
@@ -49,7 +51,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <Separator />
       <nav className="flex-1 p-2 space-y-1">
-        {sidebarItems.map((item) => (
+        {sidebarItems.filter((item) => can(item.permission)).map((item) => (
           <button
             key={item.view}
             onClick={() => {
@@ -98,7 +100,7 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { navigate } = useAppStore()
-  const { adminName, isAuthenticated } = useAuthStore()
+  const { adminName, isAuthenticated, can } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
@@ -113,7 +115,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex min-h-screen">
-      <AdminOrderNotifier />
+      {can('orders') && <AdminOrderNotifier />}
       {/* Desktop sidebar — always one instance, visibility via CSS only */}
       <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
         <ScrollArea className="flex-1">

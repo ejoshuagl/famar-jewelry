@@ -5,16 +5,23 @@ interface AuthStore {
   isAuthenticated: boolean
   adminName: string | null
   token: string | null
+  permissions: string[] | null
+  can: (permission: string) => boolean
   login: (username: string, password: string) => Promise<boolean>
   logout: () => void
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isAuthenticated: false,
       adminName: null,
       token: null,
+      permissions: null,
+      can: (permission) => {
+        const permissions = get().permissions
+        return !Array.isArray(permissions) || permissions.includes(permission)
+      },
       login: async (username: string, password: string) => {
         try {
           const res = await fetch('/api/auth', {
@@ -24,7 +31,7 @@ export const useAuthStore = create<AuthStore>()(
           })
           if (res.ok) {
             const data = await res.json()
-            set({ isAuthenticated: true, adminName: data.name, token: data.token })
+            set({ isAuthenticated: true, adminName: data.name, token: data.token, permissions: data.permissions ?? null })
             return true
           }
           return false
@@ -33,7 +40,7 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
       logout: () => {
-        set({ isAuthenticated: false, adminName: null, token: null })
+        set({ isAuthenticated: false, adminName: null, token: null, permissions: null })
       },
     }),
     {

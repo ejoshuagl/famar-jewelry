@@ -221,7 +221,7 @@ export function CartView() {
       // Build WhatsApp message
       const date = new Date().toLocaleDateString('es-EC')
       const productList = items
-        .map((item) => `🔸 ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(priceForItem(item) * item.quantity)}`)
+        .map((item) => `\u{1F538} ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(priceForItem(item) * item.quantity)}`)
         .join('\n')
 
       const finalTotal = Number(order.total)
@@ -231,28 +231,29 @@ export function CartView() {
       const discountSource = String(order.discountSource || '')
       const discountDetails = discountPercent > 0
         ? discountSource.startsWith('Cupón ')
-          ? `\n🎟️ *Cupón aplicado:* ${discountSource.slice(6)} (-${discountPercent}%)\n💚 *Ahorro:* -${formatPrice(discountAmount)}`
-          : `\n🏷️ *${discountSource || 'Descuento'}:* -${discountPercent}%\n💚 *Ahorro:* -${formatPrice(discountAmount)}`
+          ? `\n\u{1F39F}\u{FE0F} *Cupón aplicado:* ${discountSource.slice(6)} (-${discountPercent}%)\n\u{1F49A} *Ahorro:* -${formatPrice(discountAmount)}`
+          : `\n\u{1F3F7}\u{FE0F} *${discountSource || 'Descuento'}:* -${discountPercent}%\n\u{1F49A} *Ahorro:* -${formatPrice(discountAmount)}`
         : ''
-      const message = `✨ *NUEVO PEDIDO - FAMAR* ✨
+      const message = `\u{2728} *NUEVO PEDIDO - FAMAR* \u{2728}
 ━━━━━━━━━━━━━━━
 
-👤 *Cliente:* ${form.name}
-📍 *Ciudad:* ${form.city}
-📱 *Teléfono:* ${form.phone}
-🏠 *Dirección:* ${form.address || 'Ubicación compartida desde el dispositivo'}
-📅 *Fecha:* ${date}
-🧾 *Pedido:* #${order.orderNumber}
+\u{1F464} *Cliente:* ${form.name}
+\u{1F4CD} *Ciudad:* ${form.city}
+\u{1F4F1} *Teléfono:* ${form.phone}
+\u{1F3E0} *Dirección:* ${form.address || 'Ubicación compartida desde el dispositivo'}
+\u{1F4C5} *Fecha:* ${date}
+\u{1F9FE} *Pedido:* #${order.orderNumber}
 ━━━━━━━━━━━━━━━
-🛍️ *Productos:*
+\u{1F6CD}\u{FE0F} *Productos:*
 ${productList}
 ━━━━━━━━━━━━━━━
-💵 *Subtotal:* ${formatPrice(orderSubtotal)}${discountDetails}
-💰 *TOTAL FINAL:* ${formatPrice(finalTotal)}
-📝 *Observaciones:* ${form.observations || 'Ninguna'}`
+\u{1F4B5} *Subtotal:* ${formatPrice(orderSubtotal)}${discountDetails}
+\u{1F4B0} *TOTAL FINAL:* ${formatPrice(finalTotal)}
+\u{1F4DD} *Observaciones:* ${form.observations || 'Ninguna'}`
 
-      const encodedMessage = encodeURIComponent(message)
-      const whatsappUrl = `https://wa.me/593988215076?text=${encodedMessage}`
+      const whatsappUrl = new URL('https://api.whatsapp.com/send')
+      whatsappUrl.searchParams.set('phone', '593988215076')
+      whatsappUrl.searchParams.set('text', message)
       trackStoreEvent('whatsapp_opened', { campaignId: campaignFilter?.id })
 
       toast.success('¡Pedido creado exitosamente!')
@@ -260,7 +261,7 @@ ${productList}
       setCampaignFilter(null)
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
-      window.location.assign(whatsappUrl)
+      window.location.assign(whatsappUrl.toString())
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al crear el pedido. Intenta de nuevo.')
     } finally {

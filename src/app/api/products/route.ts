@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
 
-    const admin = requireAdmin(request)
+    const session = requireAdmin(request)
+    const admin = session && (!session.permissions || session.permissions.some((permission) => ['products', 'orders', 'campaigns'].includes(permission))) ? session : null
 
     // Exact code lookup. Hidden records are only returned to administrators.
     if (code) {
@@ -222,7 +223,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureProductRelations()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

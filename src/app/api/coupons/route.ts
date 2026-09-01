@@ -5,14 +5,14 @@ import { db } from '@/lib/db'
 import { ensureCommerceTables } from '@/lib/commerce'
 
 export async function GET(request: NextRequest) {
-  const admin = requireAdmin(request)
+  const admin = requireAdmin(request, 'coupons')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const coupons = await db.$queryRawUnsafe('SELECT * FROM "DiscountCoupon" ORDER BY "createdAt" DESC')
   return NextResponse.json({ coupons })
 }
 
 export async function POST(request: NextRequest) {
-  const admin = requireAdmin(request)
+  const admin = requireAdmin(request, 'coupons')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   await ensureCommerceTables()
   const body = await request.json()

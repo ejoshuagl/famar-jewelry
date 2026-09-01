@@ -42,7 +42,7 @@ function formatEcuadorDate(date: Date, options: Intl.DateTimeFormatOptions) {
 
 export async function GET(request: NextRequest) {
   try {
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'dashboard')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

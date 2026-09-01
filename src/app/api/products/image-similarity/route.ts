@@ -8,7 +8,7 @@ const BATCH_SIZE = 8
 
 export async function POST(request: NextRequest) {
   try {
-    if (!requireAdmin(request)) {
+    if (!requireAdmin(request, 'products')) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 

@@ -10,7 +10,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const admin = requireAdmin(request)
+  const admin = requireAdmin(request, 'wholesale')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const body = await request.json()
   const tiers = (Array.isArray(body.tiers) ? body.tiers : []).map((tier: WholesaleTier) => ({

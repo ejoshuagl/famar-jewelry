@@ -13,15 +13,18 @@ function sessionSecret(): string {
 }
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12 // 12 horas
+export const ADMIN_PERMISSIONS = ['dashboard', 'products', 'orders', 'categories', 'campaigns', 'themes', 'wholesale', 'coupons', 'users'] as const
+export type AdminPermission = typeof ADMIN_PERMISSIONS[number]
+export type AdminSession = { name: string; username?: string; permissions: AdminPermission[] | null }
 
-export function issueAdminToken(name: string): string {
-  const payload = JSON.stringify({ name, exp: Date.now() + TOKEN_TTL_MS })
+export function issueAdminToken(name: string, username?: string, permissions: AdminPermission[] | null = null): string {
+  const payload = JSON.stringify({ name, username, permissions, exp: Date.now() + TOKEN_TTL_MS })
   const body = Buffer.from(payload).toString('base64url')
   const sig = createHmac('sha256', sessionSecret()).update(body).digest('base64url')
   return `${body}.${sig}`
 }
 
-export function verifyAdminToken(token: string | null): { name: string } | null {
+export function verifyAdminToken(token: string | null): AdminSession | null {
   if (!token || !token.includes('.')) return null
   const [body, sig] = token.split('.')
   if (!body || !sig) return null
@@ -41,7 +44,10 @@ export function verifyAdminToken(token: string | null): { name: string } | null 
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString())
     if (typeof payload.name !== 'string' || typeof payload.exp !== 'number') return null
     if (payload.exp < Date.now()) return null
-    return { name: payload.name }
+    const permissions = Array.isArray(payload.permissions)
+      ? payload.permissions.filter((permission: unknown): permission is AdminPermission => ADMIN_PERMISSIONS.includes(permission as AdminPermission))
+      : null
+    return { name: payload.name, username: typeof payload.username === 'string' ? payload.username : undefined, permissions }
   } catch {
     return null
   }
@@ -52,8 +58,10 @@ export function verifyAdminToken(token: string | null): { name: string } | null 
  * El header x-admin-token es un token firmado emitido por /api/auth.
  * Devuelve el nombre del admin o null si no está autorizado.
  */
-export function requireAdmin(request: Request): { name: string } | null {
-  return verifyAdminToken(request.headers.get('x-admin-token'))
+export function requireAdmin(request: Request, permission?: AdminPermission): AdminSession | null {
+  const admin = verifyAdminToken(request.headers.get('x-admin-token'))
+  if (!admin || (permission && admin.permissions && !admin.permissions.includes(permission))) return null
+  return admin
 }
 
 // ---- Registro de auditoría ----

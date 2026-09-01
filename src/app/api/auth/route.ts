@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/utils'
 import { issueAdminToken, auditLog } from '@/lib/admin-auth'
+import { ensureAdminUserPermissions } from '@/lib/admin-users'
+import type { AdminPermission } from '@/lib/admin-auth'
 
 // Límite de intentos: 5 por IP por minuto
 const attempts = new Map<string, { count: number; resetAt: number }>()
@@ -19,6 +21,7 @@ function isRateLimited(ip: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureAdminUserPermissions()
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
     if (isRateLimited(ip)) {
       return NextResponse.json({ error: 'Demasiados intentos. Espera un minuto.' }, { status: 429 })
@@ -34,17 +37,20 @@ export async function POST(request: NextRequest) {
     const hashedInput = await hashPassword(password)
     const admin = await db.adminUser.findUnique({ where: { username } })
 
-    if (!admin || admin.password !== hashedInput) {
+    if (!admin || !admin.active || admin.password !== hashedInput) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
     const name = admin.name || admin.username
+    let permissions: AdminPermission[] | null = null
+    try { permissions = admin.permissions ? JSON.parse(admin.permissions) : null } catch { permissions = [] }
     await auditLog({ action: 'login', entity: 'admin', admin: name, details: `Sesión iniciada (${ip})` })
 
     return NextResponse.json({
       name,
       username: admin.username,
-      token: issueAdminToken(name),
+      permissions,
+      token: issueAdminToken(name, admin.username, permissions),
     })
   } catch (error) {
     console.error('POST /api/auth error:', error)

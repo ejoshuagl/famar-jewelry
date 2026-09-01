@@ -4,7 +4,7 @@ export type AppView =
   | 'home' | 'catalog' | 'product-detail' | 'cart' | 'out-of-stock' | 'contact'
   | 'jewelry-care' | 'policies' | 'favorites' | 'admin-login' | 'admin-dashboard' | 'admin-products'
   | 'admin-orders' | 'admin-categories' | 'admin-campaigns' | 'admin-themes'
-  | 'admin-wholesale' | 'admin-coupons'
+  | 'admin-wholesale' | 'admin-coupons' | 'admin-users'
 
 interface AppStore {
   currentView: AppView
@@ -36,7 +36,7 @@ const viewPaths: Record<Exclude<AppView, 'product-detail'>, string> = {
   'admin-products': '/admin/productos', 'admin-orders': '/admin/pedidos',
   'admin-categories': '/admin/categorias', 'admin-campaigns': '/admin/campanas',
   'admin-themes': '/admin/temas', 'admin-wholesale': '/admin/mayoristas',
-  'admin-coupons': '/admin/cupones',
+  'admin-coupons': '/admin/cupones', 'admin-users': '/admin/usuarios',
 }
 
 type CatalogState = Pick<AppStore,

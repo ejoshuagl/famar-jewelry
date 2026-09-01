@@ -15,7 +15,7 @@ function parseEcuadorDate(value: unknown) {
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await ensureCampaignTable()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'campaigns')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const { id } = await params
     const body = await request.json()
@@ -69,7 +69,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await ensureCampaignTable()
-    const admin = requireAdmin(request)
+    const admin = requireAdmin(request, 'campaigns')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const { id } = await params
     const campaign = await db.campaign.delete({ where: { id } })
