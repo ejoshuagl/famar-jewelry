@@ -30,12 +30,6 @@ export function convertDriveUrl(url: string): string {
   return url
 }
 
-export function generateOrderNumber(): string {
-  const timestamp = Date.now().toString().slice(-6)
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-  return `FAM-${timestamp}${random}`
-}
-
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(password)

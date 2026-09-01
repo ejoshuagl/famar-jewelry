@@ -134,14 +134,12 @@ export async function POST(request: NextRequest) {
       // stock is validated and deducted atomically when an admin confirms.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('famar-order-number'))`
 
-      const [lastSeq, totalCount] = await Promise.all([
-        tx.$queryRaw<Array<{ max: bigint | null }>>`
-          SELECT MAX(NULLIF(regexp_replace("orderNumber", '\\D', '', 'g'), '')::bigint) AS max
-          FROM "Order" WHERE "orderNumber" ~ '^FAM-\\d+$'
-        `,
-        tx.order.count(),
-      ])
-      const lastNumber = Math.max(Number(lastSeq[0]?.max || 0), totalCount)
+      const lastSeq = await tx.$queryRaw<Array<{ max: bigint | null }>>`
+        SELECT MAX(SUBSTRING("orderNumber" FROM '^FAM-([0-9]{6})$')::bigint) AS max
+        FROM "Order"
+        WHERE "orderNumber" ~ '^FAM-[0-9]{6}$'
+      `
+      const lastNumber = Number(lastSeq[0]?.max || 0)
       const orderNumber = `FAM-${String(lastNumber + 1).padStart(6, '0')}`
 
       if (pricing.coupon) {
