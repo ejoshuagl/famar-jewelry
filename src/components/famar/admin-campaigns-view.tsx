@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ImageUploader } from './image-uploader'
-import { convertDriveUrl } from '@/lib/utils'
+import { convertDriveUrl, formatPrice } from '@/lib/utils'
 
 interface Campaign {
   id: string
@@ -34,6 +34,7 @@ interface Campaign {
   active: boolean
   priority: number
   productIds: string[]
+  performance?: { clicks: number; cartAdds: number; orders: number; confirmedOrders: number; revenue: number }
 }
 
 interface CampaignForm {
@@ -225,6 +226,12 @@ export function AdminCampaignsView() {
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CalendarClock className="h-4 w-4" />
                   {new Date(campaign.startAt).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })} — {new Date(campaign.endAt).toLocaleString('es-EC', { timeZone: 'America/Guayaquil' })}
+                </div>
+                <div className="grid grid-cols-4 gap-2 rounded-lg bg-muted/40 p-3 text-center">
+                  <div><p className="font-semibold">{campaign.performance?.clicks || 0}</p><p className="text-[10px] text-muted-foreground">Visitas</p></div>
+                  <div><p className="font-semibold">{campaign.performance?.cartAdds || 0}</p><p className="text-[10px] text-muted-foreground">Al carrito</p></div>
+                  <div><p className="font-semibold">{campaign.performance?.confirmedOrders || 0}</p><p className="text-[10px] text-muted-foreground">Ventas</p></div>
+                  <div><p className="font-semibold">{formatPrice(campaign.performance?.revenue || 0)}</p><p className="text-[10px] text-muted-foreground">Ingresos</p></div>
                 </div>
               </CardContent>
             </Card>

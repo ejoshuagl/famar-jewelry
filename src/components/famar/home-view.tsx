@@ -16,6 +16,7 @@ import { useAppStore, type AppView } from '@/stores/app-store'
 import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
 import { SearchBar } from './search-bar'
+import { trackStoreEvent } from '@/lib/track-store-event'
 import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, TrendingUp, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const fadeInUp = {
@@ -98,6 +99,7 @@ export function HomeView() {
   const nextBanner = () => setBannerIndex((index) => (index + 1) % bannerCampaigns.length)
 
   const followCampaign = (campaign: Campaign) => {
+    trackStoreEvent('campaign_click', { campaignId: campaign.id })
     setNewArrivalsOpen(false)
     if (campaign.ctaView === 'catalog') {
       setCatalogFilter(null)

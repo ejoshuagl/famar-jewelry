@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auditLog, requireAdmin } from '@/lib/admin-auth'
 import { ensureCampaignTable } from '@/lib/campaigns'
+import { ensureStoreEventsTable } from '@/lib/store-events'
 
 const ECUADOR_OFFSET = '-05:00'
 
@@ -34,10 +35,32 @@ export async function GET(request: NextRequest) {
       include: { products: { select: { productId: true } } },
     })
 
+    const performance = new Map<string, { clicks: number; cartAdds: number; orders: number; confirmedOrders: number; revenue: number }>()
+    if (includeAll) {
+      await ensureStoreEventsTable()
+      const [eventRows, orderRows] = await Promise.all([
+        db.$queryRaw<Array<{ campaignId: string; clicks: number; cartAdds: number }>>`
+          SELECT "campaignId",
+            COUNT(*) FILTER (WHERE type = 'campaign_click')::int AS clicks,
+            COUNT(*) FILTER (WHERE type = 'add_to_cart')::int AS "cartAdds"
+          FROM "StoreEvent" WHERE "campaignId" IS NOT NULL GROUP BY "campaignId"
+        `,
+        db.$queryRaw<Array<{ campaignId: string; orders: number; confirmedOrders: number; revenue: number }>>`
+          SELECT "campaignId", COUNT(*)::int AS orders,
+            COUNT(*) FILTER (WHERE status = 'confirmed')::int AS "confirmedOrders",
+            COALESCE(SUM(total) FILTER (WHERE status = 'confirmed'), 0)::float8 AS revenue
+          FROM "Order" WHERE "campaignId" IS NOT NULL GROUP BY "campaignId"
+        `,
+      ])
+      for (const row of eventRows) performance.set(row.campaignId, { clicks: row.clicks, cartAdds: row.cartAdds, orders: 0, confirmedOrders: 0, revenue: 0 })
+      for (const row of orderRows) performance.set(row.campaignId, { ...(performance.get(row.campaignId) || { clicks: 0, cartAdds: 0 }), orders: row.orders, confirmedOrders: row.confirmedOrders, revenue: row.revenue })
+    }
+
     return NextResponse.json(campaigns.map((campaign) => ({
       ...campaign,
       productIds: campaign.products.map((product) => product.productId),
       products: undefined,
+      performance: includeAll ? (performance.get(campaign.id) || { clicks: 0, cartAdds: 0, orders: 0, confirmedOrders: 0, revenue: 0 }) : undefined,
     })), includeAll ? undefined : {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
     })
@@ -63,7 +86,7 @@ export async function POST(request: NextRequest) {
     if ((displayMode === 'banner' || displayMode === 'both') && !body.bannerImage) return NextResponse.json({ error: 'Agrega la imagen horizontal del banner' }, { status: 400 })
     if ((displayMode === 'popup' || displayMode === 'both') && !body.popupImage) return NextResponse.json({ error: 'Agrega la imagen vertical de la publicidad flotante' }, { status: 400 })
 
-    const productIds = Array.isArray(body.productIds)
+    const productIds: string[] = Array.isArray(body.productIds)
       ? Array.from(new Set(body.productIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0)))
       : []
     const campaign = await db.campaign.create({

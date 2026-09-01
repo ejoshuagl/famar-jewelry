@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
+import { ensureStoreEventsTable } from '@/lib/store-events'
 
 const ECUADOR_TIME_ZONE = 'America/Guayaquil'
 const ECUADOR_UTC_OFFSET_HOURS = 5
@@ -61,7 +62,8 @@ export async function GET(request: NextRequest) {
     }
 
     const startedAt = performance.now()
-    const [summaryRows, orders, salesByCategory, recentOrders] = await Promise.all([
+    await ensureStoreEventsTable()
+    const [summaryRows, orders, salesByCategory, recentOrders, funnelRows, lowStockProducts] = await Promise.all([
       db.$queryRaw<StatsSummary[]>`
         SELECT
           (SELECT COUNT(*)::int FROM "Product") AS "totalProducts",
@@ -96,6 +98,17 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: 'desc' },
         take: 5,
         select: { id: true, orderNumber: true, customerName: true, total: true, status: true, createdAt: true },
+      }),
+      db.$queryRaw<Array<{ type: string; total: number }>>`
+        SELECT type, COUNT(*)::int AS total FROM "StoreEvent"
+        WHERE "createdAt" >= ${start} AND type IN ('product_view', 'add_to_cart', 'checkout_started', 'order_created')
+        GROUP BY type
+      `,
+      db.product.findMany({
+        where: { visible: true, stock: { lte: 1 } },
+        orderBy: [{ stock: 'asc' }, { updatedAt: 'desc' }],
+        take: 8,
+        select: { id: true, code: true, name: true, stock: true },
       }),
     ])
     const summary = summaryRows[0] || {
@@ -165,6 +178,8 @@ export async function GET(request: NextRequest) {
       },
       salesByCategory,
       recentOrders,
+      funnel: Object.fromEntries(['product_view', 'add_to_cart', 'checkout_started', 'order_created'].map((type) => [type, funnelRows.find((row) => row.type === type)?.total || 0])),
+      lowStockProducts,
     }
     statsCache.set(period, { expiresAt: Date.now() + STATS_CACHE_MS, value: result })
     console.info(JSON.stringify({ event: 'stats.loaded', period, durationMs: Math.round(performance.now() - startedAt) }))

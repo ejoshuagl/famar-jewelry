@@ -18,8 +18,9 @@ export interface CartItem {
 
 interface CartStore {
   items: CartItem[]
+  lastUpdatedAt: number
   replaceItems: (items: CartItem[]) => void
-  addItem: (item: CartItem) => void
+  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void
   removeItem: (productId: string) => void
   updateQuantity: (productId: string, qty: number) => void
   clearCart: () => void
@@ -31,6 +32,7 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      lastUpdatedAt: 0,
       replaceItems: (items) => set({ items }),
       addItem: (item) => {
         const items = get().items
@@ -43,13 +45,14 @@ export const useCartStore = create<CartStore>()(
             items: items.map((i) =>
               (i.itemKey || i.productId) === itemKey ? { ...i, quantity: newQty } : i
             ),
+            lastUpdatedAt: Date.now(),
           })
         } else {
-          set({ items: [...items, { ...item, itemKey, quantity: 1 }] })
+          set({ items: [...items, { ...item, itemKey, quantity: 1 }], lastUpdatedAt: Date.now() })
         }
       },
       removeItem: (itemKey) => {
-        set({ items: get().items.filter((i) => (i.itemKey || i.productId) !== itemKey) })
+        set({ items: get().items.filter((i) => (i.itemKey || i.productId) !== itemKey), lastUpdatedAt: Date.now() })
       },
       updateQuantity: (itemKey, qty) => {
         if (qty <= 0) {
@@ -62,9 +65,10 @@ export const useCartStore = create<CartStore>()(
               ? { ...i, quantity: Math.min(qty, i.maxStock) }
               : i
           ),
+          lastUpdatedAt: Date.now(),
         })
       },
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], lastUpdatedAt: 0 }),
       getTotal: () => {
         return get().items.reduce((sum, i) => sum + i.price * i.quantity, 0)
       },

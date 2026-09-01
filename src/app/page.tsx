@@ -10,6 +10,7 @@ import { SiteFooter } from '@/components/famar/site-footer'
 import { FloatingCartButton } from '@/components/famar/floating-cart-button'
 import { ScrollToTop } from '@/components/famar/scroll-to-top'
 import { SiteTheme } from '@/components/famar/site-theme'
+import { CartReminder } from '@/components/famar/cart-reminder'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const loadView = () => <div className="container mx-auto px-4 py-10"><Skeleton className="h-96 w-full rounded-lg" /></div>
@@ -188,6 +189,7 @@ export function AppContent() {
       <main className="flex-1">{renderView()}</main>
       {!isAdmin && <SiteFooter />}
       {!isAdmin && <FloatingCartButton />}
+      {!isAdmin && <CartReminder />}
       <ScrollToTop />
     </div>
   )

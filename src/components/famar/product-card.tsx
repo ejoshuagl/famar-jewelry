@@ -17,6 +17,7 @@ import type { ProductVariant } from '@/lib/product-variants'
 import { parseVariants } from '@/lib/product-variants'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
+import { trackStoreEvent } from '@/lib/track-store-event'
 
 
 export interface ProductData {
@@ -33,6 +34,9 @@ export interface ProductData {
   isNew?: boolean
   isOnSale?: boolean
   material?: string | null
+  weight?: string | null
+  dimensions?: string | null
+  color?: string | null
   images?: string | null
   variants?: string | ProductVariant[] | null
 }
@@ -159,7 +163,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       toast.info('Elige el color antes de agregarlo')
       return
     }
-    flyToCartFrom((e.currentTarget as HTMLElement).closest('.group')?.querySelector('img'))
+    flyToCartFrom((e.currentTarget as HTMLElement).closest('.group')?.querySelector('img') ?? null)
     addItem({
       productId: product.id,
       code: product.code,
@@ -170,6 +174,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       maxStock: product.stock,
     })
     toast.success(`${product.name} agregado al carrito`)
+    trackStoreEvent('add_to_cart', { productId: product.id, campaignId: useAppStore.getState().campaignFilter?.id })
   }
 
   const handleRequestImport = (e: React.MouseEvent) => {

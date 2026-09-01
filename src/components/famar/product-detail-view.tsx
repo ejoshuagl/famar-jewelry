@@ -31,7 +31,7 @@ import { useState, useEffect } from 'react'
 import { parseVariants } from '@/lib/product-variants'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
-import { PurchaseConfidence } from './purchase-confidence'
+import { trackStoreEvent } from '@/lib/track-store-event'
 
 export function ProductDetailView() {
   const { selectedProductId, navigate, selectProduct } = useAppStore()
@@ -41,6 +41,7 @@ export function ProductDetailView() {
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const favorite = selectedProductId ? isFavorite(selectedProductId) : false
   const { saleDiscount } = usePricingSettings()
+  const campaignId = useAppStore((state) => state.campaignFilter?.id)
 
   useEffect(() => {
     if (selectedProductId) {
@@ -70,6 +71,10 @@ export function ProductDetailView() {
     },
     enabled: !!product?.id,
   })
+
+  useEffect(() => {
+    if (product?.id) trackStoreEvent('product_view', { productId: product.id, campaignId })
+  }, [campaignId, product?.id])
 
   const { data: viewedProductsData } = useQuery({
     queryKey: ['products', 'viewed', viewedProducts],
@@ -163,6 +168,7 @@ export function ProductDetailView() {
       useCartStore.getState().updateQuantity(itemKey, quantity)
     }
     toast.success(`${product.name} agregado al carrito`)
+    trackStoreEvent('add_to_cart', { productId: product.id, campaignId })
   }
 
   const handleRequestImport = () => {
@@ -385,7 +391,7 @@ export function ProductDetailView() {
             </Button>
           )}
 
-          {!isOutOfStock && <PurchaseConfidence />}
+          {!isOutOfStock && <p className="text-center text-xs text-muted-foreground">Envíos desde Babahoyo a todo Ecuador · Confirmación por WhatsApp</p>}
 
           {/* Share */}
           <ShareButtons

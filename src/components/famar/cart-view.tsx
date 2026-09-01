@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/app-store'
-import { useCartStore } from '@/stores/cart-store'
+import { useCartStore, type CartItem } from '@/stores/cart-store'
 import { formatPrice, convertDriveUrl } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,7 +16,7 @@ import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent } from
 import { toast } from 'sonner'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
-import { PurchaseConfidence } from './purchase-confidence'
+import { trackStoreEvent } from '@/lib/track-store-event'
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,10 @@ export function CartView() {
   const queryClient = useQueryClient()
   const { saleDiscount } = usePricingSettings()
 
+  useEffect(() => {
+    trackStoreEvent('cart_view', { campaignId: campaignFilter?.id })
+  }, [campaignFilter?.id])
+
   const cartIdentity = items.map((item) => `${item.productId}:${item.variantId || ''}`).join('|')
   const { data: cartValidation, isFetching: cartUpdating } = useQuery({
     queryKey: ['cart-validation', cartIdentity],
@@ -75,15 +79,16 @@ export function CartView() {
     let adjusted = 0
     let pricingChanged = 0
     const validated = new Map(cartValidation.items.map((item) => [`${item.productId}:${item.variantId || ''}`, item]))
-    const nextItems = items.flatMap((item) => {
+    const nextItems: CartItem[] = items.map((item) => {
       const current = validated.get(`${item.productId}:${item.variantId || ''}`)
-      if (!current) return [{ ...item, unavailable: true, maxStock: 0 }]
-      const isUnavailable = !current.available || !current.maxStock
-      const quantity = isUnavailable ? item.quantity : Math.min(item.quantity, current.maxStock)
+      if (!current) return { ...item, unavailable: true, maxStock: 0 }
+      const maxStock = Number(current.maxStock || 0)
+      const isUnavailable = !current.available || maxStock <= 0
+      const quantity = isUnavailable ? item.quantity : Math.min(item.quantity, maxStock)
       if (isUnavailable && !item.unavailable) unavailable += 1
       if (quantity !== item.quantity) adjusted += 1
       if (item.price !== current.price || Boolean(item.isOnSale) !== Boolean(current.isOnSale)) pricingChanged += 1
-      return [{
+      return {
         ...item,
         code: current.code || item.code,
         name: current.name || item.name,
@@ -91,10 +96,10 @@ export function CartView() {
         isOnSale: Boolean(current.isOnSale),
         unavailable: isUnavailable,
         mainImage: current.mainImage || item.mainImage,
-        maxStock: current.maxStock,
+        maxStock,
         quantity,
         variantName: current.variantName || item.variantName,
-      }]
+      }
     })
     const availabilityChanged = nextItems.some((item, index) => item.unavailable !== items[index]?.unavailable)
     if (!availabilityChanged && !adjusted && !pricingChanged) return
@@ -143,6 +148,7 @@ export function CartView() {
     if (items.length === 0) return
     if (cartUpdating) return toast.info('Estamos actualizando precios y disponibilidad. Espera un momento.')
     if (items.some((item) => item.unavailable)) return toast.error('Retira los productos agotados antes de solicitar el pedido.')
+    trackStoreEvent('checkout_started', { campaignId: campaignFilter?.id })
     setOrderDialogOpen(true)
   }
 
@@ -209,6 +215,7 @@ export function CartView() {
       }
 
       const order = await res.json()
+      trackStoreEvent('order_created', { campaignId: campaignFilter?.id })
       queryClient.invalidateQueries({ queryKey: ['orders'] })
 
       // Build WhatsApp message
@@ -246,6 +253,7 @@ ${productList}
 
       const encodedMessage = encodeURIComponent(message)
       const whatsappUrl = `https://wa.me/593988215076?text=${encodedMessage}`
+      trackStoreEvent('whatsapp_opened', { campaignId: campaignFilter?.id })
 
       toast.success('¡Pedido creado exitosamente!')
       clearCart()
@@ -458,7 +466,6 @@ ${productList}
               >
                 {cartUpdating ? 'Actualizando carrito…' : items.some((item) => item.unavailable) ? 'Retira los productos agotados' : 'Solicitar Pedido'}
               </Button>
-              <PurchaseConfidence compact />
               <p className="text-xs text-center text-muted-foreground">
                 Al solicitar, se abrirá WhatsApp para confirmar tu pedido. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
               </p>
