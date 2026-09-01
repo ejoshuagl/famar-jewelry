@@ -21,6 +21,7 @@ import {
   TicketPercent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AdminOrderNotifier } from './admin-order-notifier'
 
 const WHATSAPP_NUMBER = '593988215076'
 
@@ -72,7 +73,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         <button
           onClick={() => {
             logout()
-            navigate('home')
+            navigate('admin-login')
           }}
           className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors text-left"
         >
@@ -112,6 +113,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex min-h-screen">
+      <AdminOrderNotifier />
       {/* Desktop sidebar — always one instance, visibility via CSS only */}
       <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
         <ScrollArea className="flex-1">
