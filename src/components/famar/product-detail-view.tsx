@@ -31,6 +31,7 @@ import { useState, useEffect } from 'react'
 import { parseVariants } from '@/lib/product-variants'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
+import { PurchaseConfidence } from './purchase-confidence'
 
 export function ProductDetailView() {
   const { selectedProductId, navigate, selectProduct } = useAppStore()
@@ -383,6 +384,8 @@ export function ProductDetailView() {
               Solicitar este producto
             </Button>
           )}
+
+          {!isOutOfStock && <PurchaseConfidence />}
 
           {/* Share */}
           <ShareButtons

@@ -16,6 +16,7 @@ import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent } from
 import { toast } from 'sonner'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
+import { PurchaseConfidence } from './purchase-confidence'
 import {
   Dialog,
   DialogContent,
@@ -457,6 +458,7 @@ ${productList}
               >
                 {cartUpdating ? 'Actualizando carrito…' : items.some((item) => item.unavailable) ? 'Retira los productos agotados' : 'Solicitar Pedido'}
               </Button>
+              <PurchaseConfidence compact />
               <p className="text-xs text-center text-muted-foreground">
                 Al solicitar, se abrirá WhatsApp para confirmar tu pedido. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
               </p>
