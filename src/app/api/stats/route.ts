@@ -6,7 +6,7 @@ import { ensureStoreEventsTable } from '@/lib/store-events'
 const ECUADOR_TIME_ZONE = 'America/Guayaquil'
 const ECUADOR_UTC_OFFSET_HOURS = 5
 const DAY_MS = 86_400_000
-const STATS_CACHE_MS = 30_000
+const STATS_CACHE_MS = 3_000
 const statsCache = new Map<string, { expiresAt: number; value: unknown }>()
 
 type StatsSummary = {
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') || '7'
     const cached = statsCache.get(period)
     if (cached && cached.expiresAt > Date.now()) {
-      return NextResponse.json(cached.value, { headers: { 'Cache-Control': 'private, max-age=15' } })
+      return NextResponse.json(cached.value, { headers: { 'Cache-Control': 'no-store' } })
     }
     const today = getEcuadorDateParts()
     let start = ecuadorMidnightUtc(today.year, today.month, today.day)
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     const startedAt = performance.now()
     await ensureStoreEventsTable()
-    const [summaryRows, orders, salesByCategory, recentOrders, funnelRows, lowStockProducts] = await Promise.all([
+    const [summaryRows, orders, salesByCategory, recentOrders, funnelRows] = await Promise.all([
       db.$queryRaw<StatsSummary[]>`
         SELECT
           (SELECT COUNT(*)::int FROM "Product") AS "totalProducts",
@@ -104,12 +104,6 @@ export async function GET(request: NextRequest) {
         WHERE "createdAt" >= ${start} AND type IN ('product_view', 'add_to_cart', 'checkout_started', 'order_created')
         GROUP BY type
       `,
-      db.product.findMany({
-        where: { visible: true, stock: { lte: 1 } },
-        orderBy: [{ stock: 'asc' }, { updatedAt: 'desc' }],
-        take: 8,
-        select: { id: true, code: true, name: true, stock: true },
-      }),
     ])
     const summary = summaryRows[0] || {
       totalProducts: 0, totalOrders: 0, pendingOrders: 0, confirmedOrders: 0, totalRevenue: 0,
@@ -179,11 +173,10 @@ export async function GET(request: NextRequest) {
       salesByCategory,
       recentOrders,
       funnel: Object.fromEntries(['product_view', 'add_to_cart', 'checkout_started', 'order_created'].map((type) => [type, funnelRows.find((row) => row.type === type)?.total || 0])),
-      lowStockProducts,
     }
     statsCache.set(period, { expiresAt: Date.now() + STATS_CACHE_MS, value: result })
     console.info(JSON.stringify({ event: 'stats.loaded', period, durationMs: Math.round(performance.now() - startedAt) }))
-    return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=15' } })
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('GET /api/stats error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

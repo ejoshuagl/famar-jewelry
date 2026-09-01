@@ -48,7 +48,6 @@ interface DashboardStats {
     createdAt: string
   }[]
   funnel: { product_view: number; add_to_cart: number; checkout_started: number; order_created: number }
-  lowStockProducts: { id: string; code: string; name: string; stock: number }[]
 }
 
 export function AdminDashboardView() {
@@ -73,9 +72,11 @@ export function AdminDashboardView() {
       return res.json() as Promise<DashboardStats>
     },
     enabled: !!adminName,
-    staleTime: 60_000,
+    staleTime: 0,
     gcTime: 5 * 60_000,
-    refetchOnWindowFocus: false,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
   })
 
@@ -253,9 +254,9 @@ export function AdminDashboardView() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div>
         <Card>
-          <CardHeader><CardTitle className="text-lg">Embudo de compra</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-lg">Embudo de compra <span className="ml-2 text-xs font-normal text-emerald-500">En vivo</span></CardTitle></CardHeader>
           <CardContent className="grid grid-cols-4 gap-2 text-center">
             {[
               ['Vieron producto', stats.funnel?.product_view || 0],
@@ -263,17 +264,6 @@ export function AdminDashboardView() {
               ['Iniciaron pedido', stats.funnel?.checkout_started || 0],
               ['Pedidos', stats.funnel?.order_created || 0],
             ].map(([label, value]) => <div key={String(label)} className="rounded-lg border p-3"><p className="text-xl font-bold text-primary">{value}</p><p className="text-[10px] text-muted-foreground">{label}</p></div>)}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-lg">Alertas de inventario</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {stats.lowStockProducts?.length ? stats.lowStockProducts.map((product) => (
-              <div key={product.id} className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-sm">
-                <div className="min-w-0"><p className="truncate font-medium">{product.name}</p><p className="text-xs text-muted-foreground">{product.code}</p></div>
-                <span className={product.stock === 0 ? 'font-semibold text-destructive' : 'font-semibold text-amber-500'}>{product.stock === 0 ? 'Agotado' : '1 unidad'}</span>
-              </div>
-            )) : <p className="text-sm text-muted-foreground">No hay alertas de inventario.</p>}
           </CardContent>
         </Card>
       </div>
