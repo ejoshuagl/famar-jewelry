@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     const startedAt = performance.now()
     await ensureStoreEventsTable()
-    const [summaryRows, orders, salesByCategory, recentOrders, funnelRows] = await Promise.all([
+    const [summaryRows, orders, salesByCategory, recentOrders, funnelRows, cartStateRows] = await Promise.all([
       db.$queryRaw<StatsSummary[]>`
         SELECT
           (SELECT COUNT(*)::int FROM "Product") AS "totalProducts",
@@ -103,6 +103,11 @@ export async function GET(request: NextRequest) {
         SELECT type, COUNT(*)::int AS total FROM "StoreEvent"
         WHERE "createdAt" >= ${start} AND type IN ('product_view', 'add_to_cart', 'checkout_started', 'order_created')
         GROUP BY type
+      `,
+      db.$queryRaw<Array<{ activeCarts: number; activeItems: number }>>`
+        SELECT COUNT(*) FILTER (WHERE "itemCount" > 0)::int AS "activeCarts",
+          COALESCE(SUM("itemCount") FILTER (WHERE "itemCount" > 0), 0)::int AS "activeItems"
+        FROM "CartState" WHERE "updatedAt" >= CURRENT_TIMESTAMP - INTERVAL '30 days'
       `,
     ])
     const summary = summaryRows[0] || {
@@ -173,6 +178,7 @@ export async function GET(request: NextRequest) {
       salesByCategory,
       recentOrders,
       funnel: Object.fromEntries(['product_view', 'add_to_cart', 'checkout_started', 'order_created'].map((type) => [type, funnelRows.find((row) => row.type === type)?.total || 0])),
+      activeCarts: cartStateRows[0] || { activeCarts: 0, activeItems: 0 },
     }
     statsCache.set(period, { expiresAt: Date.now() + STATS_CACHE_MS, value: result })
     console.info(JSON.stringify({ event: 'stats.loaded', period, durationMs: Math.round(performance.now() - startedAt) }))

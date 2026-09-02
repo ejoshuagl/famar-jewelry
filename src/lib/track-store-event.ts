@@ -21,3 +21,9 @@ export function trackStoreEvent(type: StoreEventType, data: { productId?: string
   }
   void fetch('/api/store-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
 }
+
+export function syncCartState(itemCount: number, distinctCount: number) {
+  if (typeof window === 'undefined') return
+  const body = JSON.stringify({ type: 'cart_state', sessionId: sessionId(), itemCount, distinctCount })
+  void fetch('/api/store-events', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+}

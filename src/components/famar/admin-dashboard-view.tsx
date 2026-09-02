@@ -48,6 +48,7 @@ interface DashboardStats {
     createdAt: string
   }[]
   funnel: { product_view: number; add_to_cart: number; checkout_started: number; order_created: number }
+  activeCarts: { activeCarts: number; activeItems: number }
 }
 
 export function AdminDashboardView() {
@@ -257,13 +258,20 @@ export function AdminDashboardView() {
       <div>
         <Card>
           <CardHeader><CardTitle className="text-lg">Embudo de compra <span className="ml-2 text-xs font-normal text-emerald-500">En vivo</span></CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-4 gap-2 text-center">
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-primary/5 p-3 text-center">
+              <div><p className="text-xl font-bold text-primary">{stats.activeCarts?.activeCarts || 0}</p><p className="text-[10px] text-muted-foreground">Carritos activos</p></div>
+              <div><p className="text-xl font-bold text-primary">{stats.activeCarts?.activeItems || 0}</p><p className="text-[10px] text-muted-foreground">Productos guardados ahora</p></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Las cifras siguientes son acciones acumuladas del periodo y no disminuyen al borrar productos.</p>
+            <div className="grid grid-cols-4 gap-2 text-center">
             {[
               ['Vieron producto', stats.funnel?.product_view || 0],
               ['Al carrito', stats.funnel?.add_to_cart || 0],
               ['Iniciaron pedido', stats.funnel?.checkout_started || 0],
               ['Pedidos', stats.funnel?.order_created || 0],
             ].map(([label, value]) => <div key={String(label)} className="rounded-lg border p-3"><p className="text-xl font-bold text-primary">{value}</p><p className="text-[10px] text-muted-foreground">{label}</p></div>)}
+            </div>
           </CardContent>
         </Card>
       </div>

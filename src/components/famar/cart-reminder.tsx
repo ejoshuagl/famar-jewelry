@@ -4,13 +4,19 @@ import { useEffect } from 'react'
 import { toast } from 'sonner'
 import { useCartStore } from '@/stores/cart-store'
 import { useAppStore } from '@/stores/app-store'
+import { syncCartState } from '@/lib/track-store-event'
 
 const REMINDER_AFTER_MS = 2 * 60 * 60 * 1000
 
 export function CartReminder() {
   const itemCount = useCartStore((state) => state.getItemCount())
   const lastUpdatedAt = useCartStore((state) => state.lastUpdatedAt)
+  const distinctCount = useCartStore((state) => state.items.length)
   const currentView = useAppStore((state) => state.currentView)
+
+  useEffect(() => {
+    syncCartState(itemCount, distinctCount)
+  }, [itemCount, distinctCount])
 
   useEffect(() => {
     if (!itemCount || !lastUpdatedAt || currentView === 'cart') return
