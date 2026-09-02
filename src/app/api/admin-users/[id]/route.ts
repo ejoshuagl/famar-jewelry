@@ -12,6 +12,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const body = await request.json()
   const target = await db.adminUser.findUnique({ where: { id } })
   if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+  if (target.username === 'joshua') return NextResponse.json({ error: 'El superusuario joshua está protegido y no se puede modificar' }, { status: 403 })
   if (target.username === admin.username && body.active === false) return NextResponse.json({ error: 'No puedes desactivar tu propio usuario' }, { status: 400 })
   const permissions = Array.isArray(body.permissions)
     ? [...new Set(body.permissions.filter((entry: unknown): entry is AdminPermission => ADMIN_PERMISSIONS.includes(entry as AdminPermission)))]
@@ -45,6 +46,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { id } = await params
   const target = await db.adminUser.findUnique({ where: { id } })
   if (!target) return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
+  if (target.username === 'joshua') return NextResponse.json({ error: 'El superusuario joshua está protegido y no se puede eliminar' }, { status: 403 })
   if (target.username === admin.username) return NextResponse.json({ error: 'No puedes eliminar tu propio usuario' }, { status: 400 })
   const activeManagers = await db.adminUser.findMany({ where: { active: true }, select: { id: true, permissions: true } })
   const managers = activeManagers.filter((user) => !user.permissions || (() => { try { return JSON.parse(user.permissions).includes('users') } catch { return false } })())
