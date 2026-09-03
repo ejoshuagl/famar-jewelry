@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
+import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,19 +24,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Category not found' }, { status: 404 })
     }
 
-    // Extract 2-letter prefix from slug (first 2 chars, uppercase)
-    const prefix = category.slug.substring(0, 2).toUpperCase()
-    const codePrefix = `FAM-${prefix}`
-
-    const rows = await db.$queryRaw<Array<{ max: bigint | null }>>`
-      SELECT MAX(SUBSTRING("code" FROM '[0-9]+$')::bigint) AS max
-      FROM "Product"
-      WHERE "code" LIKE ${`${codePrefix}%`}
-        AND "code" ~ ${`^${codePrefix}[0-9]+$`}
-    `
-    const nextNum = Number(rows[0]?.max || 0) + 1
-
-    const nextCode = `${codePrefix}${String(nextNum).padStart(3, '0')}`
+    const codePrefix = productCodePrefix(category.slug)
+    const nextCode = await db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
+      return firstAvailableProductCode(tx, codePrefix)
+    })
 
     return NextResponse.json({ code: nextCode })
   } catch (error) {

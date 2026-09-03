@@ -806,7 +806,7 @@ export function AdminProductsView() {
                       className="cursor-not-allowed bg-muted"
                       placeholder="Se genera al seleccionar categoría"
                     />
-                    {!editingId && form.categoryId && (
+                    {form.categoryId && (!editingId || form.categoryId !== products.find((product: Record<string, unknown>) => product.id === editingId)?.categoryId) && (
                       <Button
                         type="button"
                         variant="outline"
@@ -839,8 +839,8 @@ export function AdminProductsView() {
                   <Label>Categoría *</Label>
                   <Select value={form.categoryId} onValueChange={(v) => {
                     updateForm('categoryId', v)
-                    // Auto-generate code when creating new product and category changes
-                    if (!editingId) {
+                    // Show the code that will be assigned when the category changes.
+                    if (!editingId || v !== products.find((product: Record<string, unknown>) => product.id === editingId)?.categoryId) {
                       fetch(`/api/products/next-code?categoryId=${v}`, {
                         headers: { 'x-admin-token': useAuthStore.getState().token || '' },
                       })
@@ -851,6 +851,9 @@ export function AdminProductsView() {
                           }
                         })
                         .catch((err) => console.error('Error generating code:', err))
+                    } else {
+                      const current = products.find((product: Record<string, unknown>) => product.id === editingId)
+                      if (current) updateForm('code', current.code as string)
                     }
                   }}>
                     <SelectTrigger>

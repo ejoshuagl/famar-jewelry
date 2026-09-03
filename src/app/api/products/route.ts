@@ -6,6 +6,7 @@ import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { ensureProductRelations } from '@/lib/relations'
 import { boundedPositiveInt } from '@/lib/pagination'
+import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
 
 export async function GET(request: NextRequest) {
   try {
@@ -258,15 +259,8 @@ export async function POST(request: NextRequest) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
       const category = await tx.category.findUnique({ where: { id: categoryId }, select: { slug: true } })
       if (!category) throw new Error('CATEGORY_NOT_FOUND')
-      const prefix = category.slug.substring(0, 2).toUpperCase()
-      const codePrefix = `FAM-${prefix}`
-      const rows = await tx.$queryRaw<Array<{ max: bigint | null }>>`
-        SELECT MAX(SUBSTRING("code" FROM '[0-9]+$')::bigint) AS max
-        FROM "Product"
-        WHERE "code" LIKE ${`${codePrefix}%`}
-          AND "code" ~ ${`^${codePrefix}[0-9]+$`}
-      `
-      const generatedCode = `${codePrefix}${String(Number(rows[0]?.max || 0) + 1).padStart(3, '0')}`
+      const codePrefix = productCodePrefix(category.slug)
+      const generatedCode = await firstAvailableProductCode(tx, codePrefix)
       return tx.product.create({
         data: {
           name, code: generatedCode, description, categoryId, material, weight, dimensions,

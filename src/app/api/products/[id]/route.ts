@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
+import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
 
 export async function GET(
   request: NextRequest,
@@ -38,7 +39,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const {
-      name, code, description, categoryId, material, weight, dimensions,
+      name, description, categoryId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, variants, isFeatured,
       isNew, isOnSale, visible, featuredExcluded,
     } = body
@@ -66,11 +67,23 @@ export async function PUT(
     const imageHash = mainImage !== undefined
       ? await tryCreatePerceptualHash(mainImage)
       : undefined
-    const product = await db.product.update({
-      where: { id },
-      data: {
+    const product = await db.$transaction(async (tx) => {
+      let nextCode = previous.code
+      if (categoryId !== undefined && categoryId !== previous.categoryId) {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
+        const category = await tx.category.findUnique({
+          where: { id: categoryId },
+          select: { slug: true },
+        })
+        if (!category) throw new Error('CATEGORY_NOT_FOUND')
+        nextCode = await firstAvailableProductCode(tx, productCodePrefix(category.slug))
+      }
+
+      return tx.product.update({
+        where: { id },
+        data: {
         ...(name !== undefined && { name }),
-        ...(code !== undefined && { code }),
+        ...(nextCode !== previous.code && { code: nextCode }),
         ...(description !== undefined && { description }),
         ...(categoryId !== undefined && { categoryId }),
         ...(material !== undefined && { material }),
@@ -92,8 +105,9 @@ export async function PUT(
         ...(isNew !== undefined && { isNew: !!isNew }),
         ...(isOnSale !== undefined && { isOnSale: !!isOnSale }),
         ...(visible !== undefined && { visible: !!visible }),
-      },
-      include: { category: { select: { name: true, slug: true } } },
+        },
+        include: { category: { select: { name: true, slug: true } } },
+      })
     })
 
     // Auditoría de cambios relevantes (precio, stock, visibilidad, etc.)
@@ -105,6 +119,7 @@ export async function PUT(
     if (previous.featuredExcluded !== product.featuredExcluded) changes.push('exclusión de destacados')
     if (previous.isNew !== product.isNew) changes.push('nuevo')
     if (previous.isOnSale !== product.isOnSale) changes.push('oferta')
+    if (previous.categoryId !== product.categoryId) changes.push(`categoría y código ${previous.code}→${product.code}`)
     await auditLog({
       action: 'update',
       entity: 'product',
@@ -116,6 +131,9 @@ export async function PUT(
     return NextResponse.json(product)
   } catch (error) {
     console.error('PUT /api/products/[id] error:', error)
+    if (error instanceof Error && error.message === 'CATEGORY_NOT_FOUND') {
+      return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
