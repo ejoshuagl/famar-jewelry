@@ -328,7 +328,9 @@ export function ProductDetailView() {
                   <>En stock</>
                 ) : (
                   <span className="text-amber-600 dark:text-amber-400">
-                    ¡Últimas {availableStock} unidades!
+                    {availableStock === 1
+                      ? '¡Última unidad!'
+                      : `¡Últimas ${availableStock} unidades!`}
                   </span>
                 )}
               </p>
