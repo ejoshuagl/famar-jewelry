@@ -25,6 +25,11 @@ async function createStoreEventsTable() {
     )
   `)
   await db.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "CartState_updatedAt_idx" ON "CartState"("updatedAt")')
+  await db.$executeRawUnsafe(`
+    INSERT INTO "CommerceSetting" ("key", "value", "updatedAt")
+    VALUES ('funnel_reset_at', TO_CHAR(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'), CURRENT_TIMESTAMP)
+    ON CONFLICT ("key") DO NOTHING
+  `)
 }
 
 export function ensureStoreEventsTable() {
