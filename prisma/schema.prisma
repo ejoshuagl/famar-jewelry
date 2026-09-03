@@ -22,35 +22,35 @@ model Category {
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  name        String
-  description String?
-  categoryId  String
-  material    String?
-  weight      String?
-  dimensions  String?
-  color       String?
-  price       Float
-  stock       Int      @default(0)
-  status      String   @default("available") // available, out_of_stock, discontinued
-  mainImage   String?
-  imageHash   String?
-  images      String?  // JSON array of image URLs
-  variants    String?  // JSON array: [{id, name, image, stock}]
-  isFeatured  Boolean  @default(false)
-  featuredExcluded Boolean @default(false)
-  isNew       Boolean  @default(false)
-  isOnSale    Boolean  @default(false)
-  salesCount  Int      @default(0)
-  visible     Boolean  @default(true) // shown on the public site
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  description      String?
+  categoryId       String
+  material         String?
+  weight           String?
+  dimensions       String?
+  color            String?
+  price            Float
+  stock            Int      @default(0)
+  status           String   @default("available") // available, out_of_stock, discontinued
+  mainImage        String?
+  imageHash        String?
+  images           String? // JSON array of image URLs
+  variants         String? // JSON array: [{id, name, image, stock}]
+  isFeatured       Boolean  @default(false)
+  featuredExcluded Boolean  @default(false)
+  isNew            Boolean  @default(false)
+  isOnSale         Boolean  @default(false)
+  salesCount       Int      @default(0)
+  visible          Boolean  @default(true) // shown on the public site
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  category  Category     @relation(fields: [categoryId], references: [id])
-  orderItems OrderItem[]
+  category       Category          @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
   variantRecords ProductVariant[]
-  campaigns CampaignProduct[]
+  campaigns      CampaignProduct[]
 }
 
 model ProductVariant {
@@ -70,54 +70,54 @@ model ProductVariant {
 }
 
 model Order {
-  id            String   @id @default(cuid())
-  orderNumber   String   @unique
-  customerName  String
-  customerCity  String
-  customerPhone String
-  customerAddress String?
+  id               String   @id @default(cuid())
+  orderNumber      String   @unique
+  customerName     String
+  customerCity     String
+  customerPhone    String
+  customerAddress  String?
   customerLocation String?
-  campaignId    String?
-  observations  String?
-  total         Float
-  stockReserved Boolean  @default(false)
-  status        String   @default("pending") // pending, confirmed, cancelled
-  cancelReason  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  campaignId       String?
+  observations     String?
+  total            Float
+  stockReserved    Boolean  @default(false)
+  status           String   @default("pending") // pending, confirmed, cancelled
+  cancelReason     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  items OrderItem[]
+  items            OrderItem[]
   couponRedemption CouponRedemption?
-  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaign         Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([campaignId, createdAt])
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  price     Float
-  name      String
-  code      String
-  variantId String?
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  quantity    Int
+  price       Float
+  name        String
+  code        String
+  variantId   String?
   variantName String?
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
   variant ProductVariant? @relation(fields: [productId, variantId], references: [productId, id])
 }
 
 model AdminUser {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String
-  name      String?
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String
+  name        String?
   permissions String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Review {
@@ -128,14 +128,40 @@ model Review {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
 model AuditLog {
   id        String   @id @default(cuid())
-  action    String   // create, update, delete, confirm, cancel, bulk
-  entity    String   // product, order, category
+  action    String // create, update, delete, confirm, cancel, bulk
+  entity    String // product, order, category
   entityId  String?
   admin     String
   details   String?
   createdAt DateTime @default(now())
+}
+
+// Historial permanente del embudo de compra. Cada fila representa una acción
+// y puede agruparse por día, semana, mes, campaña o producto.
+model StoreEvent {
+  id         String   @id
+  sessionId  String
+  type       String
+  productId  String?
+  campaignId String?
+  createdAt  DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([campaignId, createdAt])
+  @@index([productId, createdAt])
+}
+
+// Estado más reciente de cada carrito; no sustituye al historial de eventos.
+model CartState {
+  sessionId     String   @id
+  itemCount     Int      @default(0)
+  distinctCount Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@index([updatedAt])
 }
 
 model Campaign {
@@ -149,7 +175,7 @@ model Campaign {
   displayMode String   @default("both") // banner, popup, both
   ctaLabel    String?
   ctaView     String?
-  productIds  String?  // JSON array of associated product IDs
+  productIds  String? // JSON array of associated product IDs
   startAt     DateTime
   endAt       DateTime
   active      Boolean  @default(true)
@@ -182,18 +208,18 @@ model CommerceSetting {
 }
 
 model DiscountCoupon {
-  id          String   @id
-  code        String   @unique
+  id          String    @id
+  code        String    @unique
   description String?
   discount    Float
-  minPurchase Float    @default(0)
-  active      Boolean  @default(true)
+  minPurchase Float     @default(0)
+  active      Boolean   @default(true)
   startsAt    DateTime?
   endsAt      DateTime?
   usageLimit  Int?
-  usageCount  Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  usageCount  Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   redemptions CouponRedemption[]
 }

@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { ensureStoreEventsTable } from '@/lib/store-events'
-import { requireAdmin } from '@/lib/admin-auth'
+import { auditLog, requireAdmin } from '@/lib/admin-auth'
 
 const ALLOWED_TYPES = new Set(['product_view', 'add_to_cart', 'cart_view', 'checkout_started', 'order_created', 'whatsapp_opened', 'campaign_click'])
 
@@ -39,9 +39,17 @@ export async function DELETE(request: NextRequest) {
   const admin = requireAdmin(request, 'dashboard')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   await ensureStoreEventsTable()
-  await db.$transaction([
-    db.$executeRawUnsafe('DELETE FROM "StoreEvent"'),
-    db.$executeRawUnsafe('DELETE FROM "CartState"'),
-  ])
-  return NextResponse.json({ success: true })
+  const resetAt = new Date()
+  await db.commerceSetting.upsert({
+    where: { key: 'funnel_reset_at' },
+    update: { value: resetAt.toISOString() },
+    create: { key: 'funnel_reset_at', value: resetAt.toISOString() },
+  })
+  await auditLog({
+    action: 'reset',
+    entity: 'store_funnel',
+    admin: admin.name,
+    details: `Nuevo inicio del embudo: ${resetAt.toISOString()}. El historial anterior se conservó.`,
+  })
+  return NextResponse.json({ success: true, resetAt, historyPreserved: true })
 }

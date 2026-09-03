@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { formatPrice } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import {
@@ -48,12 +49,18 @@ interface DashboardStats {
     createdAt: string
   }[]
   funnel: { product_view: number; add_to_cart: number; checkout_started: number; order_created: number }
+  funnelPeriod: string
+  funnelRange: { from: string; to: string }
+  funnelDaily: Array<{ date: string; product_view: number; add_to_cart: number; checkout_started: number; order_created: number }>
   activeCarts: { activeCarts: number; activeItems: number }
 }
 
 export function AdminDashboardView() {
   const { adminName } = useAuthStore()
   const [salesPeriod, setSalesPeriod] = useState('7')
+  const [funnelPeriod, setFunnelPeriod] = useState('today')
+  const [funnelFrom, setFunnelFrom] = useState('')
+  const [funnelTo, setFunnelTo] = useState('')
 
   const periods = [
     { value: '7', label: '7 días' },
@@ -63,9 +70,14 @@ export function AdminDashboardView() {
   ]
 
   const { data: stats, isLoading } = useQuery({
-    queryKey: ['admin-stats', salesPeriod],
+    queryKey: ['admin-stats', salesPeriod, funnelPeriod, funnelFrom, funnelTo],
     queryFn: async () => {
-      const res = await fetch(`/api/stats?period=${salesPeriod}`, {
+      const params = new URLSearchParams({ period: salesPeriod, funnelPeriod })
+      if (funnelPeriod === 'custom' && funnelFrom && funnelTo) {
+        params.set('funnelFrom', funnelFrom)
+        params.set('funnelTo', funnelTo)
+      }
+      const res = await fetch(`/api/stats?${params}`, {
         headers: { 'x-admin-name': adminName || '',
           'x-admin-token': useAuthStore.getState().token || '' },
       })
@@ -135,6 +147,13 @@ export function AdminDashboardView() {
   const maxDayTotal = Math.max(...stats.salesLast7Days.map((d) => d.total), 1)
   const { availableUnits, oneUnitCount, twoUnitsCount, threePlusCount, outOfStockCount, hiddenCount } = stats.availability
   const maxCatSales = Math.max(...stats.salesByCategory.map((c) => c.sales), 1)
+  const funnelPeriods = [
+    { value: 'today', label: 'Hoy' },
+    { value: 'week', label: 'Semana' },
+    { value: 'month', label: 'Mes' },
+    { value: 'all', label: 'Todo' },
+    { value: 'custom', label: 'Elegir fechas' },
+  ]
 
   const inventoryGroups = [
     {
@@ -257,7 +276,24 @@ export function AdminDashboardView() {
 
       <div>
         <Card>
-          <CardHeader><CardTitle className="text-lg">Embudo de compra <span className="ml-2 text-xs font-normal text-emerald-500">En vivo</span></CardTitle></CardHeader>
+          <CardHeader className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="text-lg">Embudo de compra <span className="ml-2 text-xs font-normal text-emerald-500">En vivo</span></CardTitle>
+              <div className="flex flex-wrap gap-1">
+                {funnelPeriods.map((item) => (
+                  <Button key={item.value} size="sm" variant={funnelPeriod === item.value ? 'default' : 'ghost'} className="h-7 px-2 text-xs" onClick={() => setFunnelPeriod(item.value)}>
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            {funnelPeriod === 'custom' && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <Input type="date" aria-label="Fecha inicial del embudo" value={funnelFrom} onChange={(event) => setFunnelFrom(event.target.value)} />
+                <Input type="date" aria-label="Fecha final del embudo" value={funnelTo} min={funnelFrom || undefined} onChange={(event) => setFunnelTo(event.target.value)} />
+              </div>
+            )}
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-2 rounded-lg bg-primary/5 p-3 text-center">
               <div><p className="text-xl font-bold text-primary">{stats.activeCarts?.activeCarts || 0}</p><p className="text-[10px] text-muted-foreground">Carritos activos</p></div>
@@ -272,6 +308,19 @@ export function AdminDashboardView() {
               ['Pedidos', stats.funnel?.order_created || 0],
             ].map(([label, value]) => <div key={String(label)} className="rounded-lg border p-3"><p className="text-xl font-bold text-primary">{value}</p><p className="text-[10px] text-muted-foreground">{label}</p></div>)}
             </div>
+            <p className="text-xs text-muted-foreground">Periodo analizado: {stats.funnelRange?.from} — {stats.funnelRange?.to}</p>
+            {stats.funnelDaily?.length > 0 && (
+              <div className="max-h-52 overflow-y-auto rounded-lg border">
+                <div className="grid grid-cols-5 gap-2 border-b bg-muted/50 px-3 py-2 text-[10px] font-medium text-muted-foreground">
+                  <span>Fecha</span><span className="text-center">Vistas</span><span className="text-center">Carrito</span><span className="text-center">Inicio</span><span className="text-center">Pedidos</span>
+                </div>
+                {stats.funnelDaily.map((day) => (
+                  <div key={day.date} className="grid grid-cols-5 gap-2 border-b px-3 py-2 text-xs last:border-0">
+                    <span>{day.date}</span><span className="text-center">{day.product_view}</span><span className="text-center">{day.add_to_cart}</span><span className="text-center">{day.checkout_started}</span><span className="text-center">{day.order_created}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
