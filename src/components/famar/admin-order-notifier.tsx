@@ -38,8 +38,8 @@ export function AdminOrderNotifier() {
       return latest.id
     },
     enabled: Boolean(token),
-    refetchInterval: 20_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 0,
   })

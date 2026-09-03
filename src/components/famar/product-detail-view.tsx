@@ -144,6 +144,7 @@ export function ProductDetailView() {
   const tags: string[] = []
   if (product.isNew) tags.push('Nuevo')
   if (product.isOnSale) tags.push('Oferta')
+  if (product.isForMen) tags.push('Hombre')
 
   const handleAddToCart = () => {
     if (isOutOfStock) return

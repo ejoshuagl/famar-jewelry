@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { selectDailyFeatured } from '@/lib/daily-featured'
+import { ensureProductAudienceColumn } from '@/lib/product-audience'
+import { withPublicThumbnails } from '@/lib/public-product'
 
 function pickRandom<T>(items: T[], count = 4) {
   const result = [...items]
@@ -15,6 +17,7 @@ const productInclude = { category: { select: { name: true, slug: true } } } as c
 
 export async function GET() {
   try {
+    await ensureProductAudienceColumn()
     const [eligible, newCandidates, bestCandidates] = await Promise.all([
       db.product.findMany({
         where: { visible: true, status: 'available', stock: { gt: 0 } },
@@ -41,9 +44,9 @@ export async function GET() {
     const featuredById = new Map(featuredRows.map((product) => [product.id, product]))
 
     return NextResponse.json({
-      featuredProducts: featuredIds.map((id) => featuredById.get(id)).filter(Boolean),
-      newProducts: pickRandom(newCandidates),
-      bestSelling: pickRandom(bestCandidates),
+      featuredProducts: featuredIds.map((id) => featuredById.get(id)).filter(Boolean).map(withPublicThumbnails),
+      newProducts: pickRandom(newCandidates).map(withPublicThumbnails),
+      bestSelling: pickRandom(bestCandidates).map(withPublicThumbnails),
     }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
     console.error('GET /api/home-products error:', error)

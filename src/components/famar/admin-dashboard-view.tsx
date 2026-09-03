@@ -87,8 +87,8 @@ export function AdminDashboardView() {
     enabled: !!adminName,
     staleTime: 0,
     gcTime: 5 * 60_000,
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: true,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     placeholderData: (previousData) => previousData,
   })

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { db } from '@/lib/db'
+import { parseVariants } from '@/lib/product-variants'
 
 export const runtime = 'nodejs'
 
@@ -10,18 +11,22 @@ function dataUriBuffer(source: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params
-    const product = await db.product.findUnique({ where: { id }, select: { mainImage: true } })
-    if (!product?.mainImage) return new NextResponse(null, { status: 404 })
+    const product = await db.product.findUnique({ where: { id }, select: { mainImage: true, variants: true } })
+    const variantId = new URL(request.url).searchParams.get('variant')
+    const source = variantId
+      ? parseVariants(product?.variants).find((variant) => variant.id === variantId)?.image
+      : product?.mainImage
+    if (!source) return new NextResponse(null, { status: 404 })
 
-    let input = dataUriBuffer(product.mainImage)
-    if (!input && /^https?:\/\//.test(product.mainImage)) {
-      const response = await fetch(product.mainImage, { signal: AbortSignal.timeout(8_000) })
-      if (!response.ok) return NextResponse.redirect(product.mainImage)
+    let input = dataUriBuffer(source)
+    if (!input && /^https?:\/\//.test(source)) {
+      const response = await fetch(source, { signal: AbortSignal.timeout(8_000) })
+      if (!response.ok) return NextResponse.redirect(source)
       input = Buffer.from(await response.arrayBuffer())
     }
     if (!input) return new NextResponse(null, { status: 404 })

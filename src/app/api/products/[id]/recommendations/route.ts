@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { ensureProductAudienceColumn } from '@/lib/product-audience'
+import { withPublicThumbnails } from '@/lib/public-product'
 
 const complementaryCategories: Record<string, string[]> = {
   aretes: ['collares', 'pulseras', 'anillos', 'sets'],
@@ -42,6 +44,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureProductAudienceColumn()
     const { id } = await params
     const requestedLimit = Number(new URL(request.url).searchParams.get('limit') || 8)
     const limit = Math.min(Math.max(requestedLimit, 1), 12)
@@ -130,7 +133,7 @@ export async function GET(
       selectedIds.add(product.id)
     }
 
-    return NextResponse.json({ products: recommendations })
+    return NextResponse.json({ products: recommendations.map(withPublicThumbnails) })
   } catch (error) {
     console.error('GET /api/products/[id]/recommendations error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -4,12 +4,15 @@ import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
+import { ensureProductAudienceColumn } from '@/lib/product-audience'
+import { persistProductGallery, persistProductImage, persistVariantImages } from '@/lib/product-image-storage'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureProductAudienceColumn()
     const { id } = await params
     const product = await db.product.findUnique({
       where: { id },
@@ -30,6 +33,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureProductAudienceColumn()
     const admin = requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -41,7 +45,7 @@ export async function PUT(
     const {
       name, description, categoryId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, variants, isFeatured,
-      isNew, isOnSale, visible, featuredExcluded,
+      isNew, isOnSale, isForMen, visible, featuredExcluded,
     } = body
 
     // Validaciones básicas
@@ -55,8 +59,11 @@ export async function PUT(
       return NextResponse.json({ error: 'Nombre demasiado largo' }, { status: 400 })
     }
     const parsedVariants = variants !== undefined ? parseVariants(variants) : undefined
-    const stockCount = parsedVariants?.length
-      ? variantsStock(parsedVariants)
+    const storedMainImage = mainImage !== undefined ? await persistProductImage(mainImage) : undefined
+    const storedImages = images !== undefined ? await persistProductGallery(images) : undefined
+    const storedVariants = parsedVariants !== undefined ? await persistVariantImages(parsedVariants) : undefined
+    const stockCount = storedVariants?.length
+      ? variantsStock(storedVariants)
       : stock !== undefined ? Math.max(0, Math.min(parseInt(stock) || 0, 100000)) : undefined
 
     const previous = await db.product.findUnique({ where: { id } })
@@ -96,14 +103,15 @@ export async function PUT(
           // El estado se deriva del stock, no se cambia a mano
           status: stockCount <= 0 ? 'out_of_stock' : 'available',
         }),
-        ...(mainImage !== undefined && { mainImage }),
+        ...(storedMainImage !== undefined && { mainImage: storedMainImage }),
         ...(imageHash !== undefined && { imageHash }),
-        ...(images !== undefined && { images: images ? JSON.stringify(images) : null }),
-        ...(variants !== undefined && { variants: parsedVariants?.length ? JSON.stringify(parsedVariants) : null }),
+        ...(storedImages !== undefined && { images: storedImages.length ? JSON.stringify(storedImages) : null }),
+        ...(storedVariants !== undefined && { variants: storedVariants.length ? JSON.stringify(storedVariants) : null }),
         ...(isFeatured !== undefined && { isFeatured: !!isFeatured }),
         ...(featuredExcluded !== undefined && { featuredExcluded: !!featuredExcluded }),
         ...(isNew !== undefined && { isNew: !!isNew }),
         ...(isOnSale !== undefined && { isOnSale: !!isOnSale }),
+        ...(isForMen !== undefined && { isForMen: !!isForMen }),
         ...(visible !== undefined && { visible: !!visible }),
         },
         include: { category: { select: { name: true, slug: true } } },
@@ -119,6 +127,7 @@ export async function PUT(
     if (previous.featuredExcluded !== product.featuredExcluded) changes.push('exclusión de destacados')
     if (previous.isNew !== product.isNew) changes.push('nuevo')
     if (previous.isOnSale !== product.isOnSale) changes.push('oferta')
+    if (previous.isForMen !== product.isForMen) changes.push('para hombres')
     if (previous.categoryId !== product.categoryId) changes.push(`categoría y código ${previous.code}→${product.code}`)
     await auditLog({
       action: 'update',
@@ -143,6 +152,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await ensureProductAudienceColumn()
     const admin = requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

@@ -78,6 +78,7 @@ interface ProductForm {
   featuredExcluded: boolean
   isNew: boolean
   isOnSale: boolean
+  isForMen: boolean
   visible: boolean
   variants: ProductVariant[]
 }
@@ -86,7 +87,7 @@ const emptyForm: ProductForm = {
   name: '', code: '', description: '', categoryId: '',
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
-  galleryUrls: '', isFeatured: false, featuredExcluded: false, isNew: false, isOnSale: false,
+  galleryUrls: '', isFeatured: false, featuredExcluded: false, isNew: false, isOnSale: false, isForMen: false,
   visible: true, variants: [],
 }
 
@@ -145,6 +146,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
         {product.featuredExcluded && <Badge variant="outline" className="text-[10px] px-1 py-0">Excluido</Badge>}
         {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
         {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
+        {product.isForMen && <Badge variant="outline" className="text-[10px] px-1 py-0">Hombre</Badge>}
         {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
       </div>
       <div className="flex min-w-0 items-center justify-between gap-2 mt-3">
@@ -426,6 +428,7 @@ export function AdminProductsView() {
       featuredExcluded: product.featuredExcluded as boolean,
       isNew: product.isNew as boolean,
       isOnSale: product.isOnSale as boolean,
+      isForMen: product.isForMen as boolean,
       visible: product.visible !== false,
       variants: parseVariants(product.variants),
     })
@@ -514,6 +517,7 @@ export function AdminProductsView() {
               <SelectItem value="daily-featured">Destacados de hoy</SelectItem>
               <SelectItem value="new">Nuevos</SelectItem>
               <SelectItem value="sale">En Oferta</SelectItem>
+              <SelectItem value="men">Para hombres</SelectItem>
               <SelectItem value="out_of_stock">Agotados</SelectItem>
               <SelectItem value="hidden">Ocultos</SelectItem>
             </SelectContent>
@@ -675,6 +679,7 @@ export function AdminProductsView() {
                               {product.featuredExcluded && <Badge variant="outline" className="text-[10px] px-1 py-0">Excluido</Badge>}
                               {product.isNew && <Badge variant="secondary" className="text-[10px] px-1 py-0">Nuevo</Badge>}
                               {product.isOnSale && <Badge variant="destructive" className="text-[10px] px-1 py-0">Oferta</Badge>}
+                              {product.isForMen && <Badge variant="outline" className="text-[10px] px-1 py-0">Hombre</Badge>}
                               {product.visible === false && <Badge variant="outline" className="text-[10px] px-1 py-0">Oculto</Badge>}
                             </div>
                           </div>
@@ -987,6 +992,14 @@ export function AdminProductsView() {
                   <div className="flex items-center gap-3">
                     <Switch checked={form.isOnSale} onCheckedChange={(v) => updateForm('isOnSale', v)} />
                     <Label>En Oferta</Label>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      id="product-for-men"
+                      checked={form.isForMen}
+                      onCheckedChange={(value) => updateForm('isForMen', value === true)}
+                    />
+                    <Label htmlFor="product-for-men">Para hombres</Label>
                   </div>
                   <div className="flex items-center gap-3">
                     <Switch checked={form.visible} onCheckedChange={(v) => updateForm('visible', v)} />

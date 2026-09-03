@@ -42,6 +42,7 @@ model Product {
   featuredExcluded Boolean  @default(false)
   isNew            Boolean  @default(false)
   isOnSale         Boolean  @default(false)
+  isForMen         Boolean  @default(false)
   salesCount       Int      @default(0)
   visible          Boolean  @default(true) // shown on the public site
   createdAt        DateTime @default(now())

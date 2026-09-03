@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auditLog } from '@/lib/admin-auth'
 import { requireAdmin } from '@/lib/admin-auth'
+import { ensureProductAudienceColumn } from '@/lib/product-audience'
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureProductAudienceColumn()
     const admin = requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

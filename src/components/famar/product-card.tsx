@@ -33,6 +33,7 @@ export interface ProductData {
   isFeatured?: boolean
   isNew?: boolean
   isOnSale?: boolean
+  isForMen?: boolean
   material?: string | null
   weight?: string | null
   dimensions?: string | null
@@ -106,6 +107,7 @@ function getTags(product: ProductData): string[] {
   const tags: string[] = []
   if (product.isNew) tags.push('Nuevo')
   if (product.isOnSale) tags.push('Oferta')
+  if (product.isForMen) tags.push('Hombre')
   if (product.stock > 0 && product.stock <= 3 && product.status === 'available') tags.push('Últimas unidades')
   if (product.status === 'out_of_stock') tags.push('Agotado')
   return tags

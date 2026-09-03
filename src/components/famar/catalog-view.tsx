@@ -28,6 +28,7 @@ export function CatalogView() {
     new: 'Nuevos ingresos',
     'best-selling': 'Más vendidos',
     sale: 'En oferta',
+    men: 'Para hombres',
   }
 
   const buildQuery = useCallback(() => {
@@ -37,6 +38,7 @@ export function CatalogView() {
     if (catalogFilter === 'featured') params.set('featured', 'true')
     if (catalogFilter === 'new') params.set('new', 'true')
     if (catalogFilter === 'sale') params.set('sale', 'true')
+    if (catalogFilter === 'men') params.set('men', 'true')
     if (campaignFilter) params.set('campaign', campaignFilter.id)
     params.set('sort', catalogFilter === 'best-selling' ? 'best-selling' : sort)
     params.set('page', page.toString())
@@ -147,6 +149,7 @@ export function CatalogView() {
           ['featured', 'Destacados'],
           ['new', 'Nuevos'],
           ['sale', 'En Oferta'],
+          ['men', 'Para hombres'],
         ] as const).map(([value, label]) => (
           <Button
             key={value}

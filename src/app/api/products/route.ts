@@ -7,9 +7,13 @@ import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { ensureProductRelations } from '@/lib/relations'
 import { boundedPositiveInt } from '@/lib/pagination'
 import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
+import { ensureProductAudienceColumn } from '@/lib/product-audience'
+import { persistProductGallery, persistProductImage, persistVariantImages } from '@/lib/product-image-storage'
+import { withPublicThumbnails } from '@/lib/public-product'
 
 export async function GET(request: NextRequest) {
   try {
+    await ensureProductAudienceColumn()
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
@@ -26,7 +30,7 @@ export async function GET(request: NextRequest) {
       if (!product || (!product.visible && !admin)) {
         return NextResponse.json({ product: null })
       }
-      return NextResponse.json({ product })
+      return NextResponse.json({ product: admin ? product : withPublicThumbnails(product) })
     }
 
     const category = searchParams.get('category') || ''
@@ -34,6 +38,7 @@ export async function GET(request: NextRequest) {
     const featured = searchParams.get('featured') === 'true'
     const isNew = searchParams.get('new') === 'true'
     const isOnSale = searchParams.get('sale') === 'true'
+    const isForMen = searchParams.get('men') === 'true'
     const page = boundedPositiveInt(searchParams.get('page'), 1, 100000)
     const limit = boundedPositiveInt(searchParams.get('limit'), 12, admin ? 500 : 100)
     const sort = searchParams.get('sort') || 'relevance'
@@ -63,6 +68,7 @@ export async function GET(request: NextRequest) {
     if (flag === 'featured') where.isFeatured = true
     if (flag === 'new') where.isNew = true
     if (flag === 'sale') where.isOnSale = true
+    if (flag === 'men') where.isForMen = true
     if (flag === 'available') {
       where.status = 'available'
       where.stock = { gt: 0 }
@@ -77,19 +83,28 @@ export async function GET(request: NextRequest) {
       disponible: 'available', disponibles: 'available',
       agotado: 'out_of_stock', agotados: 'out_of_stock',
       oculto: 'hidden', ocultos: 'hidden',
+      hombre: 'men', hombres: 'men', masculino: 'men', masculinos: 'men',
+      caballero: 'men', caballeros: 'men',
     }
-    const searchFlag = flagWords[search.toLowerCase()]
+    const normalizedSearch = search.trim().toLowerCase()
+    const menWordPattern = /\b(hombre|hombres|masculino|masculinos|caballero|caballeros)\b/i
+    const searchesForMen = menWordPattern.test(normalizedSearch)
+    const textSearch = searchesForMen
+      ? search.replace(new RegExp(menWordPattern.source, 'gi'), ' ').replace(/\s+/g, ' ').trim()
+      : search
+    const searchFlag = flagWords[normalizedSearch]
     if (searchFlag === 'new') where.isNew = true
     if (searchFlag === 'featured') where.isFeatured = true
     if (searchFlag === 'sale') where.isOnSale = true
+    if (searchFlag === 'men' || searchesForMen) where.isForMen = true
     if (searchFlag === 'available') {
       where.status = 'available'
       where.stock = { gt: 0 }
     }
     if (searchFlag === 'out_of_stock') where.status = 'out_of_stock'
     if (searchFlag === 'hidden' && admin) where.visible = false
-    if (search && !searchFlag) {
-      const q = { contains: search, mode: 'insensitive' }
+    if (textSearch && !searchFlag) {
+      const q = { contains: textSearch, mode: 'insensitive' }
       where.OR = [
         { name: q },
         { code: q },
@@ -111,6 +126,9 @@ export async function GET(request: NextRequest) {
     }
     if (isOnSale) {
       where.isOnSale = true
+    }
+    if (isForMen) {
+      where.isForMen = true
     }
 
     // Always prioritize in-stock products first, then apply selected sort
@@ -134,7 +152,9 @@ export async function GET(request: NextRequest) {
           select: {
             id: true, code: true, name: true, categoryId: true, price: true,
             stock: true, status: true, isFeatured: true, featuredExcluded: true,
-            isNew: true, isOnSale: true, visible: true, updatedAt: true,
+            isNew: true, isOnSale: true, isForMen: true, visible: true, updatedAt: true,
+            description: true, material: true, weight: true, dimensions: true,
+            color: true, images: true, variants: true,
             category: { select: { name: true, slug: true } },
           },
         }),
@@ -146,8 +166,7 @@ export async function GET(request: NextRequest) {
       const dailyIds = new Set(selectDailyFeatured(eligibleIds).map((product) => product.id))
       return NextResponse.json({
         products: products.map((product) => ({
-          ...product,
-          mainImage: `/api/products/${product.id}/thumbnail?v=${product.updatedAt.getTime()}`,
+          ...withPublicThumbnails(product),
           isDailyFeatured: dailyIds.has(product.id),
         })),
         total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -177,7 +196,7 @@ export async function GET(request: NextRequest) {
       const pageStart = (page - 1) * limit
 
       return NextResponse.json({
-        products: dailyProducts.slice(pageStart, pageStart + limit),
+        products: dailyProducts.slice(pageStart, pageStart + limit).map(withPublicThumbnails),
         total: dailyCount,
         page,
         limit,
@@ -209,7 +228,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      products: responseProducts,
+      products: admin ? responseProducts : responseProducts.map(withPublicThumbnails),
       total,
       page,
       limit,
@@ -223,6 +242,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureProductAudienceColumn()
     await ensureProductRelations()
     const admin = requireAdmin(request, 'products')
     if (!admin) {
@@ -234,7 +254,7 @@ export async function POST(request: NextRequest) {
     const {
       name, description, categoryId, material, weight, dimensions,
       color, price, stock, mainImage, images, variants, isFeatured,
-      isNew, isOnSale, visible, featuredExcluded,
+      isNew, isOnSale, isForMen, visible, featuredExcluded,
     } = body
 
     if (!name || !categoryId || price == null) {
@@ -250,8 +270,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Nombre demasiado largo' }, { status: 400 })
     }
     const parsedVariants = parseVariants(variants)
-    const stockCount = parsedVariants.length
-      ? variantsStock(parsedVariants)
+    const storedMainImage = await persistProductImage(mainImage)
+    const storedImages = await persistProductGallery(images)
+    const storedVariants = await persistVariantImages(parsedVariants)
+    const stockCount = storedVariants.length
+      ? variantsStock(storedVariants)
       : Math.max(0, Math.min(parseInt(stock) || 0, 100000))
 
     const imageHash = await tryCreatePerceptualHash(mainImage)
@@ -265,11 +288,12 @@ export async function POST(request: NextRequest) {
         data: {
           name, code: generatedCode, description, categoryId, material, weight, dimensions,
           color, price: priceValue, stock: stockCount,
-          status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage,
+          status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage: storedMainImage,
           imageHash,
-          images: images ? JSON.stringify(images) : null,
-          variants: parsedVariants.length ? JSON.stringify(parsedVariants) : null,
+          images: storedImages.length ? JSON.stringify(storedImages) : null,
+          variants: storedVariants.length ? JSON.stringify(storedVariants) : null,
           isFeatured: !!isFeatured, isNew: !!isNew, isOnSale: !!isOnSale,
+          isForMen: !!isForMen,
           featuredExcluded: !!featuredExcluded,
           visible: visible === undefined ? true : !!visible,
         },
