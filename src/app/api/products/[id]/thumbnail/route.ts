@@ -33,8 +33,10 @@ export async function GET(
 
     const thumbnail = await sharp(input)
       .rotate()
-      .resize(160, 160, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 72 })
+      // Product cards can reach ~300 CSS pixels and many phones render at
+      // 2x/3x density. A 160 px source looked soft after being enlarged.
+      .resize(640, 640, { fit: 'cover', withoutEnlargement: true })
+      .webp({ quality: 82, smartSubsample: true })
       .toBuffer()
 
     return new NextResponse(new Uint8Array(thumbnail), {

@@ -8,16 +8,17 @@ type PublicProduct = {
 }
 
 export function withPublicThumbnails<T extends PublicProduct>(product: T) {
-  const version = product.updatedAt instanceof Date ? `?v=${product.updatedAt.getTime()}` : ''
-  const variantSeparator = version ? '&' : '?'
+  const parameters = new URLSearchParams({ thumbnailVersion: '2' })
+  if (product.updatedAt instanceof Date) parameters.set('v', product.updatedAt.getTime().toString())
+  const thumbnailUrl = `/api/products/${product.id}/thumbnail?${parameters.toString()}`
   return {
     ...product,
-    mainImage: `/api/products/${product.id}/thumbnail${version}`,
+    mainImage: thumbnailUrl,
     variants: product.variants
       ? JSON.stringify(parseVariants(product.variants).map((variant) => ({
           ...variant,
           image: variant.image
-            ? `/api/products/${product.id}/thumbnail${version}${variantSeparator}variant=${encodeURIComponent(variant.id)}`
+            ? `${thumbnailUrl}&variant=${encodeURIComponent(variant.id)}`
             : null,
         })))
       : product.variants,
