@@ -33,6 +33,8 @@ export function CatalogView() {
 
   const buildQuery = useCallback(() => {
     const params = new URLSearchParams()
+    params.set('flag', 'available')
+    params.set('status', 'available')
     if (localSearch) params.set('search', localSearch)
     if (selectedCategory) params.set('category', selectedCategory)
     if (catalogFilter === 'featured') params.set('featured', 'true')

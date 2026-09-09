@@ -16,14 +16,15 @@ interface CategoryChipsProps {
   categories: Category[]
   selected: string | null
   onSelect: (slug: string | null) => void
+  navigateOnSelect?: boolean
 }
 
-export function CategoryChips({ categories, selected, onSelect }: CategoryChipsProps) {
-  const { navigate, setSearch } = useAppStore()
+export function CategoryChips({ categories, selected, onSelect, navigateOnSelect = true }: CategoryChipsProps) {
+  const navigate = useAppStore((state) => state.navigate)
 
   const handleSelect = (slug: string | null) => {
     onSelect(slug)
-    if (slug) {
+    if (slug && navigateOnSelect) {
       navigate('catalog')
     }
   }

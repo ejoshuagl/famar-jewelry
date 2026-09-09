@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SkeletonGrid } from './skeleton-grid'
 import { EmptyState } from './empty-state'
+import { CategoryChips } from './category-chips'
 import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { Bell } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
@@ -14,12 +16,22 @@ import type { ProductData } from './product-card'
 
 export function OutOfStockView() {
   const { navigate, selectProduct } = useAppStore()
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const { data, isLoading } = useQuery({
-    queryKey: ['products', 'out-of-stock'],
+    queryKey: ['products', 'out-of-stock', selectedCategory],
     queryFn: async () => {
-      const res = await fetch('/api/products?status=out_of_stock&limit=100')
+      const params = new URLSearchParams({ status: 'out_of_stock', limit: '100' })
+      if (selectedCategory) params.set('category', selectedCategory)
+      const res = await fetch(`/api/products?${params.toString()}`)
       const data = await res.json()
       return data.products as ProductData[]
+    },
+  })
+  const { data: categories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await fetch('/api/categories')
+      return res.json()
     },
   })
 
@@ -47,12 +59,21 @@ Gracias!`
         </p>
       </div>
 
+      {categories && (
+        <CategoryChips
+          categories={categories}
+          selected={selectedCategory}
+          onSelect={setSelectedCategory}
+          navigateOnSelect={false}
+        />
+      )}
+
       {isLoading ? (
         <SkeletonGrid count={8} />
       ) : !data || data.length === 0 ? (
         <EmptyState
-          title="No hay productos agotados"
-          description="¡Buenas noticias! Todos nuestros productos están disponibles."
+          title={selectedCategory ? 'No hay productos agotados en esta categoría' : 'No hay productos agotados'}
+          description={selectedCategory ? 'Selecciona otra categoría para continuar.' : '¡Buenas noticias! Todos nuestros productos están disponibles.'}
         />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
