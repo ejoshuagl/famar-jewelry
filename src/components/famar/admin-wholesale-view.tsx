@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Save, Trash2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -13,16 +14,21 @@ interface Tier { min: number; discount: number; label: string }
 
 export function AdminWholesaleView() {
   const token = useAuthStore((state) => state.token)
+  const queryClient = useQueryClient()
   const [tiers, setTiers] = useState<Tier[]>([])
   const [saleDiscount, setSaleDiscount] = useState(25)
   const [saving, setSaving] = useState(false)
-  useEffect(() => { fetch('/api/commerce-settings').then((r) => r.json()).then((data) => { setTiers(data.tiers || []); setSaleDiscount(Number(data.saleDiscount ?? 25)) }) }, [])
+  useEffect(() => { fetch('/api/commerce-settings', { cache: 'no-store' }).then((r) => r.json()).then((data) => { setTiers(data.tiers || []); setSaleDiscount(Number(data.saleDiscount ?? 25)) }) }, [])
 
   const save = async () => {
     setSaving(true)
     const response = await fetch('/api/commerce-settings', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' }, body: JSON.stringify({ tiers, saleDiscount }) })
     setSaving(false)
     if (!response.ok) return toast.error('No se pudo guardar la configuración')
+    const updatedSettings = await response.json() as { tiers: Tier[]; saleDiscount: number }
+    setTiers(updatedSettings.tiers)
+    setSaleDiscount(updatedSettings.saleDiscount)
+    queryClient.setQueryData(['commerce-settings'], updatedSettings)
     toast.success('Configuración de descuentos actualizada')
   }
 

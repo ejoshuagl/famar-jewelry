@@ -7,11 +7,11 @@ export function usePricingSettings() {
   const query = useQuery({
     queryKey: ['commerce-settings'],
     queryFn: async () => {
-      const response = await fetch('/api/commerce-settings')
+      const response = await fetch('/api/commerce-settings', { cache: 'no-store' })
       if (!response.ok) throw new Error('No se pudo cargar la configuración de precios')
       return response.json() as Promise<{ saleDiscount: number }>
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
   })
 
   return { ...query, saleDiscount: Number(query.data?.saleDiscount ?? DEFAULT_SALE_DISCOUNT) }
