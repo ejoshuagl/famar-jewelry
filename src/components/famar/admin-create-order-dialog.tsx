@@ -56,6 +56,8 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saleDiscount, setSaleDiscount] = useState(25)
+  const [quote, setQuote] = useState<{ key: string; total: number; amount: number; percent: number; source: string | null; couponError?: string; tiers: Array<{ min: number; discount: number }> } | null>(null)
+  const [quoteError, setQuoteError] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -122,6 +124,33 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
   const normalSubtotal = items.filter((item) => !item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
   const offerSubtotal = items.filter((item) => item.isOnSale).reduce((sum, item) => sum + salePrice(item.price, true, saleDiscount) * item.quantity, 0)
   const subtotal = normalSubtotal + offerSubtotal
+  const quoteKey = JSON.stringify([normalSubtotal, offerSubtotal, couponCode.trim(), applyWholesaleDiscount])
+  const needsQuote = items.length > 0 && (applyWholesaleDiscount || Boolean(couponCode.trim()))
+  const currentQuote = quote?.key === quoteKey ? quote : null
+  const calculating = needsQuote && !currentQuote && !quoteError
+  const nextTier = currentQuote?.tiers.filter((tier) => tier.discount > 0 && tier.min > normalSubtotal).sort((a, b) => a.min - b.min)[0]
+
+  useEffect(() => {
+    if (!open || !needsQuote) return
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setQuoteError('')
+      try {
+        const [eligibleSubtotal, saleSubtotal, code, includeWholesale] = JSON.parse(quoteKey)
+        const response = await fetch('/api/discount/validate', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eligibleSubtotal, saleSubtotal, code, includeWholesale }),
+          signal: controller.signal,
+        })
+        if (!response.ok) throw new Error('No se pudo calcular el descuento. Modifica el pedido para reintentar.')
+        const data = await response.json()
+        if (!controller.signal.aborted) setQuote({ ...data, key: quoteKey })
+      } catch (error) {
+        if (!controller.signal.aborted) setQuoteError(error instanceof Error ? error.message : 'No se pudo calcular el total')
+      }
+    }, 300)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [open, needsQuote, quoteKey])
 
   const save = async () => {
     if (!customerName.trim() || !customerCity.trim()) return toast.error('Completa el nombre y la ciudad')
@@ -171,7 +200,7 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
 
         <div className="rounded-lg border p-3">
           <div className="flex items-center justify-between gap-4">
-            <div><Label>Aplicar descuento mayorista</Label><p className="text-xs text-muted-foreground">Usará los porcentajes configurados según el subtotal.</p></div>
+            <div><Label>Aplicar descuento mayorista</Label><p className="text-xs text-muted-foreground">El mínimo se calcula solo con productos sin oferta.</p></div>
             <Switch checked={applyWholesaleDiscount} onCheckedChange={setApplyWholesaleDiscount} />
           </div>
         </div>
@@ -209,6 +238,14 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
         <div className="rounded-lg bg-primary/10 p-4">
           {offerSubtotal > 0 && <div className="mb-2 space-y-1 border-b border-primary/20 pb-2 text-sm"><div className="flex justify-between"><span>Productos normales</span><span>{formatPrice(normalSubtotal)}</span></div><div className="flex justify-between text-destructive"><span>Productos en oferta (-{saleDiscount}%)</span><span>{formatPrice(offerSubtotal)}</span></div></div>}
           <div className="flex items-center justify-between"><span className="font-medium">Subtotal</span><strong className="text-xl text-primary">{formatPrice(subtotal)}</strong></div>
+          <div className="mt-3 border-t border-primary/20 pt-3" aria-live="polite">
+            {calculating ? <p className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" />Calculando descuento…</p> : quoteError && needsQuote ? <p className="text-sm text-destructive">{quoteError}</p> : <>
+              {needsQuote && currentQuote && currentQuote.amount > 0 && <div className="mb-2 flex justify-between gap-2 text-sm"><span>{currentQuote.source} ({currentQuote.percent}%)</span><span>-{formatPrice(currentQuote.amount)}</span></div>}
+              {needsQuote && currentQuote?.couponError && <p className="mb-2 text-sm text-destructive">{currentQuote.couponError}</p>}
+              {applyWholesaleDiscount && currentQuote?.amount === 0 && nextTier && <p className="mb-2 text-sm text-muted-foreground">Faltan {formatPrice(nextTier.min - normalSubtotal)} en productos normales para mayorista ({nextTier.discount}%).</p>}
+              <div className="flex justify-between font-semibold"><span>Total</span><span>{formatPrice(needsQuote && currentQuote ? currentQuote.total : subtotal)}</span></div>
+            </>}
+          </div>
         </div>
         {(applyWholesaleDiscount || couponCode.trim()) && <p className="-mt-3 text-xs text-muted-foreground">El cupón y el total definitivo se validarán al guardar el pedido.</p>}
         <Button onClick={save} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{saving ? 'Creando pedido…' : 'Crear pedido pendiente'}</Button>

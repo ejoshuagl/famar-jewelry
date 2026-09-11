@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   const saleSubtotal = Number.isFinite(suppliedSaleSubtotal) && suppliedSaleSubtotal >= 0
     ? suppliedSaleSubtotal
     : salePrice(saleBaseSubtotal, saleBaseSubtotal > 0, saleDiscount)
-  const result = await calculateDiscount(eligibleSubtotal, String(body.code || ''), saleSubtotal)
+  const result = await calculateDiscount(eligibleSubtotal, String(body.code || ''), saleSubtotal, body.includeWholesale !== false)
   if (body.code && !result.validCoupon) {
     return NextResponse.json({ ...result, saleDiscount, couponError: 'Cupón inválido, vencido o no cumple el mínimo de compra sin contar productos en oferta' })
   }

@@ -305,6 +305,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           <h3 className="allow-text-selection font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
             {product.name}
           </h3>
+          <p className="allow-text-selection mt-1 text-[10px] leading-tight text-muted-foreground sm:text-xs">{product.code}</p>
           <div className="mt-auto pt-2 flex items-end justify-between gap-2">
             <span className="flex min-w-0 flex-col items-start gap-0.5 text-base font-bold leading-none text-primary sm:block">
               {product.isOnSale && <span className="text-[10px] font-normal text-muted-foreground line-through sm:mr-1.5 sm:text-xs">{formatPrice(product.price)}</span>}
