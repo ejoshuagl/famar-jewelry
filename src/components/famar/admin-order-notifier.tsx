@@ -9,7 +9,7 @@ const LAST_ORDER_KEY = 'famar-admin-last-order'
 
 export function AdminOrderNotifier() {
   const queryClient = useQueryClient()
-  const token = useAuthStore((state) => state.token)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const adminName = useAuthStore((state) => state.adminName)
 
   useQuery({
@@ -17,7 +17,7 @@ export function AdminOrderNotifier() {
     queryFn: async () => {
       const response = await fetch('/api/orders?limit=1&page=1', {
         cache: 'no-store',
-        headers: { 'x-admin-name': adminName || '', 'x-admin-token': token || '' },
+        headers: { 'x-admin-name': adminName || '' },
       })
       if (!response.ok) throw new Error('No se pudo consultar pedidos nuevos')
       const data = await response.json() as { orders?: Array<{ id: string; orderNumber: string; customerName: string; total: number }> }
@@ -37,7 +37,7 @@ export function AdminOrderNotifier() {
       }
       return latest.id
     },
-    enabled: Boolean(token),
+    enabled: isAuthenticated,
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,

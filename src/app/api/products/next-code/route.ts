@@ -5,7 +5,7 @@ import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-code
 
 export async function GET(request: NextRequest) {
   try {
-    if (!requireAdmin(request, 'products')) {
+    if (!await requireAdmin(request, 'products')) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
     const { searchParams } = new URL(request.url)

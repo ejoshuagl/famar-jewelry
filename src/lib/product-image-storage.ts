@@ -44,7 +44,7 @@ export async function persistProductImage(source: unknown, folder = 'products') 
       'cache-control': '31536000',
       'x-upsert': 'true',
     },
-    body: image.bytes,
+    body: Buffer.from(image.bytes),
   })
   if (!response.ok) {
     console.error('Supabase image upload failed:', response.status, await response.text())

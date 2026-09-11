@@ -2,19 +2,17 @@ import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { auditLog, requireAdmin } from '@/lib/admin-auth'
 import { db } from '@/lib/db'
-import { ensureCommerceTables } from '@/lib/commerce'
 
 export async function GET(request: NextRequest) {
-  const admin = requireAdmin(request, 'coupons')
+  const admin = await requireAdmin(request, 'coupons')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const coupons = await db.$queryRawUnsafe('SELECT * FROM "DiscountCoupon" ORDER BY "createdAt" DESC')
   return NextResponse.json({ coupons })
 }
 
 export async function POST(request: NextRequest) {
-  const admin = requireAdmin(request, 'coupons')
+  const admin = await requireAdmin(request, 'coupons')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  await ensureCommerceTables()
   const body = await request.json()
   const code = String(body.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30)
   const discount = Number(body.discount); const minPurchase = Number(body.minPurchase || 0)

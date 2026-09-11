@@ -4,15 +4,14 @@ import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
-import { ensureProductAudienceColumn } from '@/lib/product-audience'
 import { persistProductGallery, persistProductImage, persistVariantImages } from '@/lib/product-image-storage'
+import { getDailySaleSelection, withDailySale } from '@/lib/daily-sales'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await ensureProductAudienceColumn()
     const { id } = await params
     const product = await db.product.findUnique({
       where: { id },
@@ -21,7 +20,28 @@ export async function GET(
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
-    return NextResponse.json(product)
+    const admin = await requireAdmin(request)
+    if (!product.visible && !admin) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+    const dailySale = await getDailySaleSelection()
+    const productWithSale = withDailySale(product, dailySale.ids)
+    if (request.nextUrl.searchParams.get('mobile') === 'true') {
+      let gallery: string[] = []
+      try { gallery = product.images ? JSON.parse(product.images) : [] } catch { gallery = [] }
+      const version = product.updatedAt.getTime()
+      const imageBase = `/api/products/${product.id}/thumbnail`
+      return NextResponse.json({
+        ...productWithSale,
+        mainImage: `${imageBase}?size=960&v=${version}`,
+        images: JSON.stringify(gallery.map((_, index) => `${imageBase}?gallery=${index}&size=960&v=${version}`)),
+        variants: JSON.stringify(parseVariants(product.variants).map((variant) => ({
+          ...variant,
+          image: variant.image ? `${imageBase}?variant=${encodeURIComponent(variant.id)}&size=960&v=${version}` : null,
+        }))),
+      }, { headers: { 'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=3600' } })
+    }
+    return NextResponse.json(productWithSale)
   } catch (error) {
     console.error('GET /api/products/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -33,8 +53,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await ensureProductAudienceColumn()
-    const admin = requireAdmin(request, 'products')
+    const admin = await requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -43,7 +62,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const {
-      name, description, categoryId, material, weight, dimensions,
+      name, description, categoryId, investmentId, material, weight, dimensions,
       color, price, stock, status, mainImage, images, variants, isFeatured,
       isNew, isOnSale, isForMen, visible, featuredExcluded,
     } = body
@@ -76,6 +95,7 @@ export async function PUT(
       : undefined
     const product = await db.$transaction(async (tx) => {
       let nextCode = previous.code
+      if (investmentId && !await tx.investment.findUnique({ where: { id: investmentId }, select: { id: true } })) throw new Error('INVESTMENT_NOT_FOUND')
       if (categoryId !== undefined && categoryId !== previous.categoryId) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
         const category = await tx.category.findUnique({
@@ -93,6 +113,7 @@ export async function PUT(
         ...(nextCode !== previous.code && { code: nextCode }),
         ...(description !== undefined && { description }),
         ...(categoryId !== undefined && { categoryId }),
+        ...(investmentId !== undefined && { investmentId: investmentId || null }),
         ...(material !== undefined && { material }),
         ...(weight !== undefined && { weight }),
         ...(dimensions !== undefined && { dimensions }),
@@ -129,6 +150,7 @@ export async function PUT(
     if (previous.isOnSale !== product.isOnSale) changes.push('oferta')
     if (previous.isForMen !== product.isForMen) changes.push('para hombres')
     if (previous.categoryId !== product.categoryId) changes.push(`categoría y código ${previous.code}→${product.code}`)
+    if (previous.investmentId !== product.investmentId) changes.push('lote de inversión')
     await auditLog({
       action: 'update',
       entity: 'product',
@@ -143,6 +165,7 @@ export async function PUT(
     if (error instanceof Error && error.message === 'CATEGORY_NOT_FOUND') {
       return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
     }
+    if (error instanceof Error && error.message === 'INVESTMENT_NOT_FOUND') return NextResponse.json({ error: 'Lote de inversión inválido' }, { status: 400 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -152,27 +175,55 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await ensureProductAudienceColumn()
-    const admin = requireAdmin(request, 'products')
+    const admin = await requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
     const adminName = admin.name
 
     const { id } = await params
-    const target = await db.product.findUnique({ where: { id } })
-    await db.orderItem.deleteMany({ where: { productId: id } })
-    await db.product.delete({ where: { id } })
-    if (target) {
-      await auditLog({
-        action: 'delete',
-        entity: 'product',
-        entityId: id,
-        admin: adminName,
-        details: `${target.name} (${target.code})`,
-      })
+    const result = await db.$transaction(async (tx) => {
+      const target = await tx.product.findUnique({ where: { id } })
+      if (!target) return null
+
+      const historicalItems = await tx.orderItem.count({ where: { productId: id } })
+      if (historicalItems > 0) {
+        const archivedVariants = parseVariants(target.variants).map((variant) => ({
+          ...variant,
+          stock: 0,
+        }))
+        const archived = await tx.product.update({
+          where: { id },
+          data: {
+            visible: false,
+            status: 'discontinued',
+            stock: 0,
+            isFeatured: false,
+            featuredExcluded: true,
+            isNew: false,
+            isOnSale: false,
+            ...(archivedVariants.length ? { variants: JSON.stringify(archivedVariants) } : {}),
+          },
+        })
+        return { target: archived, archived: true, historicalItems }
+      }
+
+      await tx.product.delete({ where: { id } })
+      return { target, archived: false, historicalItems: 0 }
+    })
+    if (!result) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
-    return NextResponse.json({ success: true })
+    await auditLog({
+      action: result.archived ? 'archive' : 'delete',
+      entity: 'product',
+      entityId: id,
+      admin: adminName,
+      details: result.archived
+        ? `${result.target.name} (${result.target.code}), conservado por ${result.historicalItems} registro(s) de pedido`
+        : `${result.target.name} (${result.target.code})`,
+    })
+    return NextResponse.json({ success: true, archived: result.archived })
   } catch (error) {
     console.error('DELETE /api/products/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

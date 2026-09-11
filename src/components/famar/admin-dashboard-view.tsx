@@ -145,6 +145,13 @@ export function AdminDashboardView() {
   ]
 
   const maxDayTotal = Math.max(...stats.salesLast7Days.map((d) => d.total), 1)
+  const chartMinWidth = salesPeriod === '30'
+    ? 900
+    : salesPeriod === '90'
+      ? 680
+      : salesPeriod === 'all'
+        ? Math.max(520, stats.salesLast7Days.length * 58)
+        : 480
   const { availableUnits, oneUnitCount, twoUnitsCount, threePlusCount, outOfStockCount, hiddenCount } = stats.availability
   const maxCatSales = Math.max(...stats.salesByCategory.map((c) => c.sales), 1)
   const funnelPeriods = [
@@ -209,19 +216,19 @@ export function AdminDashboardView() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales chart with period selector */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <Card className="min-w-0 overflow-hidden">
+          <CardHeader className="flex flex-col items-stretch gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-primary" />
               Ventas
             </CardTitle>
-            <div className="flex gap-1">
+            <div className="grid grid-cols-4 gap-1 sm:flex">
               {periods.map((p) => (
                 <Button
                   key={p.value}
                   size="sm"
                   variant={salesPeriod === p.value ? 'default' : 'ghost'}
-                  className={cn('h-7 px-2 text-xs', salesPeriod === p.value && 'bg-primary text-primary-foreground')}
+                  className={cn('h-8 min-w-0 px-1.5 text-[11px] sm:px-2 sm:text-xs', salesPeriod === p.value && 'bg-primary text-primary-foreground')}
                   onClick={() => setSalesPeriod(p.value)}
                 >
                   {p.label}
@@ -230,20 +237,29 @@ export function AdminDashboardView() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end justify-between gap-1 h-40">
-              {stats.salesLast7Days.map((d, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end min-w-0">
-                  <span className="text-[10px] text-muted-foreground truncate max-w-full">
-                    {d.total > 0 ? formatPrice(d.total) : ''}
-                  </span>
-                  <div
-                    className="w-full rounded-t-md bg-gradient-to-t from-primary/60 to-primary min-h-[4px] transition-all"
-                    style={{ height: `${Math.max((d.total / maxDayTotal) * 100, 2)}%` }}
-                    title={`${d.count} pedidos`}
-                  />
-                  <span className="text-[10px] text-muted-foreground capitalize truncate max-w-full">{d.day}</span>
+            <div className="overflow-x-auto pb-2 [scrollbar-width:thin]">
+              <div className="relative h-52" style={{ minWidth: `${chartMinWidth}px` }}>
+                <div className="pointer-events-none absolute inset-x-0 top-4 bottom-6 flex flex-col justify-between" aria-hidden="true">
+                  {[0, 1, 2, 3].map((line) => <div key={line} className="border-t border-dashed border-border/60" />)}
                 </div>
-              ))}
+                <div className="absolute inset-0 flex items-end gap-2 sm:gap-3">
+                  {stats.salesLast7Days.map((d, i) => (
+                    <div key={`${d.day}-${i}`} className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end">
+                      <div className="flex h-[calc(100%_-_1.5rem)] w-full flex-col items-center justify-end">
+                        <span className={cn('mb-1 whitespace-nowrap text-[10px] font-medium transition-opacity', d.total > 0 ? 'text-foreground' : 'opacity-0')}>
+                          {formatPrice(d.total)}
+                        </span>
+                        <div
+                          className="w-full max-w-14 rounded-t-md bg-gradient-to-t from-primary/55 to-primary shadow-[0_-2px_10px_hsl(var(--primary)/0.12)] transition-all duration-300 group-hover:brightness-110"
+                          style={{ height: `${d.total > 0 ? Math.max((d.total / maxDayTotal) * 82, 5) : 2}%` }}
+                          title={`${d.day}: ${formatPrice(d.total)} · ${d.count} ${d.count === 1 ? 'pedido' : 'pedidos'}`}
+                        />
+                      </div>
+                      <span className="mt-1 h-5 max-w-full truncate text-[10px] capitalize text-muted-foreground">{d.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

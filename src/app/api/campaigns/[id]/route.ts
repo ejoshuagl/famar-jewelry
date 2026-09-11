@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auditLog, requireAdmin } from '@/lib/admin-auth'
-import { ensureCampaignTable } from '@/lib/campaigns'
+import { getDailySaleSettings, saveDailySaleSettings } from '@/lib/daily-sales'
+import { ensurePromotionSchema } from '@/lib/promotion-schema'
 
 const ALLOWED_CTA_VIEWS = new Set(['home', 'catalog', 'out-of-stock', 'jewelry-care', 'contact', 'favorites', 'cart', 'policies'])
 
@@ -14,13 +15,14 @@ function parseEcuadorDate(value: unknown) {
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureCampaignTable()
-    const admin = requireAdmin(request, 'campaigns')
+    await ensurePromotionSchema()
+    const admin = await requireAdmin(request, 'campaigns')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const { id } = await params
     const body = await request.json()
     const startAt = parseEcuadorDate(body.startAt)
-    const endAt = parseEcuadorDate(body.endAt)
+    const indefinite = body.indefinite === true
+    const endAt = indefinite ? new Date('2099-12-31T23:59:59-05:00') : parseEcuadorDate(body.endAt)
     if (!body.title || !startAt || !endAt || endAt <= startAt) {
       return NextResponse.json({ error: 'Título o fechas inválidas' }, { status: 400 })
     }
@@ -34,6 +36,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const productIds: string[] = Array.isArray(body.productIds)
       ? Array.from(new Set(body.productIds.filter((productId: unknown): productId is string => typeof productId === 'string' && productId.length > 0)))
       : []
+    const couponId = typeof body.couponId === 'string' && body.couponId ? body.couponId : null
+    const investmentIds: string[] = Array.isArray(body.investmentIds)
+      ? Array.from(new Set(body.investmentIds.filter((investmentId: unknown): investmentId is string => typeof investmentId === 'string' && investmentId.length > 0)))
+      : []
+    if (couponId && !await db.discountCoupon.findUnique({ where: { id: couponId }, select: { id: true } })) return NextResponse.json({ error: 'Cupón inválido' }, { status: 400 })
+    if (investmentIds.length && await db.investment.count({ where: { id: { in: investmentIds } } }) !== investmentIds.length) return NextResponse.json({ error: 'Una importación seleccionada ya no existe' }, { status: 400 })
     const campaign = await db.campaign.update({
       where: { id },
       data: {
@@ -49,29 +57,41 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         productIds: productIds.length ? JSON.stringify(productIds) : null,
         startAt,
         endAt,
+        indefinite,
         active: body.active !== false,
         priority: Number.isFinite(Number(body.priority)) ? Number(body.priority) : 0,
+        couponId,
         products: {
           deleteMany: {},
           create: productIds.map((productId) => ({ productId })),
         },
+        investments: {
+          deleteMany: {},
+          create: investmentIds.map((investmentId) => ({ investmentId })),
+        },
       },
-      include: { products: { select: { productId: true } } },
+      include: { products: { select: { productId: true } }, investments: { select: { investmentId: true } }, coupon: { select: { id: true, code: true, discount: true } } },
     })
+    const dailySale = await getDailySaleSettings()
+    if (body.dailySaleLinked === true && dailySale.campaignId !== id) await saveDailySaleSettings({ ...dailySale, campaignId: id })
+    if (body.dailySaleLinked !== true && dailySale.campaignId === id) await saveDailySaleSettings({ ...dailySale, campaignId: null })
     await auditLog({ action: 'update', entity: 'campaign', entityId: id, admin: admin.name, details: campaign.title })
-    return NextResponse.json({ ...campaign, productIds: campaign.products.map((product) => product.productId), products: undefined })
+    return NextResponse.json({ ...campaign, productIds: campaign.products.map((product) => product.productId), investmentIds: campaign.investments.map((row) => row.investmentId), products: undefined, investments: undefined })
   } catch (error) {
     console.error('PUT /api/campaigns/[id] error:', error)
+    if (error instanceof Error && error.message.includes('Unique constraint')) return NextResponse.json({ error: 'Ese cupón ya está asociado con otra campaña' }, { status: 409 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await ensureCampaignTable()
-    const admin = requireAdmin(request, 'campaigns')
+    await ensurePromotionSchema()
+    const admin = await requireAdmin(request, 'campaigns')
     if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     const { id } = await params
+    const dailySale = await getDailySaleSettings()
+    if (dailySale.campaignId === id) await saveDailySaleSettings({ ...dailySale, campaignId: null })
     const campaign = await db.campaign.delete({ where: { id } })
     await auditLog({ action: 'delete', entity: 'campaign', entityId: id, admin: admin.name, details: campaign.title })
     return NextResponse.json({ success: true })

@@ -20,6 +20,7 @@ import {
   Percent,
   TicketPercent,
   Users,
+  HandCoins,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AdminOrderNotifier } from './admin-order-notifier'
@@ -35,6 +36,7 @@ const sidebarItems: { label: string; view: AppView; permission: string; icon: Re
   { label: 'Temas y estilos', view: 'admin-themes', permission: 'themes', icon: <Palette className="h-4 w-4" /> },
   { label: 'Mayoristas', view: 'admin-wholesale', permission: 'wholesale', icon: <Percent className="h-4 w-4" /> },
   { label: 'Cupones', view: 'admin-coupons', permission: 'coupons', icon: <TicketPercent className="h-4 w-4" /> },
+  { label: 'Inversiones', view: 'admin-investments', permission: 'investments', icon: <HandCoins className="h-4 w-4" /> },
   { label: 'Usuarios', view: 'admin-users', permission: 'users', icon: <Users className="h-4 w-4" /> },
 ]
 
@@ -100,8 +102,12 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const { navigate } = useAppStore()
-  const { adminName, isAuthenticated, can } = useAuthStore()
+  const { adminName, isAuthenticated, can, refreshSession } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => {
+    void refreshSession()
+  }, [refreshSession])
 
   useEffect(() => {
     if (!isAuthenticated) {

@@ -86,7 +86,8 @@ export function SiteTheme() {
     fetch('/api/theme', { signal: controller.signal })
       .then((response) => response.json())
       .then((data) => {
-        const nextTheme: SiteThemeName = VALID_THEMES.has(data.theme) ? data.theme : 'standard'
+        const candidate = String(data.theme || '') as SiteThemeName
+        const nextTheme: SiteThemeName = VALID_THEMES.has(candidate) ? candidate : 'standard'
         window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
         window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
       })
@@ -104,11 +105,12 @@ export function SiteTheme() {
   if (theme === 'standard') return null
 
   if (theme !== 'christmas') {
-    const decorations = {
+    const seasonalTheme = theme as Exclude<SeasonalTheme, 'christmas'>
+    const decorations = ({
       halloween: ['☾', '✦', '◆', '✧', '☾', '✦', '◆', '✧'],
       'black-friday': ['%', '✦', '%', '◆', '%', '✦', '%', '◆'],
       valentine: ['♥', '✦', '♡', '♥', '✧', '♡', '♥', '✦'],
-    }[theme]
+    } satisfies Record<Exclude<SeasonalTheme, 'christmas'>, string[]>)[seasonalTheme]
 
     return (
       <>
@@ -136,7 +138,7 @@ export function SiteTheme() {
             </>
           ) : null}
         </div>
-        <ThemeClickEffects theme={theme} />
+        <ThemeClickEffects theme={seasonalTheme} />
       </>
     )
   }

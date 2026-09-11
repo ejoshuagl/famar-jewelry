@@ -1,6 +1,7 @@
 import 'server-only'
 
 import sharp from 'sharp'
+import { decodeDataImage, downloadTrustedImage } from '@/lib/safe-image-source'
 
 const HASH_SIZE = 8
 const SAMPLE_SIZE = 32
@@ -13,14 +14,11 @@ const cosine = Array.from({ length: HASH_SIZE }, (_, frequency) =>
 
 async function imageBuffer(source: string) {
   if (source.startsWith('data:')) {
-    const comma = source.indexOf(',')
-    if (comma < 0) throw new Error('Invalid image data')
-    return Buffer.from(source.slice(comma + 1), 'base64')
+    const input = decodeDataImage(source)
+    if (!input) throw new Error('Invalid image data')
+    return input
   }
-
-  const response = await fetch(source, { signal: AbortSignal.timeout(10_000) })
-  if (!response.ok) throw new Error('Could not download image')
-  return Buffer.from(await response.arrayBuffer())
+  return downloadTrustedImage(source, 10_000)
 }
 
 export async function createPerceptualHash(source: string) {
@@ -50,9 +48,9 @@ export async function createPerceptualHash(source: string) {
 
   const valuesWithoutDc = coefficients.slice(1).sort((a, b) => a - b)
   const median = valuesWithoutDc[Math.floor(valuesWithoutDc.length / 2)]
-  let hash = 0n
+  let hash = BigInt(0)
   for (const coefficient of coefficients) {
-    hash = (hash << 1n) | (coefficient >= median ? 1n : 0n)
+    hash = (hash << BigInt(1)) | (coefficient >= median ? BigInt(1) : BigInt(0))
   }
   return hash.toString(16).padStart(16, '0')
 }
@@ -61,8 +59,8 @@ export function perceptualSimilarity(first: string, second: string) {
   let difference = BigInt(`0x${first}`) ^ BigInt(`0x${second}`)
   let changedBits = 0
   while (difference) {
-    changedBits += Number(difference & 1n)
-    difference >>= 1n
+    changedBits += Number(difference & BigInt(1))
+    difference >>= BigInt(1)
   }
   return 1 - changedBits / 64
 }

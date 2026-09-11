@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin-auth'
-import { ensureStoreEventsTable } from '@/lib/store-events'
 
 const ECUADOR_TIME_ZONE = 'America/Guayaquil'
 const ECUADOR_UTC_OFFSET_HOURS = 5
@@ -74,7 +73,7 @@ function formatEcuadorDate(date: Date, options: Intl.DateTimeFormatOptions) {
 
 export async function GET(request: NextRequest) {
   try {
-    const admin = requireAdmin(request, 'dashboard')
+    const admin = await requireAdmin(request, 'dashboard')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -91,7 +90,6 @@ export async function GET(request: NextRequest) {
     }
 
     const startedAt = performance.now()
-    await ensureStoreEventsTable()
     const resetSetting = await db.commerceSetting.findUnique({ where: { key: 'funnel_reset_at' } })
     const parsedResetAt = resetSetting?.value ? new Date(resetSetting.value) : new Date(0)
     const resetAt = Number.isNaN(parsedResetAt.getTime()) ? new Date(0) : parsedResetAt
@@ -199,7 +197,7 @@ export async function GET(request: NextRequest) {
         const to = ecuadorMidnightUtc(cursorParts.year, cursorParts.month + i + 1, 1)
         const monthOrders = inRange.filter((o) => o.createdAt >= from && o.createdAt < to)
         salesLast7Days.push({
-          day: formatEcuadorDate(from, { month: 'short', year: '2-digit' }),
+          day: formatEcuadorDate(from, { day: 'numeric', month: 'short' }),
           total: monthOrders.reduce((s, o) => s + o.total, 0),
           count: monthOrders.length,
         })

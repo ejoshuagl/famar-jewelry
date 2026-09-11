@@ -1,0 +1,12 @@
+entregables/
+public/publicidad-whatsapp/
+tool-results/
+download/
+supabase/backups/
+supabase/rollback/
+output/
+tmp/
+public/campaigns/daily-discounts-banner-2026.webp
+public/campaigns/daily-discounts-popup-2026.webp
+public/campaigns/weekend-coupon-banner-2026.webp
+public/campaigns/weekend-coupon-popup-2026.webp

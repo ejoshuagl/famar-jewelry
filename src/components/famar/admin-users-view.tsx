@@ -15,7 +15,7 @@ import { Loader2, Save, Trash2, UserPlus } from 'lucide-react'
 
 const permissionOptions = [
   ['dashboard', 'Dashboard'], ['products', 'Productos'], ['orders', 'Pedidos'], ['categories', 'Categorías'],
-  ['campaigns', 'Publicidad'], ['themes', 'Temas'], ['wholesale', 'Mayoristas'], ['coupons', 'Cupones'], ['users', 'Usuarios'],
+  ['campaigns', 'Publicidad'], ['themes', 'Temas'], ['wholesale', 'Mayoristas'], ['coupons', 'Cupones'], ['investments', 'Inversiones'], ['users', 'Usuarios'],
 ] as const
 type AdminUser = { id: string; username: string; name: string | null; permissions: string[] | null; active: boolean }
 type AuditEntry = { id: string; action: string; entity: string; admin: string; details: string | null; createdAt: string }

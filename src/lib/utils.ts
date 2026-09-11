@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import bcrypt from 'bcryptjs'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,12 +32,15 @@ export function convertDriveUrl(url: string): string {
 }
 
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
-  return hashHex
+  return bcrypt.hash(password, 12)
+}
+
+export async function verifyPassword(password: string, stored: string): Promise<{ valid: boolean; needsUpgrade: boolean }> {
+  if (stored.startsWith('$2')) return { valid: await bcrypt.compare(password, stored), needsUpgrade: false }
+  const data = new TextEncoder().encode(password)
+  const digest = await crypto.subtle.digest('SHA-256', data)
+  const legacy = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  return { valid: legacy === stored, needsUpgrade: legacy === stored }
 }
 
 export function slugify(text: string): string {

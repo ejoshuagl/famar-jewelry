@@ -59,6 +59,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
+import { AdminCreateOrderDialog } from './admin-create-order-dialog'
 
 interface EditableOrderItem {
   id: string
@@ -79,6 +80,43 @@ interface OrderCouponRedemption {
   coupon: { code: string; description?: string | null }
 }
 
+interface AdminOrderItem {
+  id: string
+  productId: string
+  quantity: number
+  price: number
+  name: string
+  code: string
+  variantId?: string | null
+  variantName?: string | null
+  product?: { mainImage?: string | null; stock?: number | null } | null
+}
+
+interface AdminOrder {
+  id: string
+  orderNumber: string
+  customerName: string
+  customerCity: string
+  customerPhone: string
+  customerAddress?: string | null
+  customerLocation?: string | null
+  observations?: string | null
+  cancelReason?: string | null
+  createdAt: string
+  status: string
+  total: number
+  items: AdminOrderItem[]
+  couponRedemption?: OrderCouponRedemption | null
+}
+
+interface OrderProductLookup {
+  id: string
+  name: string
+  code: string
+  price: number
+  stock: number
+}
+
 export function AdminOrdersView() {
   const { adminName } = useAuthStore()
   const queryClient = useQueryClient()
@@ -92,7 +130,8 @@ export function AdminOrdersView() {
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [cancelReasonInput, setCancelReasonInput] = useState('')
   const [zoomImage, setZoomImage] = useState<string | null>(null)
-  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // Edit state
   const [editItems, setEditItems] = useState<EditableOrderItem[]>([])
@@ -103,7 +142,7 @@ export function AdminOrdersView() {
 
   // Add product by code state
   const [codeSearch, setCodeSearch] = useState('')
-  const [foundProduct, setFoundProduct] = useState<Record<string, unknown> | null>(null)
+  const [foundProduct, setFoundProduct] = useState<OrderProductLookup | null>(null)
   const [searchingCode, setSearchingCode] = useState(false)
   const [codeError, setCodeError] = useState('')
 
@@ -241,7 +280,7 @@ export function AdminOrdersView() {
 
   const orders = data?.orders || []
   const totalPages = data?.totalPages || 1
-  const selectedItems = (selectedOrder?.items || []) as Array<Record<string, unknown>>
+  const selectedItems = selectedOrder?.items || []
   const selectedSubtotal = selectedItems.reduce(
     (sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0),
     0,
@@ -268,12 +307,12 @@ export function AdminOrdersView() {
     )
   }
 
-  const openDetail = (order: Record<string, unknown>) => {
+  const openDetail = (order: AdminOrder) => {
     setSelectedOrder(order)
     setDetailDialogOpen(true)
   }
 
-  const sendPaymentInstructions = (order: Record<string, unknown>) => {
+  const sendPaymentInstructions = (order: AdminOrder) => {
     const localPhone = String(order.customerPhone || '').replace(/\D/g, '')
     const whatsappPhone = localPhone.startsWith('0') ? `593${localPhone.slice(1)}` : localPhone
     const waveEmoji = String.fromCodePoint(0x1f44b)
@@ -282,11 +321,11 @@ export function AdminOrdersView() {
     window.open(`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`, '_blank')
   }
 
-  const openEdit = (order?: Record<string, unknown>) => {
+  const openEdit = (order?: AdminOrder) => {
     const target = order || selectedOrder
     if (!target) return
     setSelectedOrder(target)
-    const rawItems = target.items as Array<Record<string, unknown>> | undefined
+    const rawItems = target.items
     const items = (rawItems || []).map((item) => ({
       id: item.id as string,
       productId: item.productId as string,
@@ -352,7 +391,7 @@ export function AdminOrdersView() {
       })
       const data = await res.json()
       if (data.product) {
-        setFoundProduct(data.product)
+        setFoundProduct(data.product as OrderProductLookup)
       } else {
         setCodeError(`No se encontró producto con código "${trimmed}"`)
       }
@@ -409,7 +448,16 @@ export function AdminOrdersView() {
 
   return (
     <div className="space-y-4">
-        <h1 className="text-xl font-bold">Pedidos</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold">Pedidos</h1>
+          <Button onClick={() => setCreateDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nuevo pedido manual</Button>
+        </div>
+
+        <AdminCreateOrderDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onCreated={() => queryClient.invalidateQueries({ queryKey: ['admin-orders'] })}
+        />
 
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -466,7 +514,7 @@ export function AdminOrdersView() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  orders.map((order: Record<string, unknown>) => (
+                  orders.map((order: AdminOrder) => (
                     <TableRow key={order.id}>
                       <TableCell className="font-medium text-sm">#{order.orderNumber}</TableCell>
                       <TableCell className="text-sm">{order.customerName}</TableCell>
@@ -525,7 +573,7 @@ export function AdminOrdersView() {
               No se encontraron pedidos
             </div>
           ) : (
-            orders.map((order: Record<string, unknown>) => (
+            orders.map((order: AdminOrder) => (
               <Card key={order.id} className="p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">

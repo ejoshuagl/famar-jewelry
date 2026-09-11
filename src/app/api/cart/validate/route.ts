@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { parseVariants } from '@/lib/product-variants'
+import { getDailySaleSelection } from '@/lib/daily-sales'
 
 interface RequestedItem {
   productId: string
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const productIds = [...new Set(requestedItems.map((item) => String(item.productId || '')).filter(Boolean))]
-    const products = await db.product.findMany({
+    const [products, dailySale] = await Promise.all([db.product.findMany({
       where: { id: { in: productIds } },
       select: {
         id: true,
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
         mainImage: true,
         variants: true,
       },
-    })
+    }), getDailySaleSelection()])
     const productMap = new Map(products.map((product) => [product.id, product]))
 
     const items = requestedItems.map((requested) => {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
         code: product.code,
         name: product.name,
         price: product.price,
-        isOnSale: product.isOnSale,
+        isOnSale: product.isOnSale || dailySale.ids.has(product.id),
         mainImage: variant?.image || product.mainImage,
         maxStock,
         variantName: variant?.name || null,

@@ -65,6 +65,7 @@ interface ProductForm {
   code: string
   description: string
   categoryId: string
+  investmentId: string
   material: string
   weight: string
   dimensions: string
@@ -83,8 +84,36 @@ interface ProductForm {
   variants: ProductVariant[]
 }
 
+interface AdminProduct {
+  id: string
+  name: string
+  code: string
+  description?: string | null
+  categoryId: string
+  investmentId?: string | null
+  investment?: { description: string; purchasedAt: string } | null
+  category?: { name: string } | null
+  material?: string | null
+  weight?: string | null
+  dimensions?: string | null
+  color?: string | null
+  price: number
+  stock: number
+  status: string
+  mainImage?: string | null
+  images?: string | null
+  isDailyFeatured?: boolean
+  isFeatured: boolean
+  featuredExcluded: boolean
+  isNew: boolean
+  isOnSale: boolean
+  isForMen: boolean
+  visible: boolean
+  variants?: unknown
+}
+
 const emptyForm: ProductForm = {
-  name: '', code: '', description: '', categoryId: '',
+  name: '', code: '', description: '', categoryId: '', investmentId: '',
   material: '', weight: '', dimensions: '', color: '',
   price: '', stock: '0', status: 'available', mainImage: '',
   galleryUrls: '', isFeatured: false, featuredExcluded: false, isNew: false, isOnSale: false, isForMen: false,
@@ -92,8 +121,8 @@ const emptyForm: ProductForm = {
 }
 
 function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom, checked, onToggleCheck }: {
-  product: Record<string, unknown>
-  onEdit: (p: Record<string, unknown>) => void
+  product: AdminProduct
+  onEdit: (p: AdminProduct) => void
   onDelete: (id: string) => void
   onToggleVisible: (p: { id: string; visible: boolean }) => void
   onZoom: (url: string) => void
@@ -131,6 +160,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
           <div className="min-w-0 flex-1">
             <p className="font-medium text-sm truncate">{product.name}</p>
             <p className="text-xs text-muted-foreground">{product.code}</p>
+            {product.investment && <p className="mt-0.5 truncate text-[10px] text-primary">{product.investment.description} · {new Date(product.investment.purchasedAt).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil', day: '2-digit', month: 'short', year: 'numeric' })}</p>}
           </div>
         </div>
         <Badge
@@ -190,6 +220,7 @@ export function AdminProductsView() {
   const [search, setSearch] = useState('')
   const [flagFilter, setFlagFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [investmentFilter, setInvestmentFilter] = useState('')
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -201,7 +232,7 @@ export function AdminProductsView() {
   const [zoomImage, setZoomImage] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-products', search, flagFilter, categoryFilter, page],
+    queryKey: ['admin-products', search, flagFilter, categoryFilter, investmentFilter, page],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: '20',
@@ -211,6 +242,7 @@ export function AdminProductsView() {
       if (search) params.set('search', search)
       if (flagFilter) params.set('flag', flagFilter)
       if (categoryFilter) params.set('category', categoryFilter)
+      if (investmentFilter) params.set('investmentId', investmentFilter)
       params.set('compact', 'true')
       const res = await fetch(`/api/products?${params}`, {
         cache: 'no-store',
@@ -228,6 +260,16 @@ export function AdminProductsView() {
     queryFn: async () => {
       const res = await fetch('/api/categories')
       return res.json()
+    },
+  })
+
+  const { data: investmentOptions = [] } = useQuery({
+    queryKey: ['investment-options'],
+    queryFn: async () => {
+      const response = await fetch('/api/investments?options=true', { cache: 'no-store' })
+      if (!response.ok) return []
+      const data = await response.json()
+      return data.investments as Array<{ id: string; description: string; purchasedAt: string }>
     },
   })
 
@@ -288,10 +330,13 @@ export function AdminProductsView() {
           'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!res.ok) throw new Error('Error deleting product')
+      return res.json() as Promise<{ success: boolean; archived: boolean }>
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] })
-      toast.success('Producto eliminado')
+      toast.success(result?.archived
+        ? 'Producto ocultado y descontinuado para conservar el historial de pedidos'
+        : 'Producto eliminado')
       setDeleteDialogOpen(false)
       setDeletingId(null)
     },
@@ -393,13 +438,13 @@ export function AdminProductsView() {
     setEditDialogOpen(true)
   }
 
-  const openEdit = async (summary: Record<string, unknown>) => {
+  const openEdit = async (summary: AdminProduct) => {
     try {
       const response = await fetch(`/api/products/${summary.id}`, {
         headers: { 'x-admin-token': useAuthStore.getState().token || '' },
       })
       if (!response.ok) throw new Error('No se pudo cargar')
-      const product = await response.json() as Record<string, unknown>
+      const product = await response.json() as AdminProduct
       setEditingId(product.id as string)
     let imagesStr = ''
     if (product.images) {
@@ -415,6 +460,7 @@ export function AdminProductsView() {
       code: product.code as string,
       description: (product.description as string) || '',
       categoryId: product.categoryId as string,
+      investmentId: product.investmentId || '',
       material: (product.material as string) || '',
       weight: (product.weight as string) || '',
       dimensions: (product.dimensions as string) || '',
@@ -497,18 +543,18 @@ export function AdminProductsView() {
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 max-w-4xl">
-          <div className="relative flex-1">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_11rem_13rem_12rem]">
+          <div className="relative sm:col-span-2 xl:col-span-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nombre, código, material, color..."
+              placeholder="Buscar por nombre, código, material, color o mercadería..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
               className="pl-9"
             />
           </div>
           <Select value={flagFilter || 'todos'} onValueChange={(v) => { setFlagFilter(v === 'todos' ? '' : v); setPage(1) }}>
-            <SelectTrigger className="w-full sm:w-44">
+            <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
@@ -522,8 +568,15 @@ export function AdminProductsView() {
               <SelectItem value="hidden">Ocultos</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={investmentFilter || 'todas'} onValueChange={(value) => { setInvestmentFilter(value === 'todas' ? '' : value); setPage(1) }}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Todas las importaciones" /></SelectTrigger>
+            <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
+              <SelectItem value="todas">Todas las importaciones</SelectItem>
+              {investmentOptions.map((investment) => <SelectItem key={investment.id} value={investment.id}>{investment.description}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={categoryFilter || 'todas'} onValueChange={(v) => { setCategoryFilter(v === 'todas' ? '' : v); setPage(1) }}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Todas las categorías" />
             </SelectTrigger>
                   <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
@@ -638,7 +691,7 @@ export function AdminProductsView() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  products.map((product: Record<string, unknown>, idx: number) => {
+                  products.map((product: AdminProduct, idx: number) => {
                     const cat = product.category as { name: string } | null
                     return (
                       <TableRow key={product.id}>
@@ -673,6 +726,7 @@ export function AdminProductsView() {
                         <TableCell>
                           <div>
                             <p className="font-medium text-sm truncate max-w-[200px]">{product.name}</p>
+                            {product.investment && <p className="mt-0.5 max-w-[220px] truncate text-[10px] text-primary">{product.investment.description} · {new Date(product.investment.purchasedAt).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil', day: '2-digit', month: 'short', year: 'numeric' })}</p>}
                             <div className="flex gap-1 mt-1">
                               {product.isDailyFeatured && <Badge variant="default" className="text-[10px] px-1 py-0">Destacado de hoy</Badge>}
                               {product.isFeatured && <Badge variant="outline" className="text-[10px] px-1 py-0">Fijado</Badge>}
@@ -755,7 +809,7 @@ export function AdminProductsView() {
               No se encontraron productos
             </div>
           ) : (
-            products.map((product: Record<string, unknown>) => (
+            products.map((product: AdminProduct) => (
               <ProductMobileCard
                 key={product.id}
                 product={product}
@@ -811,7 +865,7 @@ export function AdminProductsView() {
                       className="cursor-not-allowed bg-muted"
                       placeholder="Se genera al seleccionar categoría"
                     />
-                    {form.categoryId && (!editingId || form.categoryId !== products.find((product: Record<string, unknown>) => product.id === editingId)?.categoryId) && (
+                    {form.categoryId && (!editingId || form.categoryId !== products.find((product: AdminProduct) => product.id === editingId)?.categoryId) && (
                       <Button
                         type="button"
                         variant="outline"
@@ -845,7 +899,7 @@ export function AdminProductsView() {
                   <Select value={form.categoryId} onValueChange={(v) => {
                     updateForm('categoryId', v)
                     // Show the code that will be assigned when the category changes.
-                    if (!editingId || v !== products.find((product: Record<string, unknown>) => product.id === editingId)?.categoryId) {
+                    if (!editingId || v !== products.find((product: AdminProduct) => product.id === editingId)?.categoryId) {
                       fetch(`/api/products/next-code?categoryId=${v}`, {
                         headers: { 'x-admin-token': useAuthStore.getState().token || '' },
                       })
@@ -857,7 +911,7 @@ export function AdminProductsView() {
                         })
                         .catch((err) => console.error('Error generating code:', err))
                     } else {
-                      const current = products.find((product: Record<string, unknown>) => product.id === editingId)
+                      const current = products.find((product: AdminProduct) => product.id === editingId)
                       if (current) updateForm('code', current.code as string)
                     }
                   }}>
@@ -874,6 +928,21 @@ export function AdminProductsView() {
                 <div>
                   <Label>Precio *</Label>
                   <Input type="number" step="0.01" value={form.price} onChange={(e) => updateForm('price', e.target.value)} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Label>Lote de importación</Label>
+                  <Select value={form.investmentId || 'none'} onValueChange={(value) => updateForm('investmentId', value === 'none' ? '' : value)}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar mercadería" /></SelectTrigger>
+                    <SelectContent align="start" className="max-h-64 w-[var(--radix-select-trigger-width)]">
+                      <SelectItem value="none">Sin asignar</SelectItem>
+                      {investmentOptions.map((investment) => (
+                        <SelectItem key={investment.id} value={investment.id}>
+                          {investment.description} · {new Date(investment.purchasedAt).toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil', month: 'short', year: 'numeric' })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="mt-1 text-xs text-muted-foreground">Permite medir ventas y recuperación por cada importación.</p>
                 </div>
                 <div>
                   <Label>Stock</Label>

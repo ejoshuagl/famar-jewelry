@@ -2,13 +2,10 @@ import { NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { db } from '@/lib/db'
 import { parseVariants } from '@/lib/product-variants'
+import { requireAdmin } from '@/lib/admin-auth'
+import { decodeDataImage, downloadTrustedImage } from '@/lib/safe-image-source'
 
 export const runtime = 'nodejs'
-
-function dataUriBuffer(source: string) {
-  const match = source.match(/^data:image\/[^;]+;base64,(.+)$/)
-  return match ? Buffer.from(match[1], 'base64') : null
-}
 
 export async function GET(
   request: Request,
@@ -16,27 +13,32 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const product = await db.product.findUnique({ where: { id }, select: { mainImage: true, variants: true } })
-    const variantId = new URL(request.url).searchParams.get('variant')
+    const product = await db.product.findUnique({ where: { id }, select: { visible: true, mainImage: true, images: true, variants: true } })
+    if (!product || (!product.visible && !await requireAdmin(request))) return new NextResponse(null, { status: 404 })
+    const searchParams = new URL(request.url).searchParams
+    const variantId = searchParams.get('variant')
+    const galleryIndex = Number.parseInt(searchParams.get('gallery') || '', 10)
+    const requestedSize = Number.parseInt(searchParams.get('size') || '480', 10)
+    const size = Math.min(1200, Math.max(240, Number.isFinite(requestedSize) ? requestedSize : 480))
+    let gallery: string[] = []
+    try { gallery = product?.images ? JSON.parse(product.images) : [] } catch { gallery = [] }
     const source = variantId
       ? parseVariants(product?.variants).find((variant) => variant.id === variantId)?.image
-      : product?.mainImage
+      : Number.isInteger(galleryIndex) && galleryIndex >= 0
+        ? gallery[galleryIndex]
+        : product?.mainImage
     if (!source) return new NextResponse(null, { status: 404 })
 
-    let input = dataUriBuffer(source)
+    let input = decodeDataImage(source)
     if (!input && /^https?:\/\//.test(source)) {
-      const response = await fetch(source, { signal: AbortSignal.timeout(8_000) })
-      if (!response.ok) return NextResponse.redirect(source)
-      input = Buffer.from(await response.arrayBuffer())
+      input = await downloadTrustedImage(source)
     }
     if (!input) return new NextResponse(null, { status: 404 })
 
     const thumbnail = await sharp(input)
       .rotate()
-      // Product cards can reach ~300 CSS pixels and many phones render at
-      // 2x/3x density. A 160 px source looked soft after being enlarged.
-      .resize(640, 640, { fit: 'cover', withoutEnlargement: true })
-      .webp({ quality: 82, smartSubsample: true })
+      .resize(size, size, { fit: 'cover', withoutEnlargement: true })
+      .webp({ quality: size >= 900 ? 84 : 78, smartSubsample: true })
       .toBuffer()
 
     return new NextResponse(new Uint8Array(thumbnail), {

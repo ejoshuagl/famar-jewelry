@@ -2,11 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/utils'
 import { ADMIN_PERMISSIONS, auditLog, requireAdmin, type AdminPermission } from '@/lib/admin-auth'
-import { ensureAdminUserPermissions } from '@/lib/admin-users'
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await ensureAdminUserPermissions()
-  const admin = requireAdmin(request, 'users')
+  const admin = await requireAdmin(request, 'users')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   const body = await request.json()
@@ -40,8 +38,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  await ensureAdminUserPermissions()
-  const admin = requireAdmin(request, 'users')
+  const admin = await requireAdmin(request, 'users')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { id } = await params
   const target = await db.adminUser.findUnique({ where: { id } })

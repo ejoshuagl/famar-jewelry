@@ -4,7 +4,7 @@ export type AppView =
   | 'home' | 'catalog' | 'product-detail' | 'cart' | 'out-of-stock' | 'contact'
   | 'jewelry-care' | 'policies' | 'favorites' | 'admin-login' | 'admin-dashboard' | 'admin-products'
   | 'admin-orders' | 'admin-categories' | 'admin-campaigns' | 'admin-themes'
-  | 'admin-wholesale' | 'admin-coupons' | 'admin-users'
+  | 'admin-wholesale' | 'admin-coupons' | 'admin-investments' | 'admin-users'
 
 interface AppStore {
   currentView: AppView
@@ -15,7 +15,7 @@ interface AppStore {
   catalogPage: number
   catalogSort: string
   catalogScrollY: number
-  campaignFilter: { id: string; title: string } | null
+  campaignFilter: { id: string; title: string; couponCode?: string; couponDiscount?: number } | null
   searchQuery: string
   sidebarOpen: boolean
   navigate: (view: AppView, pushHistory?: boolean) => void
@@ -24,9 +24,22 @@ interface AppStore {
   setCatalogFilter: (filter: string | null) => void
   setCatalogPage: (page: number) => void
   setCatalogSort: (sort: string) => void
-  setCampaignFilter: (campaign: { id: string; title: string } | null) => void
+  setCampaignFilter: (campaign: { id: string; title: string; couponCode?: string; couponDiscount?: number } | null) => void
   setSearch: (q: string) => void
   setSidebarOpen: (open: boolean) => void
+}
+
+type CampaignFilter = AppStore['campaignFilter']
+const CAMPAIGN_SESSION_KEY = 'famar-campaign'
+
+function rememberedCampaign(): CampaignFilter {
+  if (typeof window === 'undefined') return null
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(CAMPAIGN_SESSION_KEY) || 'null')
+    return parsed && typeof parsed.id === 'string' && typeof parsed.title === 'string' ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 const viewPaths: Record<Exclude<AppView, 'product-detail'>, string> = {
@@ -36,7 +49,7 @@ const viewPaths: Record<Exclude<AppView, 'product-detail'>, string> = {
   'admin-products': '/admin/productos', 'admin-orders': '/admin/pedidos',
   'admin-categories': '/admin/categorias', 'admin-campaigns': '/admin/campanas',
   'admin-themes': '/admin/temas', 'admin-wholesale': '/admin/mayoristas',
-  'admin-coupons': '/admin/cupones', 'admin-users': '/admin/usuarios',
+  'admin-coupons': '/admin/cupones', 'admin-investments': '/admin/inversiones', 'admin-users': '/admin/usuarios',
 }
 
 type CatalogState = Pick<AppStore,
@@ -51,6 +64,8 @@ function catalogQuery(state: CatalogState) {
   if (state.campaignFilter) {
     params.set('campana', state.campaignFilter.id)
     if (state.campaignFilter.title) params.set('titulo', state.campaignFilter.title)
+    if (state.campaignFilter.couponCode) params.set('cupon', state.campaignFilter.couponCode)
+    if (state.campaignFilter.couponDiscount) params.set('descuento', String(state.campaignFilter.couponDiscount))
   }
   if (state.catalogPage > 1) params.set('pagina', String(state.catalogPage))
   if (state.catalogSort !== 'relevance') params.set('orden', state.catalogSort)
@@ -78,7 +93,7 @@ function parseLocation(): Partial<AppStore> & { currentView: AppView } {
 
   const matched = Object.entries(viewPaths).find(([, route]) => route === path)
   const currentView = (matched?.[0] as AppView | undefined) ?? 'home'
-  if (currentView !== 'catalog') return { currentView, selectedProductCode: null }
+  if (currentView !== 'catalog') return { currentView, selectedProductCode: null, campaignFilter: rememberedCampaign() }
 
   const parsedPage = Number.parseInt(params.get('pagina') || '1', 10)
   const campaignId = params.get('campana')
@@ -88,7 +103,12 @@ function parseLocation(): Partial<AppStore> & { currentView: AppView } {
     catalogFilter: params.get('filtro'),
     catalogPage: Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1,
     catalogSort: params.get('orden') || 'relevance',
-    campaignFilter: campaignId ? { id: campaignId, title: params.get('titulo') || 'Campaña' } : null,
+    campaignFilter: campaignId ? {
+      id: campaignId,
+      title: params.get('titulo') || 'Campaña',
+      couponCode: params.get('cupon') || undefined,
+      couponDiscount: Number(params.get('descuento')) || undefined,
+    } : rememberedCampaign(),
     searchQuery: params.get('q') || '',
     selectedProductCode: null,
   }
@@ -131,7 +151,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setCatalogFilter: (filter) => { set({ catalogFilter: filter, catalogPage: 1 }); syncCatalogUrl(get()) },
   setCatalogPage: (page) => { set({ catalogPage: Math.max(1, page) }); syncCatalogUrl(get()) },
   setCatalogSort: (sort) => { set({ catalogSort: sort, catalogPage: 1 }); syncCatalogUrl(get()) },
-  setCampaignFilter: (campaign) => { set({ campaignFilter: campaign, catalogPage: 1 }); syncCatalogUrl(get()) },
+  setCampaignFilter: (campaign) => {
+    if (campaign) window.sessionStorage.setItem(CAMPAIGN_SESSION_KEY, JSON.stringify(campaign))
+    else window.sessionStorage.removeItem(CAMPAIGN_SESSION_KEY)
+    set({ campaignFilter: campaign, catalogPage: 1 })
+    syncCatalogUrl(get())
+  },
   setSearch: (q) => { set({ searchQuery: q, catalogPage: 1 }); syncCatalogUrl(get()) },
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }))

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin } from '@/lib/admin-auth'
+import { auditLog, requireAdmin } from '@/lib/admin-auth'
 import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
-import { ensureProductRelations } from '@/lib/relations'
-import { ensureCampaignTable } from '@/lib/campaigns'
 import { salePrice } from '@/lib/pricing'
 import { boundedPositiveInt } from '@/lib/pagination'
-import { ensureOrderStockReservationColumn } from '@/lib/orders'
+import { consumePublicRateLimit } from '@/lib/public-rate-limit'
+import { getDailySaleSelection } from '@/lib/daily-sales'
+import { ensurePromotionSchema } from '@/lib/promotion-schema'
 
 export async function GET(request: NextRequest) {
   try {
-    await ensureOrderStockReservationColumn()
-    const admin = requireAdmin(request, 'orders')
+    await ensurePromotionSchema()
+    const admin = await requireAdmin(request, 'orders')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -60,18 +60,34 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureProductRelations()
-    await ensureOrderStockReservationColumn()
+    await ensurePromotionSchema()
     const body = await request.json()
     const { customerName, customerCity, customerPhone, customerAddress, customerLocation, observations, items, couponCode, campaignId } = body
+    const manualOrder = body.manualOrder === true
+    const manualAdmin = manualOrder ? await requireAdmin(request, 'orders') : null
+    if (manualOrder && !manualAdmin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    if (!manualOrder && !await consumePublicRateLimit(request, 'create-order', 8, 10 * 60_000)) {
+      return NextResponse.json({ error: 'Has realizado demasiados intentos. Espera unos minutos antes de volver a confirmar.' }, { status: 429 })
+    }
+    const applyWholesaleDiscount = manualOrder && body.applyWholesaleDiscount === true
+    const normalizedCouponCode = String(couponCode || '').trim()
 
-    if (!customerName || !customerCity || !customerPhone || !items || !items.length) {
+    if (typeof customerName !== 'string' || typeof customerCity !== 'string' || typeof customerPhone !== 'string'
+      || (customerAddress !== undefined && typeof customerAddress !== 'string')
+      || (customerLocation !== undefined && typeof customerLocation !== 'string')
+      || (observations !== undefined && typeof observations !== 'string')
+      || !customerName.trim() || !customerCity.trim() || !items || !items.length) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    }
+    if (customerName.length > 100 || customerCity.length > 80 || String(customerAddress || '').length > 300
+      || String(customerLocation || '').length > 500 || String(observations || '').length > 500
+      || String(couponCode || '').length > 50) {
+      return NextResponse.json({ error: 'Uno de los campos excede el tamaño permitido' }, { status: 400 })
     }
     if (!/^09\d{8}$/.test(String(customerPhone).trim())) {
       return NextResponse.json({ error: 'Número celular ecuatoriano inválido' }, { status: 400 })
     }
-    if (!String(customerAddress || '').trim() && !String(customerLocation || '').startsWith('https://maps.google.com/')) {
+    if (!manualOrder && !String(customerAddress || '').trim() && !String(customerLocation || '').startsWith('https://maps.google.com/')) {
       return NextResponse.json({ error: 'La dirección o ubicación actual es obligatoria' }, { status: 400 })
     }
 
@@ -91,9 +107,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
     }
     const productIds = [...new Set(requestedItems.map((item) => item.productId))]
-    const [products, saleDiscount] = await Promise.all([
-      db.product.findMany({ where: { id: { in: productIds }, visible: true }, select: { id: true, name: true, code: true, price: true, stock: true, status: true, variants: true, isOnSale: true } }),
+    const [products, saleDiscount, dailySale] = await Promise.all([
+      db.product.findMany({ where: { id: { in: productIds }, ...(manualOrder ? {} : { visible: true }) }, select: { id: true, name: true, code: true, price: true, stock: true, status: true, variants: true, isOnSale: true } }),
       getSaleDiscount(),
+      getDailySaleSelection(),
     ])
     const productMap = new Map(products.map((product) => [product.id, product]))
     const validatedItems = requestedItems.map((item) => {
@@ -108,25 +125,50 @@ export async function POST(request: NextRequest) {
         available = Number(variant.stock); variantName = variant.name
       }
       if (item.quantity > available) throw new Error('INSUFFICIENT_STOCK')
-      return { productId: product.id, quantity: item.quantity, price: salePrice(product.price, product.isOnSale, saleDiscount), isOnSale: product.isOnSale, name: product.name, code: product.code, variantId: item.variantId || null, variantName }
+      // A manual order must respect the same active offer price as the storefront.
+      // Only the extra wholesale benefit remains optional for administrators.
+      const isDailySale = dailySale.ids.has(product.id)
+      const isOnSale = product.isOnSale || isDailySale
+      return { productId: product.id, quantity: item.quantity, price: salePrice(product.price, isOnSale, saleDiscount), isOnSale, isDailySale, name: product.name, code: product.code, variantId: item.variantId || null, variantName }
     })
     const eligibleSubtotal = validatedItems.filter((item) => !item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
     const saleSubtotal = validatedItems.filter((item) => item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const pricing = await calculateDiscount(eligibleSubtotal, String(couponCode || ''), saleSubtotal)
+    const pricing = manualOrder && !applyWholesaleDiscount && !normalizedCouponCode
+      ? { subtotal: eligibleSubtotal + saleSubtotal, total: eligibleSubtotal + saleSubtotal, percent: 0, amount: 0, source: '', coupon: false, couponId: null }
+      : await calculateDiscount(eligibleSubtotal, normalizedCouponCode, saleSubtotal, !manualOrder || applyWholesaleDiscount)
+    if (manualOrder && normalizedCouponCode && !('validCoupon' in pricing && pricing.validCoupon)) {
+      return NextResponse.json({ error: 'El cupón no es válido, está vencido, agotado o no cumple el mínimo de compra' }, { status: 400 })
+    }
     let attributedCampaignId: string | null = null
-    if (typeof campaignId === 'string' && campaignId) {
-      await ensureCampaignTable()
+    let attributedCampaignSource: string | null = null
+    if (!manualOrder && typeof campaignId === 'string' && campaignId) {
       const campaign = await db.campaign.findFirst({
         where: {
           id: campaignId,
           active: true,
           startAt: { lte: new Date() },
-          endAt: { gte: new Date() },
-          products: { some: { productId: { in: productIds } } },
+          OR: [{ indefinite: true }, { endAt: { gte: new Date() } }],
         },
         select: { id: true },
       })
       attributedCampaignId = campaign?.id || null
+      if (attributedCampaignId) attributedCampaignSource = 'advertising'
+    }
+    if (!attributedCampaignId && pricing.couponId) {
+      const couponCampaign = await db.campaign.findFirst({
+        where: { couponId: pricing.couponId, active: true, startAt: { lte: new Date() }, OR: [{ indefinite: true }, { endAt: { gte: new Date() } }] },
+        select: { id: true },
+      })
+      attributedCampaignId = couponCampaign?.id || null
+      if (attributedCampaignId) attributedCampaignSource = 'coupon'
+    }
+    if (!manualOrder && !attributedCampaignId && dailySale.settings.campaignId && validatedItems.some((item) => item.isDailySale)) {
+      const saleCampaign = await db.campaign.findFirst({
+        where: { id: dailySale.settings.campaignId, active: true, startAt: { lte: new Date() }, OR: [{ indefinite: true }, { endAt: { gte: new Date() } }] },
+        select: { id: true },
+      })
+      attributedCampaignId = saleCampaign?.id || null
+      if (attributedCampaignId) attributedCampaignSource = 'daily_sale'
     }
 
     const order = await db.$transaction(async (tx) => {
@@ -148,22 +190,24 @@ export async function POST(request: NextRequest) {
           select: { id: true },
         })
         if (previousClaim) throw new Error('COUPON_ALREADY_USED')
-        const claimed = await tx.$queryRawUnsafe<Array<{ id: string }>>(
-          `UPDATE "DiscountCoupon" SET "usageCount" = "usageCount" + 1, "updatedAt" = CURRENT_TIMESTAMP
-           WHERE UPPER("code") = UPPER($1) AND "active" = true
-           AND ("usageLimit" IS NULL OR "usageCount" < "usageLimit") RETURNING "id"`, pricing.coupon,
-        )
-        if (!claimed.length) throw new Error('COUPON_EXHAUSTED')
+        const available = await tx.discountCoupon.findUnique({
+          where: { id: pricing.couponId || '' },
+          select: { active: true, usageLimit: true, usageCount: true },
+        })
+        if (!available?.active || (available.usageLimit !== null && available.usageCount >= available.usageLimit)) {
+          throw new Error('COUPON_EXHAUSTED')
+        }
       }
       const createdOrder = await tx.order.create({ data: {
         orderNumber,
-        customerName,
-        customerCity,
-        customerPhone,
+        customerName: customerName.trim(),
+        customerCity: customerCity.trim(),
+        customerPhone: customerPhone.trim(),
         customerAddress: String(customerAddress || '').trim() || null,
         customerLocation: String(customerLocation || '').trim() || null,
         campaignId: attributedCampaignId,
-        observations: `${String(observations || '').trim()}${pricing.percent ? `${observations ? '\n' : ''}[${pricing.source}: ${pricing.percent}%]` : ''}` || null,
+        campaignSource: attributedCampaignSource,
+        observations: `${String(observations || '').trim()}${pricing.percent ? `${observations ? '\n' : ''}[${pricing.source}: ${pricing.percent}%]` : ''}${manualOrder ? `${observations || pricing.percent ? '\n' : ''}[Pedido manual · mayorista ${applyWholesaleDiscount ? 'habilitado' : 'no habilitado'}${normalizedCouponCode ? ` · cupón ${normalizedCouponCode.toUpperCase()}` : ''}]` : ''}` || null,
         total: pricing.total,
         stockReserved: false,
         status: 'pending',
@@ -186,12 +230,16 @@ export async function POST(request: NextRequest) {
             orderId: createdOrder.id,
             customerPhone: String(customerPhone).trim(),
             discount: pricing.percent,
+            claimedAt: null,
           },
         })
       }
       return createdOrder
     })
 
+    if (manualOrder && manualAdmin) {
+      await auditLog({ action: 'create', entity: 'order', entityId: order.id, admin: manualAdmin.name, details: `Pedido manual #${order.orderNumber} — $${pricing.total.toFixed(2)} — ${pricing.source || 'sin descuento'}` })
+    }
     return NextResponse.json({ ...order, subtotal: pricing.subtotal, discountPercent: pricing.percent, discountAmount: pricing.amount, discountSource: pricing.source }, { status: 201 })
   } catch (error) {
     console.error('POST /api/orders error:', error)

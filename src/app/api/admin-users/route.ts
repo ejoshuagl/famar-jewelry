@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/utils'
-import { ADMIN_PERMISSIONS, auditLog, requireAdmin, type AdminPermission } from '@/lib/admin-auth'
-import { ensureAdminUserPermissions } from '@/lib/admin-users'
+import { ADMIN_PERMISSIONS, auditLog, isSuperAdminUsername, requireAdmin, type AdminPermission } from '@/lib/admin-auth'
 
 function parsePermissions(value: unknown): AdminPermission[] {
   if (!Array.isArray(value)) return []
@@ -10,16 +9,14 @@ function parsePermissions(value: unknown): AdminPermission[] {
 }
 
 export async function GET(request: NextRequest) {
-  await ensureAdminUserPermissions()
-  const admin = requireAdmin(request, 'users')
+  const admin = await requireAdmin(request, 'users')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const users = await db.adminUser.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true, username: true, name: true, permissions: true, active: true, createdAt: true } })
-  return NextResponse.json(users.map((user) => ({ ...user, permissions: user.permissions ? JSON.parse(user.permissions) : null })))
+  return NextResponse.json(users.map((user) => ({ ...user, permissions: isSuperAdminUsername(user.username) ? null : user.permissions ? JSON.parse(user.permissions) : null })))
 }
 
 export async function POST(request: NextRequest) {
-  await ensureAdminUserPermissions()
-  const admin = requireAdmin(request, 'users')
+  const admin = await requireAdmin(request, 'users')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const body = await request.json()
   const username = String(body.username || '').trim().toLowerCase()

@@ -4,22 +4,25 @@ import { requireAdmin, auditLog } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
-import { ensureProductRelations } from '@/lib/relations'
 import { boundedPositiveInt } from '@/lib/pagination'
 import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
-import { ensureProductAudienceColumn } from '@/lib/product-audience'
 import { persistProductGallery, persistProductImage, persistVariantImages } from '@/lib/product-image-storage'
 import { withPublicThumbnails } from '@/lib/public-product'
+import { getDailySaleSelection, withDailySale } from '@/lib/daily-sales'
+import { ensurePromotionSchema } from '@/lib/promotion-schema'
 
 export async function GET(request: NextRequest) {
   try {
-    await ensureProductAudienceColumn()
+    await ensurePromotionSchema()
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code') || ''
     const search = searchParams.get('search') || ''
 
-    const session = requireAdmin(request)
+    const session = await requireAdmin(request)
     const admin = session && (!session.permissions || session.permissions.some((permission) => ['products', 'orders', 'campaigns'].includes(permission))) ? session : null
+    const dailySale = await getDailySaleSelection()
+    const dailySaleIds = dailySale.ids
+    const applySale = <T extends { id: string; isOnSale: boolean }>(product: T) => withDailySale(product, dailySaleIds)
 
     // Exact code lookup. Hidden records are only returned to administrators.
     if (code) {
@@ -30,7 +33,8 @@ export async function GET(request: NextRequest) {
       if (!product || (!product.visible && !admin)) {
         return NextResponse.json({ product: null })
       }
-      return NextResponse.json({ product: admin ? product : withPublicThumbnails(product) })
+      const pricedProduct = applySale(product)
+      return NextResponse.json({ product: admin ? pricedProduct : withPublicThumbnails(pricedProduct) })
     }
 
     const category = searchParams.get('category') || ''
@@ -46,6 +50,7 @@ export async function GET(request: NextRequest) {
     const compact = searchParams.get('compact') === 'true'
     const flag = searchParams.get('flag') || ''
     const campaignId = searchParams.get('campaign') || ''
+    const investmentId = admin ? searchParams.get('investmentId') || '' : ''
 
     const requestsHidden = includeHidden || flag === 'hidden' || search.toLowerCase() === 'hidden' || search.toLowerCase() === 'oculto' || search.toLowerCase() === 'ocultos'
     if (requestsHidden && !admin) {
@@ -53,21 +58,30 @@ export async function GET(request: NextRequest) {
     }
 
     const where: Record<string, unknown> = {}
+    const andFilters: Record<string, unknown>[] = []
+    where.AND = andFilters
     if (!includeHidden) {
       where.visible = true
     }
     if (campaignId) {
       const now = new Date()
       const campaign = await db.campaign.findFirst({
-        where: { id: campaignId, active: true, startAt: { lte: now }, endAt: { gte: now } },
-        select: { products: { select: { productId: true } } },
+        where: { id: campaignId, active: true, startAt: { lte: now }, OR: [{ indefinite: true }, { endAt: { gte: now } }] },
+        select: { products: { select: { productId: true } }, investments: { select: { investmentId: true } } },
       })
-      const productIds = campaign?.products.map((product) => product.productId) || []
-      where.id = { in: productIds }
+      if (campaign && dailySale.settings.campaignId === campaignId) {
+        // Automatic campaigns show today's rotation plus products placed on sale manually.
+        andFilters.push({ OR: [{ isOnSale: true }, { id: { in: [...dailySaleIds] } }] })
+      } else {
+        const productIds = campaign?.products.map((product) => product.productId) || []
+        const investmentIds = campaign?.investments.map((row) => row.investmentId) || []
+        andFilters.push({ OR: [{ id: { in: productIds } }, { investmentId: { in: investmentIds } }] })
+      }
     }
+    if (investmentId) where.investmentId = investmentId
     if (flag === 'featured') where.isFeatured = true
     if (flag === 'new') where.isNew = true
-    if (flag === 'sale') where.isOnSale = true
+    if (flag === 'sale') andFilters.push({ OR: [{ isOnSale: true }, { id: { in: [...dailySaleIds] } }] })
     if (flag === 'men') where.isForMen = true
     if (flag === 'available') {
       where.status = 'available'
@@ -95,7 +109,7 @@ export async function GET(request: NextRequest) {
     const searchFlag = flagWords[normalizedSearch]
     if (searchFlag === 'new') where.isNew = true
     if (searchFlag === 'featured') where.isFeatured = true
-    if (searchFlag === 'sale') where.isOnSale = true
+    if (searchFlag === 'sale') andFilters.push({ OR: [{ isOnSale: true }, { id: { in: [...dailySaleIds] } }] })
     if (searchFlag === 'men' || searchesForMen) where.isForMen = true
     if (searchFlag === 'available') {
       where.status = 'available'
@@ -111,6 +125,7 @@ export async function GET(request: NextRequest) {
         { description: q },
         { material: q },
         { color: q },
+        ...(admin ? [{ investment: { is: { description: q } } }] : []),
       ]
     }
     if (category) {
@@ -125,7 +140,7 @@ export async function GET(request: NextRequest) {
       where.isNew = true
     }
     if (isOnSale) {
-      where.isOnSale = true
+      andFilters.push({ OR: [{ isOnSale: true }, { id: { in: [...dailySaleIds] } }] })
     }
     if (isForMen) {
       where.isForMen = true
@@ -156,6 +171,10 @@ export async function GET(request: NextRequest) {
             description: true, material: true, weight: true, dimensions: true,
             color: true, images: true, variants: true,
             category: { select: { name: true, slug: true } },
+            ...(admin ? {
+              investmentId: true,
+              investment: { select: { description: true, purchasedAt: true } },
+            } : {}),
           },
         }),
         includeHidden ? db.product.findMany({
@@ -166,7 +185,7 @@ export async function GET(request: NextRequest) {
       const dailyIds = new Set(selectDailyFeatured(eligibleIds).map((product) => product.id))
       return NextResponse.json({
         products: products.map((product) => ({
-          ...withPublicThumbnails(product),
+          ...withPublicThumbnails(applySale(product)),
           isDailyFeatured: dailyIds.has(product.id),
         })),
         total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)),
@@ -196,7 +215,7 @@ export async function GET(request: NextRequest) {
       const pageStart = (page - 1) * limit
 
       return NextResponse.json({
-        products: dailyProducts.slice(pageStart, pageStart + limit).map(withPublicThumbnails),
+        products: dailyProducts.slice(pageStart, pageStart + limit).map((product) => withPublicThumbnails(applySale(product))),
         total: dailyCount,
         page,
         limit,
@@ -228,7 +247,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      products: admin ? responseProducts : responseProducts.map(withPublicThumbnails),
+      products: admin ? responseProducts.map(applySale) : responseProducts.map((product) => withPublicThumbnails(applySale(product))),
       total,
       page,
       limit,
@@ -242,9 +261,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureProductAudienceColumn()
-    await ensureProductRelations()
-    const admin = requireAdmin(request, 'products')
+    const admin = await requireAdmin(request, 'products')
     if (!admin) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -252,7 +269,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const {
-      name, description, categoryId, material, weight, dimensions,
+      name, description, categoryId, investmentId, material, weight, dimensions,
       color, price, stock, mainImage, images, variants, isFeatured,
       isNew, isOnSale, isForMen, visible, featuredExcluded,
     } = body
@@ -282,11 +299,12 @@ export async function POST(request: NextRequest) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`famar-product-code:${categoryId}`}))`
       const category = await tx.category.findUnique({ where: { id: categoryId }, select: { slug: true } })
       if (!category) throw new Error('CATEGORY_NOT_FOUND')
+      if (investmentId && !await tx.investment.findUnique({ where: { id: investmentId }, select: { id: true } })) throw new Error('INVESTMENT_NOT_FOUND')
       const codePrefix = productCodePrefix(category.slug)
       const generatedCode = await firstAvailableProductCode(tx, codePrefix)
       return tx.product.create({
         data: {
-          name, code: generatedCode, description, categoryId, material, weight, dimensions,
+          name, code: generatedCode, description, categoryId, investmentId: investmentId || null, material, weight, dimensions,
           color, price: priceValue, stock: stockCount,
           status: stockCount <= 0 ? 'out_of_stock' : 'available', mainImage: storedMainImage,
           imageHash,
@@ -315,6 +333,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === 'CATEGORY_NOT_FOUND') {
       return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
     }
+    if (error instanceof Error && error.message === 'INVESTMENT_NOT_FOUND') return NextResponse.json({ error: 'Lote de inversión inválido' }, { status: 400 })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

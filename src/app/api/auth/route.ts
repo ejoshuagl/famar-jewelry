@@ -1,29 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { hashPassword } from '@/lib/utils'
-import { issueAdminToken, auditLog } from '@/lib/admin-auth'
-import { ensureAdminUserPermissions } from '@/lib/admin-users'
+import { hashPassword, verifyPassword } from '@/lib/utils'
+import { issueAdminToken, auditLog, isSuperAdminUsername, requireAdmin } from '@/lib/admin-auth'
 import type { AdminPermission } from '@/lib/admin-auth'
+import { consumePublicRateLimit } from '@/lib/public-rate-limit'
 
-// Límite de intentos: 5 por IP por minuto
-const attempts = new Map<string, { count: number; resetAt: number }>()
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now()
-  const entry = attempts.get(ip)
-  if (!entry || entry.resetAt < now) {
-    attempts.set(ip, { count: 1, resetAt: now + 60_000 })
-    return false
-  }
-  entry.count += 1
-  return entry.count > 5
-}
+// Valid bcrypt hash used only to keep failed-login timing uniform when the
+// requested administrative username does not exist.
+const DUMMY_PASSWORD_HASH = '$2b$12$7K0DBB7Z7w6Q9itfRrZ8gOqmwNPWspjvbupJc7kPC7rDLYkXxZx2W'
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureAdminUserPermissions()
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local'
-    if (isRateLimited(ip)) {
+    if (!await consumePublicRateLimit(request, 'admin-login', 10, 60_000)) {
+      return NextResponse.json({ error: 'Demasiados intentos. Espera un minuto.' }, { status: 429 })
+    }
+    const recentFailures = await db.auditLog.count({ where: { action: 'login_failed', details: ip, createdAt: { gte: new Date(Date.now() - 60_000) } } })
+    if (recentFailures >= 5) {
       return NextResponse.json({ error: 'Demasiados intentos. Espera un minuto.' }, { status: 429 })
     }
 
@@ -34,26 +27,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing credentials' }, { status: 400 })
     }
 
-    const hashedInput = await hashPassword(password)
     const admin = await db.adminUser.findUnique({ where: { username } })
-
-    if (!admin || !admin.active || admin.password !== hashedInput) {
+    const verification = await verifyPassword(password, admin?.password || DUMMY_PASSWORD_HASH)
+    if (!admin || !admin.active || !verification.valid) {
+      await auditLog({ action: 'login_failed', entity: 'admin', admin: 'Sistema', details: ip })
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
+    if (verification.needsUpgrade) await db.adminUser.update({ where: { id: admin.id }, data: { password: await hashPassword(password) } })
 
     const name = admin.name || admin.username
     let permissions: AdminPermission[] | null = null
     try { permissions = admin.permissions ? JSON.parse(admin.permissions) : null } catch { permissions = [] }
+    const effectivePermissions = isSuperAdminUsername(admin.username) ? null : permissions
     await auditLog({ action: 'login', entity: 'admin', admin: name, details: `Sesión iniciada (${ip})` })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       name,
       username: admin.username,
-      permissions,
-      token: issueAdminToken(name, admin.username, permissions),
+      permissions: effectivePermissions,
+      token: null,
     })
+    response.cookies.set('famar-admin-session', issueAdminToken(name, admin.username, effectivePermissions), { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 60 * 60 * 12 })
+    return response
   } catch (error) {
     console.error('POST /api/auth error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
+}
+
+export async function GET(request: NextRequest) {
+  const admin = await requireAdmin(request)
+  if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  return NextResponse.json(admin, { headers: { 'Cache-Control': 'no-store' } })
+}
+
+export async function DELETE() {
+  const response = NextResponse.json({ success: true })
+  response.cookies.set('famar-admin-session', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/', maxAge: 0 })
+  return response
 }

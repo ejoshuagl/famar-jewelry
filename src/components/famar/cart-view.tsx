@@ -45,7 +45,7 @@ export function CartView() {
   const [form, setForm] = useState({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
   const [submitting, setSubmitting] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [couponInput, setCouponInput] = useState('')
+  const [couponInput, setCouponInput] = useState(() => campaignFilter?.couponCode?.toUpperCase() || '')
   const [couponCode, setCouponCode] = useState('')
   const queryClient = useQueryClient()
   const { saleDiscount } = usePricingSettings()
@@ -53,6 +53,34 @@ export function CartView() {
   useEffect(() => {
     trackStoreEvent('cart_view', { campaignId: campaignFilter?.id })
   }, [campaignFilter?.id])
+
+  const { data: campaignValidation } = useQuery({
+    queryKey: ['campaign-validation', campaignFilter?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/campaigns?validate=${encodeURIComponent(campaignFilter?.id || '')}`, { cache: 'no-store' })
+      if (!response.ok) throw new Error('No se pudo validar la promoción')
+      return response.json() as Promise<{ campaignValid: boolean; couponValid: boolean; coupon: { code: string; discount: number } | null }>
+    },
+    enabled: Boolean(campaignFilter?.id),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
+  })
+
+  useEffect(() => {
+    if (!campaignFilter || !campaignValidation) return
+    if (!campaignValidation.campaignValid) {
+      setCampaignFilter(null)
+      return
+    }
+    if (campaignFilter.couponCode && !campaignValidation.couponValid) {
+      setCampaignFilter({ id: campaignFilter.id, title: campaignFilter.title })
+      const timer = window.setTimeout(() => {
+        setCouponInput('')
+        setCouponCode('')
+      }, 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [campaignFilter, campaignValidation, setCampaignFilter])
 
   const cartIdentity = items.map((item) => `${item.productId}:${item.variantId || ''}`).join('|')
   const { data: cartValidation, isFetching: cartUpdating } = useQuery({
@@ -443,6 +471,7 @@ ${productList}
               <div className="space-y-2">
                 <Label htmlFor="coupon">Cupón de descuento</Label>
                 <p className="text-xs text-muted-foreground">Se aplica únicamente a productos sin oferta.</p>
+                {campaignFilter?.couponCode && campaignValidation?.couponValid && !pricing?.coupon && <div className="flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="text-xs"><strong className="text-foreground">Tu publicidad incluye {campaignFilter.couponCode}</strong><p className="mt-0.5 text-muted-foreground">Recuerda aplicarlo para recibir {campaignFilter.couponDiscount || ''}% de descuento en productos sin oferta.</p></div><Button type="button" size="sm" onClick={() => { setCouponInput(campaignFilter.couponCode || ''); setCouponCode((campaignFilter.couponCode || '').toUpperCase()) }} disabled={pricingLoading}>Aplicar cupón</Button></div>}
                 <div className="flex gap-2"><Input id="coupon" value={couponInput} onChange={(e) => setCouponInput(e.target.value.toUpperCase())} placeholder="Ej: FAMAR10" disabled={pricingLoading} /><Button type="button" variant="outline" onClick={applyCoupon} disabled={pricingLoading}>{pricingLoading && couponCode ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <TicketPercent className="mr-1 h-4 w-4" />}{pricingLoading && couponCode ? 'Aplicando…' : 'Aplicar'}</Button></div>
                 {couponCode && pricingLoading ? <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" /><span>Estamos validando tu cupón. Espera un momento…</span></div> : null}
                 {couponCode && !pricingLoading && pricing?.couponError ? <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"><strong>El cupón no se aplicó.</strong><p className="mt-1">{pricing.couponError}</p></div> : null}

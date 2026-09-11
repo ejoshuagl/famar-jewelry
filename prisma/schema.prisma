@@ -27,6 +27,7 @@ model Product {
   name             String
   description      String?
   categoryId       String
+  investmentId     String?
   material         String?
   weight           String?
   dimensions       String?
@@ -49,9 +50,12 @@ model Product {
   updatedAt        DateTime @updatedAt
 
   category       Category          @relation(fields: [categoryId], references: [id])
+  investment     Investment?       @relation(fields: [investmentId], references: [id], onDelete: SetNull)
   orderItems     OrderItem[]
   variantRecords ProductVariant[]
   campaigns      CampaignProduct[]
+
+  @@index([investmentId])
 }
 
 model ProductVariant {
@@ -79,6 +83,7 @@ model Order {
   customerAddress  String?
   customerLocation String?
   campaignId       String?
+  campaignSource   String?  // advertising, coupon, daily_sale
   observations     String?
   total            Float
   stockReserved    Boolean  @default(false)
@@ -92,6 +97,7 @@ model Order {
   campaign         Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
 
   @@index([campaignId, createdAt])
+  @@index([campaignSource, createdAt])
 }
 
 model OrderItem {
@@ -179,15 +185,31 @@ model Campaign {
   productIds  String? // JSON array of associated product IDs
   startAt     DateTime
   endAt       DateTime
+  indefinite  Boolean  @default(false)
   active      Boolean  @default(true)
   priority    Int      @default(0)
+  couponId    String?  @unique
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   products CampaignProduct[]
+  investments CampaignInvestment[]
   orders   Order[]
+  coupon   DiscountCoupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
 
   @@index([active, startAt, endAt])
+}
+
+model CampaignInvestment {
+  campaignId   String
+  investmentId String
+  createdAt    DateTime @default(now())
+
+  campaign   Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  investment Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, investmentId])
+  @@index([investmentId])
 }
 
 model CampaignProduct {
@@ -208,6 +230,12 @@ model CommerceSetting {
   updatedAt DateTime @updatedAt
 }
 
+model SiteSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model DiscountCoupon {
   id          String    @id
   code        String    @unique
@@ -223,6 +251,7 @@ model DiscountCoupon {
   updatedAt   DateTime  @updatedAt
 
   redemptions CouponRedemption[]
+  campaigns  Campaign[]
 }
 
 model CouponRedemption {
@@ -231,6 +260,7 @@ model CouponRedemption {
   orderId       String   @unique
   customerPhone String
   discount      Float
+  claimedAt     DateTime?
   createdAt     DateTime @default(now())
 
   coupon DiscountCoupon @relation(fields: [couponId], references: [id], onDelete: Restrict)
@@ -238,4 +268,30 @@ model CouponRedemption {
 
   @@unique([couponId, customerPhone])
   @@index([couponId, createdAt])
+}
+
+model PublicRateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
+model Investment {
+  id            String   @id @default(cuid())
+  description   String
+  merchandise   Float
+  taxes         Float    @default(0)
+  total         Float
+  purchasedAt   DateTime
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products      Product[]
+  campaigns     CampaignInvestment[]
+
+  @@index([purchasedAt])
 }

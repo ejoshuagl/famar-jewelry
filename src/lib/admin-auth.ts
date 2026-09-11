@@ -2,10 +2,8 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
 
 // Clave para firmar tokens de sesión del admin.
-// Usa ADMIN_SESSION_SECRET si está definida; si no, deriva una clave estable
-// de la URL de la base de datos (no se expone al cliente).
 function sessionSecret(): string {
-  const secret = process.env.ADMIN_SESSION_SECRET || process.env.DATABASE_URL
+  const secret = process.env.ADMIN_SESSION_SECRET
   if (!secret) {
     throw new Error('ADMIN_SESSION_SECRET debe estar configurado')
   }
@@ -13,9 +11,10 @@ function sessionSecret(): string {
 }
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12 // 12 horas
-export const ADMIN_PERMISSIONS = ['dashboard', 'products', 'orders', 'categories', 'campaigns', 'themes', 'wholesale', 'coupons', 'users'] as const
+export const ADMIN_PERMISSIONS = ['dashboard', 'products', 'orders', 'categories', 'campaigns', 'themes', 'wholesale', 'coupons', 'investments', 'users'] as const
 export type AdminPermission = typeof ADMIN_PERMISSIONS[number]
 export type AdminSession = { name: string; username?: string; permissions: AdminPermission[] | null }
+export const isSuperAdminUsername = (username?: string | null) => username?.trim().toLowerCase() === 'joshua'
 
 export function issueAdminToken(name: string, username?: string, permissions: AdminPermission[] | null = null): string {
   const payload = JSON.stringify({ name, username, permissions, exp: Date.now() + TOKEN_TTL_MS })
@@ -58,10 +57,26 @@ export function verifyAdminToken(token: string | null): AdminSession | null {
  * El header x-admin-token es un token firmado emitido por /api/auth.
  * Devuelve el nombre del admin o null si no está autorizado.
  */
-export function requireAdmin(request: Request, permission?: AdminPermission): AdminSession | null {
-  const admin = verifyAdminToken(request.headers.get('x-admin-token'))
-  if (!admin || (permission && admin.permissions && !admin.permissions.includes(permission))) return null
-  return admin
+export async function requireAdmin(request: Request, permission?: AdminPermission): Promise<AdminSession | null> {
+  const cookieToken = 'cookies' in request ? (request as import('next/server').NextRequest).cookies.get('famar-admin-session')?.value || null : null
+  const session = verifyAdminToken(request.headers.get('x-admin-token') || cookieToken)
+  if (!session?.username) return null
+  const record = await db.adminUser.findUnique({
+    where: { username: session.username },
+    select: { username: true, name: true, permissions: true, active: true },
+  })
+  if (!record?.active) return null
+  let permissions: AdminPermission[] | null = null
+  try {
+    permissions = record.permissions
+      ? JSON.parse(record.permissions).filter((entry: unknown): entry is AdminPermission => ADMIN_PERMISSIONS.includes(entry as AdminPermission))
+      : null
+  } catch {
+    permissions = []
+  }
+  const effectivePermissions = isSuperAdminUsername(record.username) ? null : permissions
+  if (permission && effectivePermissions && !effectivePermissions.includes(permission)) return null
+  return { username: record.username, name: record.name || record.username, permissions: effectivePermissions }
 }
 
 // ---- Registro de auditoría ----
