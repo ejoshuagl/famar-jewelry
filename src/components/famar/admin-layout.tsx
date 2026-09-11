@@ -101,12 +101,15 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const { navigate } = useAppStore()
+  const { navigate, currentView } = useAppStore()
   const { adminName, isAuthenticated, can, refreshSession } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
     void refreshSession()
+    const refresh = () => { void refreshSession() }
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
   }, [refreshSession])
 
   useEffect(() => {
@@ -156,7 +159,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <span className="text-sm text-muted-foreground">{adminName}</span>
         </div>
 
-        {children}
+        {sidebarItems.some((item) => item.view === currentView && can(item.permission)) ? children : <div className="rounded-lg border p-6"><p>No tienes acceso a esta sección.</p><p className="mt-2 text-sm text-muted-foreground">Selecciona una sección habilitada en el menú.</p></div>}
       </div>
     </div>
   )

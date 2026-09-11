@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { hasPermission } from '@/lib/admin-permissions'
 
 interface AuthStore {
   isAuthenticated: boolean
@@ -21,7 +22,7 @@ export const useAuthStore = create<AuthStore>()(
       permissions: null,
       can: (permission) => {
         const permissions = get().permissions
-        return !Array.isArray(permissions) || permissions.includes(permission)
+        return get().isAuthenticated && hasPermission(permissions, permission)
       },
       login: async (username: string, password: string) => {
         try {
@@ -47,7 +48,10 @@ export const useAuthStore = create<AuthStore>()(
       refreshSession: async () => {
         try {
           const response = await fetch('/api/auth', { cache: 'no-store' })
-          if (!response.ok) return
+          if (!response.ok) {
+            if (response.status === 401 || response.status === 403) set({ isAuthenticated: false, adminName: null, token: null, permissions: [] })
+            return
+          }
           const data = await response.json()
           set({ isAuthenticated: true, adminName: data.name, token: null, permissions: data.permissions ?? null })
         } catch {

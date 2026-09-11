@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { slugify } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from './permission-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
@@ -130,7 +130,7 @@ export function AdminCategoriesView() {
     <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Categorías</h1>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" onClick={() => setCreateDialogOpen(true)}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" permission="categories:create" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Nueva Categoría
           </Button>
@@ -186,7 +186,7 @@ export function AdminCategoriesView() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => {
+                          permission="categories:delete" onClick={() => {
                             setDeletingId(cat.id)
                             setDeletingName(cat.name)
                             setDeletingProductCount(cat._count?.products || 0)
@@ -243,7 +243,7 @@ export function AdminCategoriesView() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => {
+                    permission="categories:delete" onClick={() => {
                       setDeletingId(cat.id)
                       setDeletingName(cat.name)
                       setDeletingProductCount(cat._count?.products || 0)
@@ -283,7 +283,7 @@ export function AdminCategoriesView() {
                 <Button variant="outline" onClick={closeCreateDialog}>Cancelar</Button>
                 <Button
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => createMutation.mutate()}
+                  permission="categories:create" onClick={() => createMutation.mutate()}
                   disabled={createMutation.isPending || !name.trim()}
                 >
                   {createMutation.isPending ? (

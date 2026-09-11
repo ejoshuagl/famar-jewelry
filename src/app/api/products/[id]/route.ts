@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { requireAdmin, auditLog, hasPermission } from '@/lib/admin-auth'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
 import { firstAvailableProductCode, productCodePrefix } from '@/lib/product-codes'
@@ -20,7 +20,8 @@ export async function GET(
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
-    const admin = await requireAdmin(request)
+    const session = await requireAdmin(request)
+    const admin = session && ['products', 'orders', 'campaigns'].some((p) => hasPermission(session.permissions, p)) ? session : null
     if (!product.visible && !admin) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 })
     }
@@ -67,6 +68,14 @@ export async function PUT(
       isNew, isOnSale, isForMen, visible, featuredExcluded,
     } = body
 
+    const previous = await db.product.findUnique({ where: { id } })
+    if (!previous) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    if ((price !== undefined && Number(price) !== previous.price && !hasPermission(admin.permissions, 'products:prices'))
+      || (isOnSale !== undefined && Boolean(isOnSale) !== previous.isOnSale && !hasPermission(admin.permissions, 'products:offers'))
+      || (!hasPermission(admin.permissions, 'products:stock') && ((stock !== undefined && Number(stock) !== previous.stock) || (variants !== undefined && JSON.stringify(parseVariants(variants)) !== JSON.stringify(parseVariants(previous.variants)))))) {
+      return NextResponse.json({ error: 'No tienes permiso para cambiar precios, stock, variantes u ofertas' }, { status: 403 })
+    }
+
     // Validaciones básicas
     if (price !== undefined) {
       const p = parseFloat(price)
@@ -85,10 +94,6 @@ export async function PUT(
       ? variantsStock(storedVariants)
       : stock !== undefined ? Math.max(0, Math.min(parseInt(stock) || 0, 100000)) : undefined
 
-    const previous = await db.product.findUnique({ where: { id } })
-    if (!previous) {
-      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-    }
 
     const imageHash = mainImage !== undefined
       ? await tryCreatePerceptualHash(mainImage)

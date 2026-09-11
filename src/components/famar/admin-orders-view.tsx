@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { formatPrice, convertDriveUrl } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from './permission-button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -450,7 +450,7 @@ export function AdminOrdersView() {
     <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Pedidos</h1>
-          <Button onClick={() => setCreateDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nuevo pedido manual</Button>
+          <Button permission="orders:create" onClick={() => setCreateDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Nuevo pedido manual</Button>
         </div>
 
         <AdminCreateOrderDialog
@@ -538,7 +538,7 @@ export function AdminOrdersView() {
                             <Eye className="h-3.5 w-3.5" />
                           </Button>
                           {(order.status as string) === 'pending' && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(order)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" permission="orders:edit" onClick={() => openEdit(order)}>
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           )}
@@ -592,7 +592,7 @@ export function AdminOrdersView() {
                   </div>
                   <div className="flex gap-1">
                     {(order.status as string) === 'pending' && (
-                      <Button variant="outline" size="sm" onClick={() => openEdit(order)}>
+                      <Button variant="outline" size="sm" permission="orders:edit" onClick={() => openEdit(order)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" />
                         Editar
                       </Button>
@@ -780,7 +780,7 @@ export function AdminOrdersView() {
                       <div className="flex gap-3">
                         <Button
                           className="flex-1 bg-green-600 text-white hover:bg-green-700"
-                          onClick={() => confirmMutation.mutate(selectedOrder.id as string)}
+                          permission="orders:confirm" onClick={() => confirmMutation.mutate(selectedOrder.id as string)}
                           disabled={confirmMutation.isPending}
                         >
                           {confirmMutation.isPending ? (
@@ -793,7 +793,7 @@ export function AdminOrdersView() {
                         <Button
                           variant="destructive"
                           className="flex-1"
-                          onClick={() => {
+                          permission="orders:cancel" onClick={() => {
                             setCancellingOrderId(selectedOrder.id as string)
                             setCancelReasonInput('')
                             setCancelDialogOpen(true)
@@ -813,7 +813,7 @@ export function AdminOrdersView() {
                         <Button
                           variant="outline"
                           className="flex-1"
-                          onClick={() => openEdit()}
+                          permission="orders:edit" onClick={() => openEdit()}
                         >
                           <Pencil className="h-4 w-4 mr-2" />
                           Modificar Pedido
@@ -821,7 +821,7 @@ export function AdminOrdersView() {
                         <Button
                           variant="outline"
                           className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setDeleteDialogOpen(true)}
+                          permission="orders:delete" onClick={() => setDeleteDialogOpen(true)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Eliminar
@@ -833,7 +833,7 @@ export function AdminOrdersView() {
                     <Button
                       variant="outline"
                       className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => setDeleteDialogOpen(true)}
+                      permission="orders:delete" onClick={() => setDeleteDialogOpen(true)}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Eliminar Pedido
@@ -1015,7 +1015,7 @@ export function AdminOrdersView() {
                 </Button>
                 <Button
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                  onClick={() => saveEditMutation.mutate()}
+                  permission="orders:edit" onClick={() => saveEditMutation.mutate()}
                   disabled={saveEditMutation.isPending || editItems.length === 0}
                 >
                   {saveEditMutation.isPending ? (
@@ -1065,7 +1065,7 @@ export function AdminOrdersView() {
               <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>Volver</Button>
               <Button
                 variant="destructive"
-                onClick={() => cancellingOrderId && cancelMutation.mutate({ orderId: cancellingOrderId, reason: cancelReasonInput })}
+                permission="orders:cancel" onClick={() => cancellingOrderId && cancelMutation.mutate({ orderId: cancellingOrderId, reason: cancelReasonInput })}
                 disabled={cancelMutation.isPending}
               >
                 {cancelMutation.isPending ? (

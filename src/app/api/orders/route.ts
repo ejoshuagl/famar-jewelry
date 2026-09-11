@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { auditLog, requireAdmin } from '@/lib/admin-auth'
+import { auditLog, requireAdmin, hasPermission } from '@/lib/admin-auth'
 import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
 import { salePrice } from '@/lib/pricing'
 import { boundedPositiveInt } from '@/lib/pagination'
@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
     }
     const applyWholesaleDiscount = manualOrder && body.applyWholesaleDiscount === true
     const normalizedCouponCode = String(couponCode || '').trim()
+    if (manualAdmin && ((applyWholesaleDiscount && !hasPermission(manualAdmin.permissions, 'orders:wholesale')) || (normalizedCouponCode && !hasPermission(manualAdmin.permissions, 'orders:coupon')))) {
+      return NextResponse.json({ error: 'No tienes permiso para aplicar este descuento' }, { status: 403 })
+    }
 
     if (typeof customerName !== 'string' || typeof customerCity !== 'string' || typeof customerPhone !== 'string'
       || (customerAddress !== undefined && typeof customerAddress !== 'string')

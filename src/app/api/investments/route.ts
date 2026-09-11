@@ -15,7 +15,9 @@ function validDate(value: unknown) {
 
 export async function GET(request: NextRequest) {
   const optionsOnly = request.nextUrl.searchParams.get('options') === 'true'
-  const admin = await requireAdmin(request, optionsOnly ? 'products' : 'investments')
+  const admin = optionsOnly
+    ? await requireAdmin(request, 'products:view') || await requireAdmin(request, 'campaigns:view')
+    : await requireAdmin(request, 'investments')
   if (!admin) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   if (optionsOnly) {

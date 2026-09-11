@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowDownRight, ArrowUpRight, HandCoins, Pencil, Plus, ReceiptText, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
+import { Button } from './permission-button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -131,7 +131,7 @@ export function AdminInvestmentsView() {
           <h1 className="text-2xl font-bold">Inversiones</h1>
           <p className="mt-1 text-sm text-muted-foreground">Controla el dinero invertido y compáralo con las ventas confirmadas.</p>
         </div>
-        <Button onClick={startCreate}><Plus className="mr-2 h-4 w-4" />Nueva inversión</Button>
+        <Button permission="investments:create" onClick={startCreate}><Plus className="mr-2 h-4 w-4" />Nueva inversión</Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -196,8 +196,8 @@ export function AdminInvestmentsView() {
                   </details>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => startEdit(investment)}><Pencil className="mr-1 h-3.5 w-3.5" />Editar</Button>
-                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={() => remove(investment)}><Trash2 className="mr-1 h-3.5 w-3.5" />Eliminar</Button>
+                  <Button variant="outline" size="sm" permission="investments:edit" onClick={() => startEdit(investment)}><Pencil className="mr-1 h-3.5 w-3.5" />Editar</Button>
+                  <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" permission="investments:delete" onClick={() => remove(investment)}><Trash2 className="mr-1 h-3.5 w-3.5" />Eliminar</Button>
                 </div>
               </div>
             ))}

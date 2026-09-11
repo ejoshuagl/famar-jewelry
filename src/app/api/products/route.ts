@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { requireAdmin, auditLog, hasPermission } from '@/lib/admin-auth'
 import { getEcuadorDate, getEcuadorDayIndex, selectDailyFeatured } from '@/lib/daily-featured'
 import { tryCreatePerceptualHash } from '@/lib/image-hash'
 import { parseVariants, variantsStock } from '@/lib/product-variants'
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || ''
 
     const session = await requireAdmin(request)
-    const admin = session && (!session.permissions || session.permissions.some((permission) => ['products', 'orders', 'campaigns'].includes(permission))) ? session : null
+    const admin = session && ['products', 'orders', 'campaigns'].some((permission) => hasPermission(session.permissions, permission)) ? session : null
     const dailySale = await getDailySaleSelection()
     const dailySaleIds = dailySale.ids
     const applySale = <T extends { id: string; isOnSale: boolean }>(product: T) => withDailySale(product, dailySaleIds)
@@ -268,6 +268,7 @@ export async function POST(request: NextRequest) {
     const adminName = admin.name
 
     const body = await request.json()
+    if (body.isOnSale && !hasPermission(admin.permissions, 'products:offers')) return NextResponse.json({ error: 'No tienes permiso para activar ofertas' }, { status: 403 })
     const {
       name, description, categoryId, investmentId, material, weight, dimensions,
       color, price, stock, mainImage, images, variants, isFeatured,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { formatPrice } from '@/lib/utils'
-import { requireAdmin, auditLog } from '@/lib/admin-auth'
+import { requireAdmin, auditLog, hasPermission } from '@/lib/admin-auth'
 import { adjustOrderStock } from '@/lib/order-stock'
 import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
 import { salePrice } from '@/lib/pricing'
@@ -140,7 +140,8 @@ export async function PUT(
     })
     const eligibleSubtotal = validatedItems.filter((item) => !item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
     const saleSubtotal = validatedItems.filter((item) => item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const basePricing = await calculateDiscount(eligibleSubtotal, undefined, saleSubtotal)
+    const wholesaleAlreadyApplied = /\[Descuento mayorista:/.test(order.observations || '')
+    const basePricing = await calculateDiscount(eligibleSubtotal, undefined, saleSubtotal, wholesaleAlreadyApplied || hasPermission(admin.permissions, 'orders:wholesale'))
     const appliedPercent = Math.max(basePricing.percent, order.couponRedemption?.discount || 0)
     const newTotal = Math.round((Math.max(0, eligibleSubtotal - eligibleSubtotal * appliedPercent / 100) + saleSubtotal) * 100) / 100
 
@@ -175,6 +176,7 @@ export async function PUT(
       })
     })
 
+    await auditLog({ action: 'update', entity: 'order', entityId: id, admin: adminName, details: `#${order.orderNumber}: productos y datos actualizados` })
     return NextResponse.json(updatedOrder)
   } catch (error) {
     console.error('PUT /api/orders/[id] error:', error)
@@ -231,6 +233,7 @@ export async function DELETE(
       await tx.order.delete({ where: { id } })
     })
 
+    await auditLog({ action: 'delete', entity: 'order', entityId: id, admin: adminName, details: `#${order.orderNumber}` })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('DELETE /api/orders/[id] error:', error)

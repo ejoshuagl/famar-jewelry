@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import { db } from '@/lib/db'
+import { ADMIN_PERMISSIONS, hasPermission, readPermissions, type AdminPermission } from '@/lib/admin-permissions'
+export { ADMIN_PERMISSIONS, hasPermission } from '@/lib/admin-permissions'
+export type { AdminPermission } from '@/lib/admin-permissions'
 
 // Clave para firmar tokens de sesión del admin.
 function sessionSecret(): string {
@@ -11,8 +14,6 @@ function sessionSecret(): string {
 }
 
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12 // 12 horas
-export const ADMIN_PERMISSIONS = ['dashboard', 'products', 'orders', 'categories', 'campaigns', 'themes', 'wholesale', 'coupons', 'investments', 'users'] as const
-export type AdminPermission = typeof ADMIN_PERMISSIONS[number]
 export type AdminSession = { name: string; username?: string; permissions: AdminPermission[] | null }
 export const isSuperAdminUsername = (username?: string | null) => username?.trim().toLowerCase() === 'joshua'
 
@@ -66,16 +67,27 @@ export async function requireAdmin(request: Request, permission?: AdminPermissio
     select: { username: true, name: true, permissions: true, active: true },
   })
   if (!record?.active) return null
-  let permissions: AdminPermission[] | null = null
-  try {
-    permissions = record.permissions
-      ? JSON.parse(record.permissions).filter((entry: unknown): entry is AdminPermission => ADMIN_PERMISSIONS.includes(entry as AdminPermission))
-      : null
-  } catch {
-    permissions = []
-  }
+  const permissions = readPermissions(record.permissions)
   const effectivePermissions = isSuperAdminUsername(record.username) ? null : permissions
-  if (permission && effectivePermissions && !effectivePermissions.includes(permission)) return null
+  if (permission) {
+    // Existing section checks now enforce an action according to the endpoint.
+    let required: string = permission
+    if (!permission.includes(':')) {
+      const path = new URL(request.url).pathname
+      let action = request.method === 'GET' ? 'view' : request.method === 'DELETE' ? 'delete' : request.method === 'POST' ? 'create' : 'edit'
+      if (path === '/api/theme' || path === '/api/commerce-settings') action = request.method === 'GET' ? 'view' : 'edit'
+      if (path === '/api/products/bulk') action = 'bulk'
+      if (path === '/api/products/image-similarity') action = 'view'
+      if (path === '/api/store-events' && request.method === 'DELETE') action = 'reset'
+      if (path === '/api/audit-logs') action = 'audit'
+      if (permission === 'orders' && request.method === 'PUT') {
+        const body = await request.clone().json().catch(() => ({}))
+        if (body.status && !body.items && body.total === undefined) action = body.status === 'confirmed' ? 'confirm' : 'cancel'
+      }
+      required = `${permission}:${action}`
+    }
+    if (!hasPermission(effectivePermissions, required)) return null
+  }
   return { username: record.username, name: record.name || record.username, permissions: effectivePermissions }
 }
 
@@ -94,7 +106,7 @@ export async function auditLog(entry: {
         entity: entry.entity,
         entityId: entry.entityId,
         admin: entry.admin,
-        details: entry.details?.slice(0, 500),
+        details: entry.details?.slice(0, 4000),
       },
     })
   } catch (error) {

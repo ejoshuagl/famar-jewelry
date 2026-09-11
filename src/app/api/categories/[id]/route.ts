@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin } from '@/lib/admin-auth'
+import { requireAdmin, auditLog, hasPermission } from '@/lib/admin-auth'
 
 export async function DELETE(
   request: NextRequest,
@@ -27,12 +27,14 @@ export async function DELETE(
     })
 
     if (productsInCategory.length > 0) {
+      if (!hasPermission(admin.permissions, 'products:delete') || !hasPermission(admin.permissions, 'orders:delete')) return NextResponse.json({ error: 'Eliminar una categoría con productos requiere también permisos de eliminación de productos y pedidos' }, { status: 403 })
       const productIds = productsInCategory.map((p) => p.id)
       await db.orderItem.deleteMany({ where: { productId: { in: productIds } } })
       await db.product.deleteMany({ where: { id: { in: productIds } } })
     }
 
     await db.category.delete({ where: { id } })
+    await auditLog({ action: 'delete', entity: 'category', entityId: id, admin: adminName, details: `${category.name}: ${productsInCategory.length} productos` })
 
     return NextResponse.json({
       success: true,

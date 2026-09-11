@@ -6,7 +6,7 @@ import { CalendarClock, Edit, Megaphone, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button } from './permission-button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -233,7 +233,7 @@ export function AdminCampaignsView() {
           <h1 className="text-xl font-bold">Publicidad</h1>
           <p className="text-sm text-muted-foreground">Programa banners y ventanas flotantes usando la hora de Ecuador.</p>
         </div>
-        <Button onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Nueva publicidad</Button>
+        <Button permission="campaigns:create" onClick={openCreate}><Plus className="mr-2 h-4 w-4" />Nueva publicidad</Button>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -255,8 +255,8 @@ export function AdminCampaignsView() {
                     {campaign.message && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{campaign.message}</p>}
                   </div>
                   <div className="flex shrink-0 gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(campaign)}><Edit className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" className="text-destructive" onClick={() => confirmDeleteCampaign(campaign)} aria-label={`Eliminar publicidad ${campaign.title}`}><Trash2 className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" permission="campaigns:edit" onClick={() => openEdit(campaign)}><Edit className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="text-destructive" permission="campaigns:delete" onClick={() => confirmDeleteCampaign(campaign)} aria-label={`Eliminar publicidad ${campaign.title}`}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

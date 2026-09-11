@@ -29,6 +29,7 @@ export function AdminThemesView() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<ThemeName | null>(null)
   const token = useAuthStore((state) => state.token)
+  const can = useAuthStore((state) => state.can)
 
   useEffect(() => {
     fetch('/api/theme').then((response) => response.json()).then((data) => {
@@ -77,7 +78,7 @@ export function AdminThemesView() {
                   <h2 className="font-semibold">{theme.name}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">{theme.description}</p>
                 </div>
-                <button disabled={loading || saving !== null || active} onClick={() => activate(theme.id)} className={cn('inline-flex min-w-24 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors', active ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted')}>
+                <button disabled={!can('themes:edit') || loading || saving !== null || active} onClick={() => activate(theme.id)} className={cn('inline-flex min-w-24 items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors', active ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted')}>
                   {saving === theme.id ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <><Check className="mr-1 h-4 w-4" /> Activo</> : 'Activar'}
                 </button>
               </div>

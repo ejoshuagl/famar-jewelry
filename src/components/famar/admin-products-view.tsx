@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
 import { formatPrice, convertDriveUrl } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { Button } from './permission-button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -189,7 +189,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => onToggleVisible(product as { id: string; visible: boolean })}
+            permission="products:edit" onClick={() => onToggleVisible(product as { id: string; visible: boolean })}
           >
             {product.visible === false ? (
               <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
@@ -197,14 +197,14 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
               <Eye className="h-3.5 w-3.5" />
             )}
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(product)}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" permission="products:edit" onClick={() => onEdit(product)}>
             <Edit className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-destructive"
-            onClick={() => onDelete(product.id as string)}
+            permission="products:delete" onClick={() => onDelete(product.id as string)}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
@@ -215,7 +215,7 @@ function ProductMobileCard({ product, onEdit, onDelete, onToggleVisible, onZoom,
 }
 
 export function AdminProductsView() {
-  const { adminName } = useAuthStore()
+  const { adminName, can } = useAuthStore()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [flagFilter, setFlagFilter] = useState('')
@@ -280,6 +280,9 @@ export function AdminProductsView() {
     mutationFn: async () => {
       const body = {
         ...form,
+        ...(editingId && !can('products:prices') ? { price: undefined } : {}),
+        ...(editingId && !can('products:stock') ? { stock: undefined, variants: undefined } : {}),
+        ...(!can('products:offers') ? { isOnSale: undefined } : {}),
         images: form.galleryUrls
           ? form.galleryUrls.split('\n').filter((u) => u.trim())
           : [],
@@ -537,7 +540,7 @@ export function AdminProductsView() {
     <div className="min-w-0 space-y-4 overflow-x-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <h1 className="text-xl font-bold">Productos</h1>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" onClick={openCreate}>
+          <Button className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto" permission="products:create" onClick={openCreate}>
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Producto
           </Button>
@@ -597,7 +600,7 @@ export function AdminProductsView() {
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: true })}
+                  permission="products:bulk" onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: true })}
                   disabled={bulkMutation.isPending}
                 >
                   Excluir de destacados
@@ -605,7 +608,7 @@ export function AdminProductsView() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: false })}
+                  permission="products:bulk" onClick={() => bulkMutation.mutate({ setFeatured: false, setFeaturedExcluded: false })}
                   disabled={bulkMutation.isPending}
                 >
                   Volver a selección automática
@@ -624,16 +627,16 @@ export function AdminProductsView() {
                     <SelectItem value="sale-off">Quitar En Oferta</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button size="sm" onClick={applyBulkBadge} disabled={!bulkBadge || bulkMutation.isPending}>
+                <Button size="sm" permission="products:bulk" onClick={applyBulkBadge} disabled={!bulkBadge || bulkMutation.isPending}>
                   Aplicar
                 </Button>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: true })} disabled={bulkMutation.isPending}>
+                <Button size="sm" variant="outline" permission="products:bulk" onClick={() => bulkMutation.mutate({ setVisible: true })} disabled={bulkMutation.isPending}>
                   <Eye className="h-3.5 w-3.5 mr-1" />
                   Mostrar
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => bulkMutation.mutate({ setVisible: false })} disabled={bulkMutation.isPending}>
+                <Button size="sm" variant="outline" permission="products:bulk" onClick={() => bulkMutation.mutate({ setVisible: false })} disabled={bulkMutation.isPending}>
                   <EyeOff className="h-3.5 w-3.5 mr-1" />
                   Ocultar
                 </Button>
@@ -758,7 +761,7 @@ export function AdminProductsView() {
                               size="icon"
                               className="h-8 w-8"
                               title={product.visible === false ? 'Mostrar en la página' : 'Ocultar de la página'}
-                              onClick={() => toggleVisibleMutation.mutate(product as { id: string; visible: boolean })}
+                              permission="products:edit" onClick={() => toggleVisibleMutation.mutate(product as { id: string; visible: boolean })}
                             >
                               {product.visible === false ? (
                                 <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
@@ -766,14 +769,14 @@ export function AdminProductsView() {
                                 <Eye className="h-3.5 w-3.5" />
                               )}
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(product)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" permission="products:edit" onClick={() => openEdit(product)}>
                               <Edit className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive"
-                              onClick={() => {
+                              permission="products:delete" onClick={() => {
                                 setDeletingId(product.id as string)
                                 setDeleteDialogOpen(true)
                               }}
@@ -927,7 +930,7 @@ export function AdminProductsView() {
                 </div>
                 <div>
                   <Label>Precio *</Label>
-                  <Input type="number" step="0.01" value={form.price} onChange={(e) => updateForm('price', e.target.value)} />
+                  <Input disabled={Boolean(editingId) && !can('products:prices')} type="number" step="0.01" value={form.price} onChange={(e) => updateForm('price', e.target.value)} />
                 </div>
                 <div className="sm:col-span-2">
                   <Label>Lote de importación</Label>
@@ -950,7 +953,7 @@ export function AdminProductsView() {
                     type="number"
                     value={form.variants.length ? form.variants.reduce((sum, variant) => sum + variant.stock, 0) : form.stock}
                     onChange={(e) => updateForm('stock', e.target.value)}
-                    disabled={form.variants.length > 0}
+                    disabled={form.variants.length > 0 || (Boolean(editingId) && !can('products:stock'))}
                   />
                   {form.variants.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Se calcula con el stock de las variantes.</p>}
                 </div>
@@ -991,7 +994,7 @@ export function AdminProductsView() {
                   excludeProductId={editingId}
                   onDuplicateSelect={openDuplicateProduct}
                 />
-                <div className="sm:col-span-2 space-y-3 rounded-lg border p-3">
+                <fieldset disabled={Boolean(editingId) && !can('products:stock')} className="sm:col-span-2 space-y-3 rounded-lg border p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <Label>Variantes de color</Label>
@@ -1019,7 +1022,7 @@ export function AdminProductsView() {
                       </div>
                     </div>
                   ))}
-                </div>
+                </fieldset>
                 <ImageUploader
                   label="Galería"
                   hint="Fotos extra. También se guardan al guardar el producto."
@@ -1059,7 +1062,7 @@ export function AdminProductsView() {
                     <Label>Nuevo</Label>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Switch checked={form.isOnSale} onCheckedChange={(v) => updateForm('isOnSale', v)} />
+                    <Switch disabled={!can('products:offers')} checked={form.isOnSale} onCheckedChange={(v) => updateForm('isOnSale', v)} />
                     <Label>En Oferta</Label>
                   </div>
                   <div className="flex items-center gap-3">

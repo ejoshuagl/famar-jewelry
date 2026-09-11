@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { hashPassword, verifyPassword } from '@/lib/utils'
 import { issueAdminToken, auditLog, isSuperAdminUsername, requireAdmin } from '@/lib/admin-auth'
 import type { AdminPermission } from '@/lib/admin-auth'
+import { readPermissions } from '@/lib/admin-permissions'
 import { consumePublicRateLimit } from '@/lib/public-rate-limit'
 
 // Valid bcrypt hash used only to keep failed-login timing uniform when the
@@ -36,8 +37,7 @@ export async function POST(request: NextRequest) {
     if (verification.needsUpgrade) await db.adminUser.update({ where: { id: admin.id }, data: { password: await hashPassword(password) } })
 
     const name = admin.name || admin.username
-    let permissions: AdminPermission[] | null = null
-    try { permissions = admin.permissions ? JSON.parse(admin.permissions) : null } catch { permissions = [] }
+    const permissions: AdminPermission[] | null = readPermissions(admin.permissions)
     const effectivePermissions = isSuperAdminUsername(admin.username) ? null : permissions
     await auditLog({ action: 'login', entity: 'admin', admin: name, details: `Sesión iniciada (${ip})` })
 

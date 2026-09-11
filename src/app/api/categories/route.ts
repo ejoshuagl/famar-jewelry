@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAdmin } from '@/lib/admin-auth'
+import { requireAdmin, auditLog } from '@/lib/admin-auth'
 
 export async function GET() {
   try {
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    await auditLog({ action: 'create', entity: 'category', entityId: category.id, admin: adminName, details: category.name })
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
     console.error('POST /api/categories error:', error)

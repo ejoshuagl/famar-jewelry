@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatPrice } from '@/lib/utils'
 import { parseVariants } from '@/lib/product-variants'
 import { salePrice } from '@/lib/pricing'
+import { useAuthStore } from '@/stores/auth-store'
 
 type ProductResult = {
   id: string
@@ -43,6 +44,7 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
   onCreated: () => void
 }) {
   const [customerName, setCustomerName] = useState('')
+  const can = useAuthStore((s) => s.can)
   const [customerCity, setCustomerCity] = useState('Babahoyo')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
@@ -201,13 +203,13 @@ export function AdminCreateOrderDialog({ open, onOpenChange, onCreated }: {
         <div className="rounded-lg border p-3">
           <div className="flex items-center justify-between gap-4">
             <div><Label>Aplicar descuento mayorista</Label><p className="text-xs text-muted-foreground">El mínimo se calcula solo con productos sin oferta.</p></div>
-            <Switch checked={applyWholesaleDiscount} onCheckedChange={setApplyWholesaleDiscount} />
+            <Switch disabled={!can('orders:wholesale')} checked={applyWholesaleDiscount} onCheckedChange={setApplyWholesaleDiscount} />
           </div>
         </div>
 
         <div className="rounded-lg border p-3">
           <Label htmlFor="manual-coupon">Cupón de descuento (opcional)</Label>
-          <Input id="manual-coupon" className="mt-1 uppercase" maxLength={50} value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Ejemplo: CLIENTE10" />
+          <Input disabled={!can('orders:coupon')} id="manual-coupon" className="mt-1 uppercase" maxLength={50} value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Ejemplo: CLIENTE10" />
           <p className="mt-1 text-xs text-muted-foreground">Si también habilitas mayorista, se usará solamente el descuento más conveniente.</p>
         </div>
 

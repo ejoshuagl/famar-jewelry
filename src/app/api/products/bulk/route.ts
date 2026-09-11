@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { auditLog } from '@/lib/admin-auth'
-import { requireAdmin } from '@/lib/admin-auth'
+import { requireAdmin, hasPermission } from '@/lib/admin-auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { ids, setVisible, setFeatured, setFeaturedExcluded, setIsNew, setIsOnSale } = body
+    if (!hasPermission(admin.permissions, 'products:edit') || (setIsOnSale !== undefined && !hasPermission(admin.permissions, 'products:offers'))) return NextResponse.json({ error: 'No tienes permiso para estos cambios' }, { status: 403 })
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: 'No products selected' }, { status: 400 })
     }
