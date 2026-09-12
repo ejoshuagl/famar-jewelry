@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAppStore } from '@/stores/app-store'
 import { useCartStore, type CartItem } from '@/stores/cart-store'
@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { EmptyState } from './empty-state'
-import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent } from 'lucide-react'
+import { ShoppingBag, Minus, Plus, Trash2, Loader2, MapPin, TicketPercent, MessageCircle, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { salePrice } from '@/lib/pricing'
 import { usePricingSettings } from '@/hooks/use-pricing-settings'
@@ -35,6 +35,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+const RECEIPT_KEY = 'famar-whatsapp-receipt'
+type WhatsAppReceipt = { orderNumber: string; total: number; message: string; createdAt: number; campaignId?: string }
+function receiptUrl(message: string) {
+  const url = new URL('https://api.whatsapp.com/send')
+  url.searchParams.set('phone', '593988215076')
+  url.searchParams.set('text', message)
+  return url.toString()
+}
+
 export function CartView() {
   const { navigate, campaignFilter, setCampaignFilter } = useAppStore()
   const { items, replaceItems, removeItem, updateQuantity, clearCart } = useCartStore()
@@ -44,11 +53,24 @@ export function CartView() {
   const [deletingProductName, setDeletingProductName] = useState('')
   const [form, setForm] = useState({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
   const [submitting, setSubmitting] = useState(false)
+  const submittingRef = useRef(false)
+  const [receipt, setReceipt] = useState<WhatsAppReceipt | null>(null)
   const [locating, setLocating] = useState(false)
   const [couponInput, setCouponInput] = useState(() => campaignFilter?.couponCode?.toUpperCase() || '')
   const [couponCode, setCouponCode] = useState('')
   const queryClient = useQueryClient()
   const { saleDiscount } = usePricingSettings()
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = JSON.parse(sessionStorage.getItem(RECEIPT_KEY) || 'null')
+        if (saved && typeof saved.orderNumber === 'string' && typeof saved.message === 'string' && Number.isFinite(saved.total) && Number.isFinite(saved.createdAt) && Date.now() - saved.createdAt < 86400000) setReceipt(saved)
+        else sessionStorage.removeItem(RECEIPT_KEY)
+      } catch { /* El envío sigue disponible aunque el navegador bloquee el almacenamiento. */ }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     trackStoreEvent('cart_view', { campaignId: campaignFilter?.id })
@@ -197,6 +219,7 @@ export function CartView() {
   }
 
   const handleSubmitOrder = async () => {
+    if (submittingRef.current) return
     if (!form.name.trim() || !form.city.trim() || !form.phone.trim()) {
       toast.error('Por favor completa todos los campos obligatorios')
       return
@@ -210,6 +233,7 @@ export function CartView() {
       return
     }
 
+    submittingRef.current = true
     setSubmitting(true)
     try {
       const res = await fetch('/api/orders', {
@@ -247,9 +271,9 @@ export function CartView() {
       queryClient.invalidateQueries({ queryKey: ['orders'] })
 
       // Build WhatsApp message
-      const date = new Date().toLocaleDateString('es-EC')
-      const productList = items
-        .map((item) => `\u{1F538} ${item.quantity}x ${item.name}\n      ${item.code} — ${formatPrice(priceForItem(item) * item.quantity)}`)
+      const date = new Date().toLocaleDateString('es-EC', { timeZone: 'America/Guayaquil' })
+      const productList = (order.items as Array<{ quantity: number; name: string; code: string; price: number; variantName?: string | null }>)
+        .map((item) => `\u{1F538} ${item.quantity}x ${item.name}${item.variantName ? ` (${item.variantName})` : ''}\n      ${item.code} — ${formatPrice(item.price * item.quantity)}`)
         .join('\n')
 
       const finalTotal = Number(order.total)
@@ -279,20 +303,17 @@ ${productList}
 \u{1F4B0} *TOTAL FINAL:* ${formatPrice(finalTotal)}
 \u{1F4DD} *Observaciones:* ${form.observations || 'Ninguna'}`
 
-      const whatsappUrl = new URL('https://api.whatsapp.com/send')
-      whatsappUrl.searchParams.set('phone', '593988215076')
-      whatsappUrl.searchParams.set('text', message)
-      trackStoreEvent('whatsapp_opened', { campaignId: campaignFilter?.id })
-
-      toast.success('¡Pedido creado exitosamente!')
+      const savedReceipt = { orderNumber: String(order.orderNumber), total: finalTotal, message, createdAt: Date.now(), campaignId: campaignFilter?.id }
+      setReceipt(savedReceipt)
+      try { sessionStorage.setItem(RECEIPT_KEY, JSON.stringify(savedReceipt)) } catch { /* Mantener el comprobante en memoria. */ }
       clearCart()
       setCampaignFilter(null)
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
-      window.location.assign(whatsappUrl.toString())
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al crear el pedido. Intenta de nuevo.')
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
@@ -320,6 +341,28 @@ ${productList}
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     )
+  }
+
+  if (items.length === 0 && receipt) {
+    return <div className="container mx-auto max-w-lg px-4 py-10">
+      <Card><CardHeader className="text-center">
+        <MessageCircle className="mx-auto mb-2 h-10 w-10 text-primary" />
+        <CardTitle>¡Tu pedido está registrado!</CardTitle>
+        <p className="allow-text-selection text-sm text-muted-foreground">#{receipt.orderNumber} · {formatPrice(receipt.total)}</p>
+      </CardHeader><CardContent className="space-y-4 text-center">
+        <p className="text-sm">Envíanos el mensaje por WhatsApp para que podamos contactarte y coordinar tu compra.</p>
+        <Button asChild className="h-auto min-h-12 w-full whitespace-normal py-3 text-base">
+          <a href={receiptUrl(receipt.message)} target="_blank" rel="noopener noreferrer" onClick={() => trackStoreEvent('whatsapp_opened', { campaignId: receipt.campaignId })}><MessageCircle className="mr-2 h-5 w-5 shrink-0" />Enviar pedido por WhatsApp</a>
+        </Button>
+        <p className="text-sm text-muted-foreground">Cuando se abra WhatsApp, toca <strong>Enviar</strong>. Te responderemos por ese chat.</p>
+        <p className="text-xs text-muted-foreground">Si no abre, vuelve a pulsar el botón. Tu pedido ya está guardado.</p>
+        <Button variant="outline" className="w-full" onClick={async () => {
+          try { await navigator.clipboard.writeText(receipt.message); toast.success('Mensaje copiado. Pégalo en nuestro chat de WhatsApp.') }
+          catch { toast.error('No se pudo copiar. Usa el botón de WhatsApp.') }
+        }}><Copy className="mr-2 h-4 w-4" />Copiar mensaje</Button>
+        <Button variant="ghost" onClick={() => navigate('catalog')}>Seguir viendo el catálogo</Button>
+      </CardContent></Card>
+    </div>
   }
 
   if (items.length === 0) {
@@ -497,7 +540,7 @@ ${productList}
                 {cartUpdating ? 'Actualizando carrito…' : items.some((item) => item.unavailable) ? 'Retira los productos agotados' : 'Solicitar Pedido'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                Al solicitar, se abrirá WhatsApp para confirmar tu pedido. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
+                Después de registrar tu pedido, envíanos el mensaje por WhatsApp para coordinar tu compra. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
               </p>
             </CardContent>
           </Card>
@@ -537,6 +580,7 @@ ${productList}
               <Input
                 id="phone"
                 type="tel"
+                autoComplete="tel-national"
                 inputMode="numeric"
                 maxLength={10}
                 value={form.phone}
@@ -544,6 +588,7 @@ ${productList}
                 placeholder="Ej: 0991234567"
               />
               <p className="mt-1 text-xs text-muted-foreground">Debe comenzar con 09 y contener 10 números.</p>
+              {/^09\d{8}$/.test(form.phone) && <p className="mt-2 rounded-md bg-primary/10 p-2 text-sm">¿Este es tu WhatsApp? <strong className="allow-text-selection whitespace-nowrap">{form.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3')}</strong> <button type="button" className="text-primary underline" onClick={() => document.getElementById('phone')?.focus()}>Corregir</button></p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Dirección de entrega *</Label>
@@ -589,7 +634,7 @@ ${productList}
                     Procesando...
                   </>
                 ) : (
-                  'Confirmar Pedido'
+                  'Continuar'
                 )}
               </Button>
             </div>
