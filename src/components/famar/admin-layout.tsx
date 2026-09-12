@@ -21,6 +21,7 @@ import {
   TicketPercent,
   Users,
   HandCoins,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AdminOrderNotifier } from './admin-order-notifier'
@@ -41,7 +42,7 @@ const sidebarItems: { label: string; view: AppView; permission: string; icon: Re
   { label: 'Usuarios', view: 'admin-users', permission: 'users', icon: <Users className="h-4 w-4" /> },
 ]
 
-function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarNav({ onNavigate, onSettings }: { onNavigate?: () => void; onSettings: () => void }) {
   const { currentView, navigate } = useAppStore()
   const { logout, can } = useAuthStore()
 
@@ -75,6 +76,7 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       <Separator />
       <div className="p-2 space-y-1">
+        {can('orders:view') && <button onClick={() => { onSettings(); onNavigate?.() }} className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"><Settings className="h-4 w-4" />Configuración</button>}
         <button
           onClick={async () => {
             await logout()
@@ -106,6 +108,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { adminName, isAuthenticated, can, refreshSession } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [pushActive, setPushActive] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   useEffect(() => {
     void refreshSession()
@@ -130,7 +133,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Desktop sidebar — always one instance, visibility via CSS only */}
       <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
         <ScrollArea className="flex-1">
-          <SidebarNav />
+          <SidebarNav onSettings={() => setSettingsOpen(true)} />
         </ScrollArea>
       </aside>
 
@@ -141,7 +144,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
           {/* drawer */}
           <aside className="relative z-10 flex h-full w-64 flex-col bg-card border-r">
-            <SidebarNav onNavigate={() => setMobileOpen(false)} />
+            <SidebarNav onNavigate={() => setMobileOpen(false)} onSettings={() => setSettingsOpen(true)} />
           </aside>
         </div>
       )}
@@ -161,7 +164,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <span className="text-sm text-muted-foreground">{adminName}</span>
         </div>
 
-        {can('orders:view') && <AdminPushSettings onActive={setPushActive} />}
+        {can('orders:view') && <AdminPushSettings onActive={setPushActive} open={settingsOpen} onOpenChange={setSettingsOpen} />}
         {sidebarItems.some((item) => item.view === currentView && can(item.permission)) ? children : <div className="rounded-lg border p-6"><p>No tienes acceso a esta sección.</p><p className="mt-2 text-sm text-muted-foreground">Selecciona una sección habilitada en el menú.</p></div>}
       </div>
     </div>

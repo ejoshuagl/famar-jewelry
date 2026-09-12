@@ -3,6 +3,16 @@
 import { useEffect, useState } from 'react'
 import { Bell, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+
+function notificationError(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (/push service|registration failed/i.test(message)) return 'El navegador no pudo conectarse al servicio de notificaciones. Si usas Brave, abre Configuración → Privacidad y seguridad y revisa «Usar los servicios de Google para mensajes push». Después reinicia Brave y reintenta. También puedes probar en Chrome o Edge.'
+  if (error instanceof Error && error.name === 'NotAllowedError') return 'Las notificaciones están bloqueadas. Permítelas en los ajustes de este sitio y vuelve a intentarlo.'
+  if (error instanceof Error && error.name === 'InvalidAccessError') return 'No se pudo validar la configuración de notificaciones. Contacta al administrador.'
+  if (/failed to fetch|networkerror/i.test(message)) return 'No se pudo conectar. Revisa tu conexión y vuelve a intentarlo.'
+  return message || 'No se pudieron activar las notificaciones. Vuelve a intentarlo.'
+}
 
 async function pushAction(action: string, subscription: PushSubscription) {
   const response = await fetch('/api/admin-push', {
@@ -14,7 +24,7 @@ async function pushAction(action: string, subscription: PushSubscription) {
   return data
 }
 
-export function AdminPushSettings({ onActive }: { onActive: (active: boolean) => void }) {
+export function AdminPushSettings({ onActive, open, onOpenChange }: { onActive: (active: boolean) => void; open: boolean; onOpenChange: (open: boolean) => void }) {
   const [active, setActive] = useState(false)
   const [supported, setSupported] = useState(false)
   const [publicKey, setPublicKey] = useState('')
@@ -77,7 +87,7 @@ export function AdminPushSettings({ onActive }: { onActive: (active: boolean) =>
       sub ||= await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes })
       await pushAction('enable', sub)
       setActive(true); onActive(true); setMessage('Activadas. Pulsa «Probar aviso» para comprobarlo.')
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudieron activar las notificaciones.') }
+    } catch (error) { setMessage(notificationError(error)); setHelp(true) }
     finally { setBusy(false) }
   }
   async function test() {
@@ -88,10 +98,10 @@ export function AdminPushSettings({ onActive }: { onActive: (active: boolean) =>
       if (!sub) throw new Error('Activa de nuevo las notificaciones.')
       await pushAction('test', sub)
       setMessage('Aviso enviado. Si no aparece, revisa los permisos y No molestar del dispositivo.')
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'No se pudo enviar el aviso.') }
+    } catch (error) { setMessage(notificationError(error)) }
     finally { setBusy(false) }
   }
-  return <section className="mb-4 rounded-lg border p-3">
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>Configuración</DialogTitle><DialogDescription>Preferencias de este dispositivo para administración.</DialogDescription></DialogHeader><section className="rounded-lg border p-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><p className="flex items-center gap-2 text-sm font-medium"><Bell className="h-4 w-4 text-primary" />Avisos de pedidos</p><p className="mt-1 text-xs text-muted-foreground" role="status">{message}</p></div>
       <div className="flex flex-wrap gap-2">
@@ -103,8 +113,9 @@ export function AdminPushSettings({ onActive }: { onActive: (active: boolean) =>
     {help && <div className="mt-3 space-y-2 border-t pt-3 text-xs text-muted-foreground">
       <p>Android: abre administración en Chrome, activa y acepta «Permitir». Revisa que Chrome tenga notificaciones permitidas en los ajustes del teléfono.</p>
       <p>PC: abre administración en Chrome, Edge o Firefox, activa y permite los avisos. Con el navegador totalmente cerrado, la entrega depende del sistema y la ejecución en segundo plano.</p>
+      <p>Brave: en Configuración → Privacidad y seguridad, revisa «Usar los servicios de Google para mensajes push». Habilitarlo permite a Brave usar el servicio de Google para recibir avisos. Esta elección se realiza en el navegador, no desde FAMAR.</p>
       <p>iPhone: Safari → Compartir → Agregar a Inicio. Abre ese icono, inicia sesión y activa los avisos (iOS 16.4 o posterior).</p>
       <p>Actívalas en cada dispositivo personal. Cerrar la página conserva los avisos; cerrar sesión los desactiva en ese navegador. No molestar, ahorro de batería o falta de conexión pueden retrasarlos.</p>
     </div>}
-  </section>
+  </section></DialogContent></Dialog>
 }
