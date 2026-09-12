@@ -310,6 +310,13 @@ ${productList}
       setCampaignFilter(null)
       setOrderDialogOpen(false)
       setForm({ name: '', city: '', phone: '', address: '', location: '', observations: '' })
+      // Keep the receipt available when returning, or if the device cannot open WhatsApp.
+      try {
+        trackStoreEvent('whatsapp_opened', { campaignId: savedReceipt.campaignId })
+        window.location.assign(receiptUrl(message))
+      } catch {
+        toast.info('Tu pedido está guardado. Pulsa el botón de WhatsApp para enviarlo.')
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al crear el pedido. Intenta de nuevo.')
     } finally {
@@ -350,12 +357,11 @@ ${productList}
         <CardTitle>¡Tu pedido está registrado!</CardTitle>
         <p className="allow-text-selection text-sm text-muted-foreground">#{receipt.orderNumber} · {formatPrice(receipt.total)}</p>
       </CardHeader><CardContent className="space-y-4 text-center">
-        <p className="text-sm">Envíanos el mensaje por WhatsApp para que podamos contactarte y coordinar tu compra.</p>
+        <p className="text-sm font-medium">Solo falta tocar Enviar en WhatsApp.</p>
         <Button asChild className="h-auto min-h-12 w-full whitespace-normal py-3 text-base">
           <a href={receiptUrl(receipt.message)} target="_blank" rel="noopener noreferrer" onClick={() => trackStoreEvent('whatsapp_opened', { campaignId: receipt.campaignId })}><MessageCircle className="mr-2 h-5 w-5 shrink-0" />Enviar pedido por WhatsApp</a>
         </Button>
-        <p className="text-sm text-muted-foreground">Cuando se abra WhatsApp, toca <strong>Enviar</strong>. Te responderemos por ese chat.</p>
-        <p className="text-xs text-muted-foreground">Si no abre, vuelve a pulsar el botón. Tu pedido ya está guardado.</p>
+        <p className="text-xs text-muted-foreground">¿No abrió WhatsApp? Usa el botón de arriba. Si ya enviaste el mensaje, te responderemos por ese chat.</p>
         <Button variant="outline" className="w-full" onClick={async () => {
           try { await navigator.clipboard.writeText(receipt.message); toast.success('Mensaje copiado. Pégalo en nuestro chat de WhatsApp.') }
           catch { toast.error('No se pudo copiar. Usa el botón de WhatsApp.') }
@@ -540,7 +546,7 @@ ${productList}
                 {cartUpdating ? 'Actualizando carrito…' : items.some((item) => item.unavailable) ? 'Retira los productos agotados' : 'Solicitar Pedido'}
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                Después de registrar tu pedido, envíanos el mensaje por WhatsApp para coordinar tu compra. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Consulta nuestras políticas</button>.
+                Abriremos WhatsApp con tu pedido listo para enviar. <button type="button" onClick={() => navigate('policies')} className="text-primary hover:underline">Políticas de compra</button>.
               </p>
             </CardContent>
           </Card>
@@ -615,7 +621,7 @@ ${productList}
                 rows={3}
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <Button
                 variant="outline"
                 className="flex-1"
@@ -631,10 +637,10 @@ ${productList}
                 {submitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Procesando...
+                    Preparando pedido…
                   </>
                 ) : (
-                  'Continuar'
+                  <><MessageCircle className="mr-2 h-4 w-4 shrink-0" />Pedir por WhatsApp</>
                 )}
               </Button>
             </div>
