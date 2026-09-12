@@ -104,9 +104,32 @@ export async function PUT(
     if (!Array.isArray(items) || !items.length || items.length > 100) {
       return NextResponse.json({ error: 'El pedido debe contener productos válidos' }, { status: 400 })
     }
-    const requestedItems = items as Array<{ productId: string; quantity: number; variantId?: string }>
-    if (requestedItems.some((item) => !item?.productId || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100000)) {
+    const rawItems = items as Array<{ productId: string; quantity: number; variantId?: string }>
+    if (rawItems.some((item) => typeof item?.productId !== 'string' || !item.productId || (item.variantId != null && typeof item.variantId !== 'string') || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100000)) {
       return NextResponse.json({ error: 'Cantidades inválidas' }, { status: 400 })
+    }
+    const grouped = new Map<string, typeof rawItems[number]>()
+    for (const item of rawItems) {
+      const key = JSON.stringify([item.productId, item.variantId || ''])
+      grouped.set(key, { ...item, quantity: item.quantity + (grouped.get(key)?.quantity || 0) })
+    }
+    const requestedItems = [...grouped.values()]
+    const phone = customerPhone === undefined ? order.customerPhone : customerPhone
+    if (typeof phone !== 'string' || !/^09\d{8}$/.test(phone.trim())
+      || [customerName, customerCity].some((value) => value !== undefined && (typeof value !== 'string' || !value.trim()))
+      || (customerName?.length || 0) > 100 || (customerCity?.length || 0) > 80
+      || (observations !== undefined && (typeof observations !== 'string' || observations.length > 1000))
+      || (body.couponCode !== undefined && (typeof body.couponCode !== 'string' || body.couponCode.length > 50))
+      || (body.applyWholesaleDiscount !== undefined && typeof body.applyWholesaleDiscount !== 'boolean')) {
+      return NextResponse.json({ error: 'Revisa los datos del cliente, teléfono y descuento' }, { status: 400 })
+    }
+    const oldCoupon = order.couponRedemption?.coupon.code || ''
+    const couponCode = body.couponCode === undefined ? oldCoupon : body.couponCode.trim().toUpperCase()
+    const previousWholesale = !/\[Pedido manual · mayorista no habilitado/.test(order.observations || '')
+    const includeWholesale = body.applyWholesaleDiscount ?? previousWholesale
+    if ((couponCode.toUpperCase() !== oldCoupon.toUpperCase() && !hasPermission(admin.permissions, 'orders:coupon'))
+      || (includeWholesale !== previousWholesale && !hasPermission(admin.permissions, 'orders:wholesale'))) {
+      return NextResponse.json({ error: 'No tienes permiso para modificar este descuento' }, { status: 403 })
     }
     const productIds = [...new Set(requestedItems.map((item) => item.productId))]
     const [products, saleDiscount, dailySale] = await Promise.all([
@@ -120,13 +143,15 @@ export async function PUT(
       if (!product || product.status !== 'available') throw new Error('PRODUCT_UNAVAILABLE')
       let available = product.stock
       let variantName: string | null = null
+      const variants = parseVariants(product.variants)
+      if (variants.length && !item.variantId) throw new Error('VARIANT_INVALID')
       if (item.variantId) {
-        const variant = parseVariants(product.variants).find((entry) => entry.id === item.variantId)
+        const variant = variants.find((entry) => entry.id === item.variantId)
         if (!variant) throw new Error('VARIANT_INVALID')
         available = variant.stock
         variantName = variant.name
       }
-      if (item.quantity > available) throw new Error('INSUFFICIENT_STOCK')
+      if (item.quantity > available || item.quantity > 100000) throw new Error('INSUFFICIENT_STOCK')
       return {
         productId: product.id,
         quantity: item.quantity,
@@ -138,25 +163,49 @@ export async function PUT(
         isOnSale: product.isOnSale || dailySale.ids.has(product.id),
       }
     })
+    for (const product of products) {
+      const quantity = validatedItems.filter((item) => item.productId === product.id).reduce((sum, item) => sum + item.quantity, 0)
+      if (quantity > product.stock) throw new Error('INSUFFICIENT_STOCK')
+    }
     const eligibleSubtotal = validatedItems.filter((item) => !item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
     const saleSubtotal = validatedItems.filter((item) => item.isOnSale).reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const wholesaleAlreadyApplied = /\[Descuento mayorista:/.test(order.observations || '')
-    const basePricing = await calculateDiscount(eligibleSubtotal, undefined, saleSubtotal, wholesaleAlreadyApplied || hasPermission(admin.permissions, 'orders:wholesale'))
-    const appliedPercent = Math.max(basePricing.percent, order.couponRedemption?.discount || 0)
-    const newTotal = Math.round((Math.max(0, eligibleSubtotal - eligibleSubtotal * appliedPercent / 100) + saleSubtotal) * 100) / 100
+    const pricing = await calculateDiscount(eligibleSubtotal, couponCode, saleSubtotal, includeWholesale)
+    if (couponCode && !pricing.validCoupon) {
+      return NextResponse.json({ error: 'El cupón no es válido, está vencido, agotado o no cumple el mínimo con productos sin oferta. Retíralo o corrige el pedido.' }, { status: 400 })
+    }
+    const cleanObs = String(observations ?? order.observations ?? '')
+      .replace(/\[(?:Descuento mayorista:|Cupón |Pedido manual · mayorista )[^\]]*\]/g, '').trim()
+    const updatedObs = [cleanObs, pricing.percent ? `[${pricing.source}: ${pricing.percent}%]` : '',
+      `[Pedido manual · mayorista ${includeWholesale ? 'habilitado' : 'no habilitado'}${couponCode ? ` · cupón ${couponCode}` : ''}]`].filter(Boolean).join('\n')
 
     const updatedOrder = await db.$transaction(async (tx) => {
       await tx.$queryRawUnsafe(`SELECT "id" FROM "Order" WHERE "id" = $1 FOR UPDATE`, id)
       const currentOrder = await tx.order.findUnique({ where: { id }, select: { status: true } })
       if (!currentOrder || currentOrder.status !== 'pending') throw new Error('ORDER_ALREADY_PROCESSED')
+      if (pricing.couponId) {
+        const duplicate = await tx.couponRedemption.findFirst({ where: {
+          couponId: pricing.couponId, customerPhone: phone.trim(), orderId: { not: id },
+        } })
+        if (duplicate) throw new Error('COUPON_ALREADY_USED')
+        const coupon = await tx.discountCoupon.findUnique({ where: { id: pricing.couponId } })
+        const now = new Date()
+        if (!coupon?.active || (coupon.startsAt && coupon.startsAt > now) || (coupon.endsAt && coupon.endsAt < now)
+          || coupon.minPurchase > eligibleSubtotal || coupon.discount !== pricing.percent
+          || (coupon.usageLimit !== null && coupon.usageCount >= coupon.usageLimit)) throw new Error('COUPON_EXHAUSTED')
+      }
+      if (body.preview === true) return { ...pricing, items: validatedItems }
+      await tx.couponRedemption.deleteMany({ where: { orderId: id } })
+      if (pricing.couponId) await tx.couponRedemption.create({ data: {
+        orderId: id, couponId: pricing.couponId, customerPhone: phone.trim(), discount: pricing.percent, claimedAt: null,
+      } })
       await tx.orderItem.deleteMany({ where: { orderId: id } })
       return tx.order.update({ where: { id }, data: {
-        total: newTotal,
+        total: pricing.total,
         stockReserved: false,
-        ...(observations !== undefined ? { observations: observations || null } : {}),
+        observations: updatedObs,
         ...(customerName ? { customerName } : {}),
         ...(customerCity ? { customerCity } : {}),
-        ...(customerPhone ? { customerPhone } : {}),
+        customerPhone: phone.trim(),
         items: {
           create: validatedItems.map((item) => ({
             productId: item.productId,
@@ -176,10 +225,13 @@ export async function PUT(
       })
     })
 
-    await auditLog({ action: 'update', entity: 'order', entityId: id, admin: adminName, details: `#${order.orderNumber}: productos y datos actualizados` })
+    if (body.preview !== true) await auditLog({ action: 'update', entity: 'order', entityId: id, admin: adminName, details: `#${order.orderNumber}: productos y datos actualizados — ${pricing.source || 'sin descuento'} — ${formatPrice(pricing.total)}` })
     return NextResponse.json(updatedOrder)
   } catch (error) {
     console.error('PUT /api/orders/[id] error:', error)
+    if (error instanceof Error && (error.message === 'COUPON_ALREADY_USED' || ('code' in error && error.code === 'P2002'))) {
+      return NextResponse.json({ error: 'Ya reclamaste este cupón. Compártelo con otra persona para que también pueda aprovecharlo.' }, { status: 409 })
+    }
     if (error instanceof Error && ['PRODUCT_UNAVAILABLE', 'VARIANT_INVALID', 'INSUFFICIENT_STOCK'].includes(error.message)) {
       return NextResponse.json({ error: 'Uno de los productos o variantes ya no está disponible en la cantidad solicitada' }, { status: 409 })
     }

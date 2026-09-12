@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Switch } from '@/components/ui/switch'
+import { parseVariants } from '@/lib/product-variants'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/auth-store'
 import { formatPrice, convertDriveUrl } from '@/lib/utils'
@@ -115,6 +117,7 @@ interface OrderProductLookup {
   code: string
   price: number
   stock: number
+  variants?: unknown
 }
 
 export function AdminOrdersView() {
@@ -139,10 +142,41 @@ export function AdminOrdersView() {
   const [editName, setEditName] = useState('')
   const [editCity, setEditCity] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const can = useAuthStore((s) => s.can)
+  const [editCoupon, setEditCoupon] = useState('')
+  const [editWholesale, setEditWholesale] = useState(true)
+  const [editQuote, setEditQuote] = useState<{ key: string; subtotal: number; total: number; amount: number; source: string | null; items: EditableOrderItem[] } | null>(null)
+  const [editQuoteError, setEditQuoteError] = useState<{ key: string; message: string } | null>(null)
+  const editPayload = JSON.stringify({
+    items: editItems.map(({ productId, variantId, quantity }) => ({ productId, variantId, quantity })),
+    customerPhone: editPhone, couponCode: editCoupon, applyWholesaleDiscount: editWholesale,
+  })
+  const editQuoteKey = `${selectedOrder?.id}:${editPayload}`
+  const currentEditQuote = editQuote?.key === editQuoteKey ? editQuote : null
+  const currentEditError = editQuoteError?.key === editQuoteKey ? editQuoteError.message : ''
+  useEffect(() => {
+    if (!editDialogOpen || !selectedOrder?.id) return
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/orders/${selectedOrder.id}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-token': useAuthStore.getState().token || '' },
+          body: JSON.stringify({ ...JSON.parse(editPayload), preview: true }), signal: controller.signal,
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'No se pudo validar el pedido')
+        if (!controller.signal.aborted) { setEditQuote({ ...result, key: editQuoteKey }); setEditQuoteError(null) }
+      } catch (error) {
+        if (!controller.signal.aborted) setEditQuoteError({ key: editQuoteKey, message: error instanceof Error ? error.message : 'No se pudo validar el pedido' })
+      }
+    }, 400)
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [editDialogOpen, selectedOrder?.id, editPayload, editQuoteKey])
 
   // Add product by code state
   const [codeSearch, setCodeSearch] = useState('')
   const [foundProduct, setFoundProduct] = useState<OrderProductLookup | null>(null)
+  const [foundVariant, setFoundVariant] = useState('')
   const [searchingCode, setSearchingCode] = useState(false)
   const [codeError, setCodeError] = useState('')
 
@@ -245,7 +279,6 @@ export function AdminOrdersView() {
   const saveEditMutation = useMutation({
     mutationFn: async () => {
       if (!selectedOrder) return
-      const total = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
       const res = await fetch(`/api/orders/${selectedOrder.id}`, {
         method: 'PUT',
         headers: {
@@ -254,8 +287,7 @@ export function AdminOrdersView() {
           'x-admin-token': useAuthStore.getState().token || '',
         },
         body: JSON.stringify({
-          items: editItems,
-          total,
+          ...JSON.parse(editPayload),
           observations: editObs,
           customerName: editName,
           customerCity: editCity,
@@ -340,7 +372,11 @@ export function AdminOrdersView() {
       baseQty: item.quantity as number,
     }))
     setEditItems(items)
-    setEditObs((target.observations as string) || '')
+    setEditQuote(null)
+    setEditQuoteError(null)
+    setEditCoupon(target.couponRedemption?.coupon.code || '')
+    setEditWholesale(!/\[Pedido manual · mayorista no habilitado/.test(target.observations || ''))
+    setEditObs((target.observations || '').replace(/\[(?:Descuento mayorista:|Cupón |Pedido manual · mayorista )[^\]]*\]/g, '').trim())
     setEditName(target.customerName as string)
     setEditCity(target.customerCity as string)
     setEditPhone(target.customerPhone as string)
@@ -376,6 +412,7 @@ export function AdminOrdersView() {
   }
 
   const searchProductByCode = async () => {
+    setFoundVariant('')
     const trimmed = codeSearch.trim().toUpperCase()
     if (!trimmed) {
       setCodeError('Ingresa un código de producto')
@@ -405,25 +442,29 @@ export function AdminOrdersView() {
   const addFoundProduct = () => {
     if (!foundProduct) return
     const product = foundProduct
+    const variants = parseVariants(product.variants)
+    const variant = variants.find((entry) => entry.id === foundVariant)
+    if (variants.length && !variant) return toast.error('Selecciona una variante')
+    const available = variant?.stock ?? product.stock
     // Check if product is already in the order
-    const existing = editItems.find((item) => item.productId === product.id)
+    const existing = editItems.find((item) => item.productId === product.id && (item.variantId || '') === (variant?.id || ''))
     if (existing) {
       // Increase quantity
-      const max = existing.stock != null ? existing.stock : (product.stock as number)
+      const max = available
       if (existing.quantity + 1 > max) {
         toast.error(`Solo hay ${max} unidad(es) disponible(s) de "${product.name}"`)
         return
       }
       setEditItems((prev) =>
         prev.map((item) =>
-          item.productId === product.id
+          item.id === existing.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       )
       toast.success(`Cantidad de "${product.name}" aumentada a ${existing.quantity + 1}`)
     } else {
-      if ((product.stock as number) < 1) {
+      if (available < 1) {
         toast.error(`"${product.name}" no tiene stock disponible`)
         return
       }
@@ -434,7 +475,9 @@ export function AdminOrdersView() {
         price: product.price as number,
         name: product.name as string,
         code: product.code as string,
-        stock: product.stock as number,
+        stock: available,
+        variantId: variant?.id,
+        variantName: variant?.name,
         baseQty: 0,
       }
       setEditItems((prev) => [...prev, newItem])
@@ -444,7 +487,6 @@ export function AdminOrdersView() {
     setFoundProduct(null)
   }
 
-  const editTotal = editItems.reduce((sum, i) => sum + i.quantity * i.price, 0)
 
   return (
     <div className="space-y-4">
@@ -896,7 +938,7 @@ export function AdminOrdersView() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(item.price)} c/u</p>
+                          <p className="text-xs text-muted-foreground">{item.code} · {formatPrice(currentEditQuote?.items.find((entry) => entry.productId === item.productId && (entry.variantId || '') === (item.variantId || ''))?.price ?? item.price)} c/u</p>
                           {item.variantName && <p className="text-xs text-primary">Color: {item.variantName}</p>}
                         </div>
                         <div className="flex items-center border rounded-md">
@@ -916,7 +958,7 @@ export function AdminOrdersView() {
                           </Button>
                         </div>
                         <span className="text-sm font-bold w-16 text-right shrink-0">
-                          {formatPrice(item.price * item.quantity)}
+                          {formatPrice((currentEditQuote?.items.find((entry) => entry.productId === item.productId && (entry.variantId || '') === (item.variantId || ''))?.price ?? item.price) * item.quantity)}
                         </span>
                         <Button
                           variant="ghost"
@@ -974,6 +1016,10 @@ export function AdminOrdersView() {
                 {/* Found product */}
                 {foundProduct && (
                   <div className="mt-2 p-3 rounded-lg border bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    {parseVariants(foundProduct.variants).length > 0 && <Select value={foundVariant} onValueChange={setFoundVariant}>
+                      <SelectTrigger className="mb-2"><SelectValue placeholder="Elegir variante" /></SelectTrigger>
+                      <SelectContent>{parseVariants(foundProduct.variants).map((variant) => <SelectItem key={variant.id} value={variant.id} disabled={variant.stock < 1}>{variant.name} · Stock {variant.stock}</SelectItem>)}</SelectContent>
+                    </Select>}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{foundProduct.name as string}</p>
@@ -997,15 +1043,27 @@ export function AdminOrdersView() {
               <Separator />
 
               {/* Observations */}
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <Label htmlFor="edit-wholesale">Aplicar descuento mayorista</Label>
+                <Switch id="edit-wholesale" checked={editWholesale} onCheckedChange={setEditWholesale} disabled={!can('orders:wholesale') || saveEditMutation.isPending} />
+              </div>
+              <div>
+                <Label htmlFor="edit-coupon">Cupón (opcional)</Label>
+                <Input id="edit-coupon" value={editCoupon} maxLength={50} onChange={(e) => setEditCoupon(e.target.value.toUpperCase())} disabled={!can('orders:coupon') || saveEditMutation.isPending} />
+                <p className="mt-1 text-xs text-muted-foreground">Se aplica el mejor descuento solo a productos sin oferta.</p>
+              </div>
               <div>
                 <Label htmlFor="edit-obs">Observaciones</Label>
                 <Textarea id="edit-obs" value={editObs} onChange={(e) => setEditObs(e.target.value)} rows={2} />
               </div>
 
               {/* Total */}
-              <div className="flex justify-between items-center p-3 rounded-lg bg-muted">
-                <span className="font-semibold">Nuevo Total</span>
-                <span className="text-xl font-bold text-primary">{formatPrice(editTotal)}</span>
+              <div className="space-y-2 p-3 rounded-lg bg-muted" aria-live="polite">
+                {currentEditError ? <p className="text-sm text-destructive">{currentEditError}</p> : !currentEditQuote ? <p className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" />Validando precios, stock y descuentos…</p> : <>
+                  <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatPrice(currentEditQuote.subtotal)}</span></div>
+                  {currentEditQuote.amount > 0 && <div className="flex justify-between gap-2 text-sm"><span>{currentEditQuote.source}</span><span>-{formatPrice(currentEditQuote.amount)}</span></div>}
+                  <div className="flex justify-between font-semibold"><span>Nuevo total</span><span className="text-primary">{formatPrice(currentEditQuote.total)}</span></div>
+                </>}
               </div>
 
               {/* Save / Cancel */}
@@ -1016,7 +1074,7 @@ export function AdminOrdersView() {
                 <Button
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                   permission="orders:edit" onClick={() => saveEditMutation.mutate()}
-                  disabled={saveEditMutation.isPending || editItems.length === 0}
+                  disabled={saveEditMutation.isPending || editItems.length === 0 || !currentEditQuote || Boolean(currentEditError)}
                 >
                   {saveEditMutation.isPending ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Guardando...</>
