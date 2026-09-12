@@ -1,4 +1,5 @@
 entregables/
+.env*
 public/publicidad-whatsapp/
 tool-results/
 download/

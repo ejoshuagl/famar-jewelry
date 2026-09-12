@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AdminOrderNotifier } from './admin-order-notifier'
+import { AdminPushSettings } from './admin-push-settings'
 
 const WHATSAPP_NUMBER = '593988215076'
 
@@ -75,8 +76,8 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       <Separator />
       <div className="p-2 space-y-1">
         <button
-          onClick={() => {
-            logout()
+          onClick={async () => {
+            await logout()
             navigate('admin-login')
           }}
           className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors text-left"
@@ -104,6 +105,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { navigate, currentView } = useAppStore()
   const { adminName, isAuthenticated, can, refreshSession } = useAuthStore()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pushActive, setPushActive] = useState(false)
 
   useEffect(() => {
     void refreshSession()
@@ -124,7 +126,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="flex min-h-screen">
-      {can('orders') && <AdminOrderNotifier />}
+      {can('orders') && <AdminOrderNotifier pushActive={pushActive} />}
       {/* Desktop sidebar — always one instance, visibility via CSS only */}
       <aside className="hidden lg:flex w-60 flex-col border-r bg-card shrink-0">
         <ScrollArea className="flex-1">
@@ -159,6 +161,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <span className="text-sm text-muted-foreground">{adminName}</span>
         </div>
 
+        {can('orders:view') && <AdminPushSettings onActive={setPushActive} />}
         {sidebarItems.some((item) => item.view === currentView && can(item.permission)) ? children : <div className="rounded-lg border p-6"><p>No tienes acceso a esta sección.</p><p className="mt-2 text-sm text-muted-foreground">Selecciona una sección habilitada en el menú.</p></div>}
       </div>
     </div>

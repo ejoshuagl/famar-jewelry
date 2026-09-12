@@ -4,13 +4,24 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { useAppStore } from '@/stores/app-store'
+import { useEffect } from 'react'
 
 const LAST_ORDER_KEY = 'famar-admin-last-order'
 
-export function AdminOrderNotifier() {
+export function AdminOrderNotifier({ pushActive = false }: { pushActive?: boolean }) {
   const queryClient = useQueryClient()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const adminName = useAuthStore((state) => state.adminName)
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onPush = (event: MessageEvent) => {
+      if (event.data?.type !== 'famar-order-push') return
+      void queryClient.invalidateQueries({ queryKey: ['admin-orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
+    }
+    navigator.serviceWorker.addEventListener('message', onPush)
+    return () => navigator.serviceWorker.removeEventListener('message', onPush)
+  }, [queryClient])
 
   useQuery({
     queryKey: ['admin-new-order-notifier'],
@@ -26,7 +37,7 @@ export function AdminOrderNotifier() {
 
       const previousId = window.sessionStorage.getItem(LAST_ORDER_KEY)
       window.sessionStorage.setItem(LAST_ORDER_KEY, latest.id)
-      if (previousId && previousId !== latest.id) {
+      if (!pushActive && previousId && previousId !== latest.id) {
         toast.success(`Nuevo pedido #${latest.orderNumber}`, {
           description: `${latest.customerName} · $${Number(latest.total).toFixed(2)}`,
           action: { label: 'Ver pedido', onClick: () => useAppStore.getState().navigate('admin-orders') },
@@ -38,7 +49,7 @@ export function AdminOrderNotifier() {
       return latest.id
     },
     enabled: isAuthenticated,
-    refetchInterval: 30_000,
+    refetchInterval: pushActive ? false : 30_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 0,

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+import { notifyNewOrder } from '@/lib/admin-push'
 import { db } from '@/lib/db'
 import { auditLog, requireAdmin, hasPermission } from '@/lib/admin-auth'
 import { calculateDiscount, getSaleDiscount } from '@/lib/commerce'
@@ -240,6 +241,7 @@ export async function POST(request: NextRequest) {
       return createdOrder
     })
 
+    after(() => notifyNewOrder(order.id))
     if (manualOrder && manualAdmin) {
       await auditLog({ action: 'create', entity: 'order', entityId: order.id, admin: manualAdmin.name, details: `Pedido manual #${order.orderNumber} — $${pricing.total.toFixed(2)} — ${pricing.source || 'sin descuento'}` })
     }

@@ -1,0 +1,10 @@
+// Generates keys once, without printing secrets or overwriting existing configuration.
+const { writeFileSync } = require('node:fs')
+const { resolve } = require('node:path')
+const { generateVAPIDKeys } = require('web-push')
+const { execFileSync } = require('node:child_process')
+const output = resolve(__dirname, '..', '.env.web-push.local')
+execFileSync('git', ['check-ignore', '--quiet', output])
+const keys = generateVAPIDKeys()
+writeFileSync(output, `WEB_PUSH_PUBLIC_KEY=${keys.publicKey}\nWEB_PUSH_PRIVATE_KEY=${keys.privateKey}\nWEB_PUSH_SUBJECT=https://famar-jewelry.vercel.app\n`, { flag: 'wx', mode: 0o600 })
+console.log('Claves guardadas en .env.web-push.local (excluido de Git). No se han configurado en Vercel ni publicado.')

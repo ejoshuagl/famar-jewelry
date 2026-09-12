@@ -9,7 +9,7 @@ interface AuthStore {
   permissions: string[] | null
   can: (permission: string) => boolean
   login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: () => Promise<void>
   refreshSession: () => Promise<void>
 }
 
@@ -41,8 +41,19 @@ export const useAuthStore = create<AuthStore>()(
           return false
         }
       },
-      logout: () => {
-        void fetch('/api/auth', { method: 'DELETE' })
+      logout: async () => {
+          try {
+            if ('serviceWorker' in navigator) {
+              const registration = await navigator.serviceWorker.getRegistration('/admin')
+              const sub = await registration?.pushManager.getSubscription()
+              if (sub) {
+                // Stop this browser locally even if the backend is temporarily unreachable.
+                await sub.unsubscribe()
+                await fetch('/api/admin-push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'disable', subscription: sub.toJSON() }), signal: AbortSignal.timeout(5000) })
+              }
+            }
+          } catch { /* Expired endpoints are also removed when the push provider returns 410. */ }
+          finally { await fetch('/api/auth', { method: 'DELETE' }).catch(() => undefined) }
         set({ isAuthenticated: false, adminName: null, token: null, permissions: null })
       },
       refreshSession: async () => {
