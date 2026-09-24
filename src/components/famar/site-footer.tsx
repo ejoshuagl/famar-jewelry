@@ -15,7 +15,7 @@ export function SiteFooter() {
   const setCatalogFilter = useAppStore((s) => s.setCatalogFilter)
 
   return (
-    <footer className="border-t bg-background mt-auto">
+    <footer className="public-glass-footer border-t bg-background mt-auto">
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
           {/* Brand */}

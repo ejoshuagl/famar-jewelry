@@ -21,6 +21,7 @@ interface CategoryChipsProps {
 
 export function CategoryChips({ categories, selected, onSelect, navigateOnSelect = true }: CategoryChipsProps) {
   const navigate = useAppStore((state) => state.navigate)
+  const safeCategories = Array.isArray(categories) ? categories : []
 
   const handleSelect = (slug: string | null) => {
     onSelect(slug)
@@ -44,7 +45,7 @@ export function CategoryChips({ categories, selected, onSelect, navigateOnSelect
       >
         Todos
       </Button>
-      {categories.map((cat) => (
+      {safeCategories.map((cat) => (
         <motion.div
           key={cat.id}
           whileHover={{ scale: 1.05 }}

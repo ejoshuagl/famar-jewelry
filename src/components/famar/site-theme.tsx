@@ -26,22 +26,33 @@ const STARS = Array.from({ length: 12 }, (_, index) => ({
 
 type SeasonalTheme = 'christmas' | 'halloween' | 'black-friday' | 'valentine'
 type SiteThemeName = 'standard' | SeasonalTheme
+type DesignThemeName = 'original' | 'elegance'
 
 const VALID_THEMES = new Set<SiteThemeName>(['standard', 'christmas', 'halloween', 'black-friday', 'valentine'])
+const VALID_DESIGN_THEMES = new Set<DesignThemeName>(['original', 'elegance'])
 const THEME_STORAGE_KEY = 'famar-site-theme'
+const DESIGN_THEME_STORAGE_KEY = 'famar-design-theme'
 const THEME_CHANGE_EVENT = 'famar-site-theme-change'
+const DESIGN_THEME_CHANGE_EVENT = 'famar-design-theme-change'
 
 function readStoredTheme(): SiteThemeName {
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY) as SiteThemeName | null
   return stored && VALID_THEMES.has(stored) ? stored : 'standard'
 }
 
+function readStoredDesignTheme(): DesignThemeName {
+  const stored = window.localStorage.getItem(DESIGN_THEME_STORAGE_KEY) as DesignThemeName | null
+  return stored && VALID_DESIGN_THEMES.has(stored) ? stored : 'original'
+}
+
 function subscribeToTheme(onChange: () => void) {
   window.addEventListener('storage', onChange)
   window.addEventListener(THEME_CHANGE_EVENT, onChange)
+  window.addEventListener(DESIGN_THEME_CHANGE_EVENT, onChange)
   return () => {
     window.removeEventListener('storage', onChange)
     window.removeEventListener(THEME_CHANGE_EVENT, onChange)
+    window.removeEventListener(DESIGN_THEME_CHANGE_EVENT, onChange)
   }
 }
 
@@ -80,6 +91,7 @@ function ThemeClickEffects({ theme }: { theme: SeasonalTheme }) {
 
 export function SiteTheme() {
   const theme = useSyncExternalStore(subscribeToTheme, readStoredTheme, () => 'standard')
+  const designTheme = useSyncExternalStore(subscribeToTheme, readStoredDesignTheme, () => 'original')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -88,7 +100,10 @@ export function SiteTheme() {
       .then((data) => {
         const candidate = String(data.theme || '') as SiteThemeName
         const nextTheme: SiteThemeName = VALID_THEMES.has(candidate) ? candidate : 'standard'
+        const designCandidate = String(data.designTheme || '') as DesignThemeName
+        const nextDesignTheme: DesignThemeName = VALID_DESIGN_THEMES.has(designCandidate) ? designCandidate : 'original'
         window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+        window.localStorage.setItem(DESIGN_THEME_STORAGE_KEY, nextDesignTheme)
         window.dispatchEvent(new Event(THEME_CHANGE_EVENT))
       })
       .catch((error) => {
@@ -101,6 +116,11 @@ export function SiteTheme() {
     document.documentElement.dataset.siteTheme = theme
     return () => { delete document.documentElement.dataset.siteTheme }
   }, [theme])
+
+  useEffect(() => {
+    document.documentElement.dataset.designTheme = designTheme
+    return () => { delete document.documentElement.dataset.designTheme }
+  }, [designTheme])
 
   if (theme === 'standard') return null
 

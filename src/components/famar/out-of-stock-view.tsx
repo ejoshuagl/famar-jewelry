@@ -13,6 +13,7 @@ import { formatPrice, convertDriveUrl, cn } from '@/lib/utils'
 import { Bell } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
 import type { ProductData } from './product-card'
+import { DEMO_CATEGORIES, getDemoOutOfStockProducts } from '@/lib/demo-products'
 
 export function OutOfStockView() {
   const { navigate, selectProduct } = useAppStore()
@@ -23,15 +24,18 @@ export function OutOfStockView() {
       const params = new URLSearchParams({ status: 'out_of_stock', limit: '100' })
       if (selectedCategory) params.set('category', selectedCategory)
       const res = await fetch(`/api/products?${params.toString()}`)
+      if (!res.ok && process.env.NODE_ENV === 'development') return getDemoOutOfStockProducts(selectedCategory)
       const data = await res.json()
-      return data.products as ProductData[]
+      return Array.isArray(data?.products) ? data.products as ProductData[] : []
     },
   })
   const { data: categories } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
       const res = await fetch('/api/categories')
-      return res.json()
+      if (!res.ok) return process.env.NODE_ENV === 'development' ? DEMO_CATEGORIES : []
+      const payload: unknown = await res.json()
+      return Array.isArray(payload) ? payload : []
     },
   })
 

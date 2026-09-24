@@ -206,13 +206,13 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       className="h-full"
     >
       <Card
-        className="group h-full flex flex-col overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
+        className="product-glass-card group h-full flex flex-col overflow-hidden cursor-pointer border hover:shadow-lg transition-all duration-300"
         onClick={handleViewDetail}
       >
         {/* Image - fixed aspect ratio, largest possible */}
         <div
           ref={imageAreaRef}
-          className="relative aspect-square shrink-0"
+          className="product-image-shell relative aspect-square shrink-0"
           onPointerEnter={() => setRotationPaused(true)}
           onPointerLeave={() => setRotationPaused(false)}
           onTouchStart={() => setRotationPaused(true)}
@@ -233,6 +233,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               }}
             />
           ) : null}
+          <div className="product-image-shade pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
           <div className={cn(!imageUrl && 'aspect-square', 'w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 dark:from-primary/30 dark:via-primary/15 dark:to-primary/5', imageUrl && 'hidden absolute inset-0')}>
             <span className="text-5xl font-bold text-primary/40">
               {product.name.charAt(0).toUpperCase()}
@@ -272,20 +273,22 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
           )}
 
           {/* Actions overlay */}
-          <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="product-card-actions absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="secondary"
               size="icon"
-              className="h-8 w-8 bg-white/90 dark:bg-black/70 backdrop-blur-sm hover:bg-white dark:hover:bg-black/80 shadow-sm"
+              className="product-favorite-action h-8 w-8 bg-white/90 dark:bg-black/70 backdrop-blur-sm hover:bg-white dark:hover:bg-black/80 shadow-sm"
               onClick={handleToggleFavorite}
+              aria-label={favorite ? `Quitar ${product.name} de favoritos` : `Agregar ${product.name} a favoritos`}
             >
               <Heart className={cn('h-3.5 w-3.5', favorite && 'fill-red-500 text-red-500')} />
             </Button>
             <Button
               variant="secondary"
               size="icon"
-              className="h-8 w-8 bg-white/90 dark:bg-black/70 backdrop-blur-sm hover:bg-white dark:hover:bg-black/80 shadow-sm"
+              className="product-detail-action h-8 w-8 bg-white/90 dark:bg-black/70 backdrop-blur-sm hover:bg-white dark:hover:bg-black/80 shadow-sm"
               onClick={handleViewDetail}
+              aria-label={`Ver detalles de ${product.name}`}
             >
               <Eye className="h-3.5 w-3.5" />
             </Button>
@@ -301,12 +304,12 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         </div>
 
         {/* Content - compact, fixed structure */}
-        <CardContent className="p-3 flex flex-col flex-1 min-h-0">
-          <h3 className="allow-text-selection font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
+        <CardContent className="product-card-content p-3 flex flex-col flex-1 min-h-0">
+          <h3 className="product-card-title allow-text-selection font-medium text-sm leading-snug line-clamp-2 min-h-[2.5rem]">
             {product.name}
           </h3>
-          <p className="allow-text-selection mt-1 text-[10px] leading-tight text-muted-foreground sm:text-xs">{product.code}</p>
-          <div className="mt-auto pt-2 flex items-end justify-between gap-2">
+          <p className="product-card-code allow-text-selection mt-1 text-[10px] leading-tight text-muted-foreground sm:text-xs">{product.code}</p>
+          <div className="product-card-purchase mt-auto pt-2 flex items-end justify-between gap-2">
             <span className="flex min-w-0 flex-col items-start gap-0.5 text-base font-bold leading-none text-primary sm:block">
               {product.isOnSale && <span className="text-[10px] font-normal text-muted-foreground line-through sm:mr-1.5 sm:text-xs">{formatPrice(product.price)}</span>}
               {formatPrice(currentPrice)}
@@ -325,7 +328,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             ) : (
               <Button
                 size="sm"
-                className="h-8 shrink-0 bg-primary px-1.5 text-[10px] text-primary-foreground hover:bg-primary/90 sm:px-3 sm:text-xs"
+                className="product-add-button h-9 shrink-0 bg-primary px-2 text-[10px] text-primary-foreground hover:bg-primary/90 sm:px-4 sm:text-xs"
                 onClick={handleAddToCart}
                 aria-label={hasVariants ? `Elegir color de ${product.name}` : `Agregar ${product.name} al carrito`}
               >

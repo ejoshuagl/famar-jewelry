@@ -194,7 +194,7 @@ export function AppContent() {
     <div className={`${isAdmin ? 'admin-app' : 'public-store'} min-h-screen flex flex-col`}>
       {!isAdmin && <SiteTheme />}
       {!isAdmin && <SiteHeader />}
-      <main className="flex-1">{renderView()}</main>
+      <main className={isAdmin ? 'flex-1' : 'public-store-main flex-1'}>{renderView()}</main>
       {!isAdmin && <SiteFooter />}
       {!isAdmin && <FloatingCartButton />}
       {!isAdmin && <CartReminder />}

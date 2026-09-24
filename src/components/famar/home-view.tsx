@@ -17,6 +17,7 @@ import { ProductCard, type ProductData } from './product-card'
 import { SkeletonGrid } from './skeleton-grid'
 import { SearchBar } from './search-bar'
 import { trackStoreEvent } from '@/lib/track-store-event'
+import { demoHomeProducts } from '@/lib/demo-products'
 import { Star, Truck, Shield, Heart, MessageCircle, Gem, Sparkles, X, ChevronLeft, ChevronRight, TicketPercent } from 'lucide-react'
 
 const fadeInUp: Variants = {
@@ -63,6 +64,7 @@ export function HomeView() {
     queryKey: ['home-products'],
     queryFn: async () => {
       const response = await fetch('/api/home-products')
+      if (!response.ok && process.env.NODE_ENV === 'development') return demoHomeProducts
       if (!response.ok) throw new Error('No se pudieron cargar los productos del inicio')
       return response.json() as Promise<{
         featuredProducts: ProductData[]

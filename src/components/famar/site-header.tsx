@@ -55,18 +55,18 @@ export function SiteHeader() {
   )
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="public-glass-header sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
+      <div className="public-header-inner container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <button
           onClick={() => navigate('home')}
-          className={cn(playfair.className, 'text-2xl font-semibold tracking-wider gold-gradient-text')}
+          className={cn(playfair.className, 'public-brand-logo text-2xl font-semibold tracking-wider gold-gradient-text')}
         >
           FAMAR
         </button>
 
         {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="public-desktop-nav hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <button
               key={item.view}
@@ -75,7 +75,7 @@ export function SiteHeader() {
                 navigate(item.view)
               }}
               className={cn(
-                'relative px-4 py-2 text-sm font-medium transition-colors',
+                'public-nav-item relative px-4 py-2 text-sm font-medium transition-colors',
                 currentView === item.view
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground'
@@ -126,7 +126,7 @@ export function SiteHeader() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
+            <SheetContent side="right" className="public-glass-sheet w-72">
               <SheetTitle className="sr-only">Menú</SheetTitle>
               <div className="flex flex-col gap-1 mt-8">
                 {mobileNavItems.map((item) => {

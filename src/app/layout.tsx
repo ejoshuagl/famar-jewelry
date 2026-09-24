@@ -60,7 +60,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="dark" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('famar-site-theme');if(t)document.documentElement.dataset.siteTheme=t}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('famar-site-theme');var d=localStorage.getItem('famar-design-theme');if(t)document.documentElement.dataset.siteTheme=t;if(d)document.documentElement.dataset.designTheme=d}catch(e){}` }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}

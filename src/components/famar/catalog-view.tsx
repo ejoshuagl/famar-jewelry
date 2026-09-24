@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { SlidersHorizontal, X } from 'lucide-react'
+import { DEMO_CATEGORIES, getDemoCatalogProducts } from '@/lib/demo-products'
 
 export function CatalogView() {
   const { searchQuery, selectedCategory, catalogFilter, campaignFilter, catalogPage: page, catalogSort: sort, setCategory, setCatalogFilter, setCampaignFilter, setCatalogPage: setPage, setCatalogSort: setSort, setSearch } = useAppStore()
@@ -52,6 +53,10 @@ export function CatalogView() {
     queryKey: ['products', 'catalog', localSearch, selectedCategory, catalogFilter, campaignFilter?.id, sort, page],
     queryFn: async () => {
       const res = await fetch(`/api/products?${buildQuery()}`)
+      if (!res.ok && process.env.NODE_ENV === 'development') {
+        const demoProducts = getDemoCatalogProducts({ category: selectedCategory, search: localSearch, filter: catalogFilter })
+        return { products: demoProducts, total: demoProducts.length, totalPages: 1 }
+      }
       return res.json()
     },
   })
@@ -60,7 +65,9 @@ export function CatalogView() {
     queryKey: ['categories'],
     queryFn: async () => {
       const res = await fetch('/api/categories')
-      return res.json()
+      if (!res.ok) return process.env.NODE_ENV === 'development' ? DEMO_CATEGORIES : []
+      const payload: unknown = await res.json()
+      return Array.isArray(payload) ? payload : []
     },
   })
 
@@ -111,7 +118,7 @@ export function CatalogView() {
       <SearchBar onSearch={handleSearch} />
 
       {/* Category Chips */}
-      {categories && (
+      {categories && categories.length > 0 && (
         <CategoryChips
           categories={categories}
           selected={selectedCategory}
