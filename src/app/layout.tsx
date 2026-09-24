@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./elegance-theme.css";
 import { Providers } from "@/components/providers";
 import { StoreAnalytics } from "@/components/famar/store-analytics";
 import { SpeedInsights } from "@vercel/speed-insights/next";
