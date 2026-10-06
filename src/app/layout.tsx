@@ -50,9 +50,9 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/famar-social-preview.jpg",
+        url: "/famar-social-preview-v2.jpg",
         width: 1200,
-        height: 630,
+        height: 1200,
         alt: "FAMAR - Joyería y accesorios de moda",
       },
     ],
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     title: "FAMAR | Joyería y Accesorios de Moda",
     description:
       "Descubre joyas y accesorios para cada ocasión. Compra en línea con atención personalizada y envíos en Ecuador.",
-    images: ["/famar-social-preview.jpg"],
+    images: ["/famar-social-preview-v2.jpg"],
   },
 };
 
