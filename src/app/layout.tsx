@@ -17,9 +17,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FAMAR - Joyería y Accesorios de Moda",
+  metadataBase: new URL("https://famar-jewelry.vercel.app"),
+  title: "FAMAR | Joyería y Accesorios de Moda",
   description:
-    "Descubre la mejor colección de joyería y accesorios de moda en FAMAR. Calidad garantizada, envíos a todo el país y precios accesibles.",
+    "Descubre joyas y accesorios para cada ocasión. Compra en línea con atención personalizada y envíos en Ecuador.",
   keywords: [
     "FAMAR",
     "joyería",
@@ -40,9 +41,28 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "FAMAR - Joyería y Accesorios de Moda",
-    description: "Descubre la mejor colección de joyería y accesorios de moda.",
+    title: "FAMAR | Joyería y Accesorios de Moda",
+    description:
+      "Descubre joyas y accesorios para cada ocasión. Compra en línea con atención personalizada y envíos en Ecuador.",
+    url: "https://famar-jewelry.vercel.app",
+    siteName: "FAMAR",
+    locale: "es_EC",
     type: "website",
+    images: [
+      {
+        url: "/famar-social-preview.jpg",
+        width: 1200,
+        height: 630,
+        alt: "FAMAR - Joyería y accesorios de moda",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FAMAR | Joyería y Accesorios de Moda",
+    description:
+      "Descubre joyas y accesorios para cada ocasión. Compra en línea con atención personalizada y envíos en Ecuador.",
+    images: ["/famar-social-preview.jpg"],
   },
 };
 
